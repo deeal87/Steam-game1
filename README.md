@@ -14,6 +14,39 @@ in Godot 4.3 for Windows, Linux and macOS.
 
 ---
 
+## The place
+
+You are not sealed in one room. The kiosk is a **shop floor** with the serving
+hatch, racks along the walls and the counter; a **stockroom** behind it holding
+every case you have not put out yet; a **side door** you can walk out of onto
+the pavement; and a **manhole** in the stockroom floor.
+
+Outside is about a hundred metres of street you can walk all of. The working
+lamps thin out as you go west until there are none. Underneath it all is a run
+of brick sewer from the stockroom to a ladder that comes up in the dark corner
+at the far end.
+
+```
+                       [ hatch ]
+     +-------------------[==]-------------------+
+     |                SHOP FLOOR                |
+     |  [racks]                       [racks]   |
+     |                                  [door] -+--> street
+     +--------[doorway]-------------------------+
+              |      |
+     +--------+      +------------+
+     |         STOCKROOM          |
+     |  [pallet racks]   (O)      |   (O) manhole
+     +----------------------------+        |
+                                           v
+     ===========================================  sewer, 55 m west
+                                           |
+                                    ladder up, far end of the street
+```
+
+Carry the **torch** (`T`). The kiosk is the only lit room in the game, and once
+you can leave it the street and the sewer are genuinely dark.
+
 ## The loop
 
 One night is one shift, 23:00 to 05:00.
@@ -79,6 +112,35 @@ Three fittings from the supplier change the shape of the fight:
 | **Window bars** | Closes the hatch as an entrance, so the whole team has to funnel through the back door — much easier to point a shotgun at |
 | **Bear trap** | Takes the first one through, whichever door that is |
 
+## Running for it
+
+The manhole in the stockroom is a way out. Go down it while the door team is
+coming through and you live — but they take the place apart behind you:
+**the stash, the night's takings and your cash go with them**, and the heat
+stays exactly where it was.
+
+That price is the point. Fleeing has to cost more than fighting or the weapons
+and the fittings would never be worth buying, and the raid would stop being a
+threat the moment you learned where the ladder was.
+
+## The end of the road
+
+There is something at the far west end of the street. It is past the last
+working lamp, set back in an alcove, behind a skip — you cannot see it from
+the kiosk and nothing points at it. Walking into it **takes a screenshot by
+itself** and writes it to `user://screenshots/`, because the whole point of
+finding it is having proof you did.
+
+It knows your name. In order of preference:
+
+1. A name you typed into the pause menu.
+2. **Your Steam persona name** — the call is written and guarded, so dropping
+   GodotSteam into the project and initialising it is all that is needed, with
+   no code change here. The plugin is not bundled: it is a per-platform binary
+   and this repository ships none.
+3. Your operating system account name.
+4. `STRANGER`.
+
 ## Settings
 
 `Esc` opens a pause menu that actually freezes the game. Volume, mouse
@@ -103,6 +165,7 @@ nothing but the look.
 | `F` | sweep them with the scanner (pick it up off the counter first) |
 | `TAB` | notepad — what you have on the person at the window |
 | `X` | change what is in your hands |
+| `T` | torch |
 | `Mouse 1` | use it |
 | `1`–`9` | choose a dialogue option |
 | `Esc` | close a panel · pause and settings |
@@ -124,7 +187,11 @@ godot --headless --path . res://tests/BalanceTest.tscn    # is the game fair and
 ```
 
 `SmokeTest` builds every system once and drives a transaction, a sale to an
-officer, a shooting and a raid through it. `BalanceTest` is the more
+officer, a shooting and a raid through it. It also **walks the sewer with shape
+queries** — a shaft built as four solid walls puts a slab straight across the
+tunnel and a one-piece tunnel roof caps the shaft, and both of those look
+completely fine in the editor while leaving you teleported into a sealed box of
+brick. That is exactly what happened, and the test now catches it. `BalanceTest` is the more
 interesting one: it simulates thousands of customers and asserts that a player
 who investigates properly catches most officers and rarely condemns anyone
 innocent, that a player who never asks questions gets a lot of false positives,
@@ -255,9 +322,13 @@ scripts/
     NightDirector.gd        the clock and the queue
     RaidDirector.gd         the door team
   actors/                   Player · Customer · RaidUnit
-  world/World.gd            kiosk and street geometry
+  world/
+    World.gd                shop floor, stockroom, materials, anchors
+    StreetBuilder.gd        the road, the far end, the thing in the alcove
+    SewerBuilder.gd         shafts and tunnels, cut into each other properly
+    EasterEgg.gd            the board, and the screenshot it takes
   ui/                       HUD · terminal · dialogue · notepad · supplier · pause · reports
-  util/                     ProcTex · ProcMesh
+  util/                     ProcTex · ProcMesh · PlayerIdentity
 shaders/                    ps1.gdshader · crt.gdshader
 tests/                      smoke · balance · screenshots
 ```
@@ -271,6 +342,11 @@ Known gaps, in rough priority order:
 
 - **No music, and audio is minimal.** Everything is synthesised, which sounds
   appropriately cheap but is not the same as sound design.
+- **Customers still only use the hatch.** The shop floor, the stockroom and
+  the street are all walkable, but nobody comes inside — the queue is still one
+  person at the window.
+- **The sewer has one route.** It is a corridor between two ladders, not a
+  network, and nothing lives down there.
 - **No key rebinding.** Bindings are built in code in `InputSetup.gd` and
   there is no interface for changing them. Steam players will expect one.
 - **The raid still has no flanking or squad coordination.** It has pacing and

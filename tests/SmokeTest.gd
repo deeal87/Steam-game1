@@ -19,6 +19,9 @@ func _ready() -> void:
 	test_textures()
 	test_world()
 	test_customer_construction()
+	await test_sewer_is_traversable()
+	test_identity_and_egg()
+	test_sewer_escape()
 	await test_transaction()
 	await test_illicit_and_departure()
 	await test_violence()
@@ -84,6 +87,16 @@ func test_world() -> void:
 		"every product has a run of shelf slots")
 	_check(_world.breach_points().size() >= 2, "raid has somewhere to come from")
 
+	# The building is no longer one room.
+	for key: String in ["manhole", "sewer_shaft_bottom", "sewer_exit_top",
+			"sewer_exit_bottom", "easter_egg", "stock_centre"]:
+		_check(_world.anchors.has(key), "anchor '%s' exists" % key)
+	_check(World.STOCK_MAX_Z > World.SHOP_HALF_Z, "the stockroom is behind the shop floor")
+	_check(World.SEWER_Y < 0.0, "the sewer is below ground")
+	_check(absf(World.SEWER_EXIT.x - World.STREET_END) < 12.0,
+		"the sewer comes up near the far end of the street")
+	_check(World.STREET_EAST - World.STREET_WEST > 80.0, "the street is actually a street")
+
 	_world.refresh_shelves()
 	GameState.shelf_stock["smokes"] = 0
 	_world.refresh_shelves()
@@ -103,6 +116,103 @@ func test_world() -> void:
 	add_child(_player)
 	_player.global_position = _world.anchors["player_spawn"]
 	_check(_player.camera != null, "player has a camera")
+
+
+## The bug this exists to catch: a shaft built as four solid walls puts a slab
+## straight across the tunnel, and a one-piece tunnel roof caps the shaft. Both
+## look completely fine in the editor and leave you teleported into a sealed
+## box of brick.
+func _point_is_clear(pos: Vector3, radius: float) -> bool:
+	var space := _world.get_world_3d().direct_space_state
+	if space == null:
+		return true
+	var shape := SphereShape3D.new()
+	shape.radius = radius
+	var q := PhysicsShapeQueryParameters3D.new()
+	q.shape = shape
+	q.transform = Transform3D(Basis(), pos)
+	q.collision_mask = 1
+	return space.intersect_shape(q, 1).is_empty()
+
+
+func test_sewer_is_traversable() -> void:
+	print("\nThe sewer is actually a sewer:")
+	# Physics bodies are not queryable until a physics step has run.
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+
+	var bottom: Vector3 = _world.anchors["sewer_shaft_bottom"]
+	var exit_bottom: Vector3 = _world.anchors["sewer_exit_bottom"]
+	_check(_point_is_clear(bottom + Vector3(0, 0.9, 0), 0.30),
+		"the stockroom ladder does not drop you inside a wall")
+	_check(_point_is_clear(exit_bottom + Vector3(0, 0.9, 0), 0.30),
+		"the street ladder does not drop you inside a wall")
+
+	# Walk the main run in steps and make sure it is open the whole way.
+	var blocked := 0
+	var probes := 0
+	var x := bottom.x
+	while x > World.SEWER_EXIT.x + 1.0:
+		probes += 1
+		if not _point_is_clear(Vector3(x, bottom.y + 0.9, World.MANHOLE.z), 0.28):
+			blocked += 1
+		x -= 2.0
+	_check(blocked == 0, "the tunnel is clear along its whole length (%d of %d probes blocked)"
+		% [blocked, probes])
+
+	# And the dogleg up to the exit shaft.
+	var leg_blocked := 0
+	var z := World.MANHOLE.z
+	while z > World.SEWER_EXIT.z:
+		if not _point_is_clear(Vector3(World.SEWER_EXIT.x, bottom.y + 0.9, z), 0.28):
+			leg_blocked += 1
+		z -= 1.0
+	_check(leg_blocked == 0, "the dogleg to the exit is clear (%d blocked)" % leg_blocked)
+
+	# You must also be able to stand up in it.
+	_check(_point_is_clear(bottom + Vector3(0, 1.5, 0), 0.25), "there is headroom down there")
+
+
+func test_identity_and_egg() -> void:
+	print("\nThe thing at the end of the road:")
+	Settings.player_name = ""
+	var resolved := PlayerIdentity.display_name()
+	_check(not resolved.is_empty(), "a name always resolves (got '%s')" % resolved)
+	_check(not PlayerIdentity.is_steam_name(),
+		"no Steam plugin here, so it does not claim a Steam name")
+
+	Settings.player_name = "TESTSUBJECT"
+	_check(PlayerIdentity.display_name() == "TESTSUBJECT", "a name set in settings wins")
+
+	var egg: EasterEgg = _world.anchors["easter_egg"]
+	var plaque: Label3D = null
+	for child in egg.get_children():
+		if child is Label3D:
+			plaque = child
+	_check(plaque != null, "the board carries real text")
+	if plaque != null:
+		_check(plaque.text.contains("MASTER OF MASTER"), "it says what it should say")
+	# It is at the far end and nowhere near the kiosk.
+	_check(egg.global_position.distance_to(Vector3.ZERO) > 40.0,
+		"it is a long way from the counter (%.0f m)" % egg.global_position.distance_to(Vector3.ZERO))
+	Settings.player_name = ""
+
+
+func test_sewer_escape() -> void:
+	print("\nRunning for it:")
+	GameState.reset_run()
+	GameState.reset_night_tally()
+	GameState.add_money(200, "illicit")
+	GameState.drug_stock = 9
+	var before_money := GameState.money
+	var lost := GameState.flee_through_sewer()
+
+	_check(int(lost["stash"]) == 9, "the stash is gone")
+	_check(int(lost["cash"]) == 200, "the night's takings are gone")
+	_check(GameState.drug_stock == 0, "nothing left under the counter")
+	_check(GameState.money == before_money - 200, "and it comes off what you are holding")
+	_check(GameState.evidence_against_you == 0, "but the raid is over")
+	_check(GameState.fled_through_sewer, "the run remembers you ran")
 
 
 func test_customer_construction() -> void:
@@ -257,7 +367,7 @@ func test_raid() -> void:
 	_check(raid._units.size() >= 3, "a squad actually spawns (%d)" % raid._units.size())
 	_check(raid._entries.size() >= 1, "they have a way in")
 
-	# Window bars should close the hatch as an entrance.
+	# Each fitting closes one of the shop's two approaches.
 	raid.stop()
 	GameState.defenses = ["window_bars"]
 	raid.phase = RaidDirector.Phase.IDLE
@@ -266,7 +376,25 @@ func test_raid() -> void:
 	for e: Vector3 in raid._entries:
 		if e.z < 0.0:
 			uses_hatch = true
-	_check(not uses_hatch, "window bars force them through the back door")
+	_check(not uses_hatch, "hatch bars force them round to the side door")
+
+	raid.stop()
+	GameState.defenses = ["door_bar"]
+	raid.phase = RaidDirector.Phase.IDLE
+	raid.start(1, 5)
+	var uses_side := false
+	for e: Vector3 in raid._entries:
+		if e.x > World.SHOP_HALF_X - 1.5:
+			uses_side = true
+	_check(not uses_side, "a barricaded side door forces them through the hatch")
+
+	# Barring both must not make you untouchable.
+	raid.stop()
+	GameState.defenses = ["door_bar", "window_bars"]
+	raid.phase = RaidDirector.Phase.IDLE
+	raid.start(1, 5)
+	_check(raid._entries.size() >= 1, "barring both approaches still leaves them a way in")
+	GameState.defenses = []
 
 	# They must arrive in waves rather than as one crowd, and the raid must not
 	# declare victory while a wave is still queued outside.

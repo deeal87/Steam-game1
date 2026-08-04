@@ -18,6 +18,8 @@ var field_of_view: float = 68.0
 var crt_intensity: float = 1.0      ## scanlines, grain, aberration, vignette
 var retro_intensity: float = 1.0    ## vertex snapping and affine warping
 var subtitles: bool = true
+## Overrides whatever Steam or the OS reports. Empty means "work it out".
+var player_name: String = ""
 
 
 func _ready() -> void:
@@ -45,6 +47,7 @@ func reset() -> void:
 	crt_intensity = 1.0
 	retro_intensity = 1.0
 	subtitles = true
+	player_name = ""
 	apply()
 	save_settings()
 
@@ -57,6 +60,7 @@ func save_settings() -> void:
 	cfg.set_value("video", "crt", crt_intensity)
 	cfg.set_value("video", "retro", retro_intensity)
 	cfg.set_value("ui", "subtitles", subtitles)
+	cfg.set_value("ui", "player_name", player_name)
 	cfg.save(PATH)
 
 
@@ -70,3 +74,4 @@ func load_settings() -> void:
 	crt_intensity = cfg.get_value("video", "crt", crt_intensity)
 	retro_intensity = cfg.get_value("video", "retro", retro_intensity)
 	subtitles = cfg.get_value("ui", "subtitles", subtitles)
+	player_name = cfg.get_value("ui", "player_name", player_name)

@@ -13,6 +13,9 @@ var money: int = 85
 var heat: float = 0.0          ## 0-100. Drives undercover ratio and raid size.
 var alive: bool = true
 var nights_survived: int = 0
+## Persisted across runs — finding it once is finding it.
+var found_easter_egg: bool = false
+var fled_through_sewer: bool = false
 
 # --- Consumables ---
 var drug_stock: int = 6        ## Units under the counter.
@@ -60,10 +63,10 @@ const AMMO_PRICE := {"revolver": 12, "shotgun": 18, "rifle": 22}
 const AMMO_PER_BOX := {"revolver": 12, "shotgun": 10, "rifle": 30}
 
 const DEFENSES := {
-	"door_bar":   {"name": "Door Barricade", "price": 95,  "desc": "Buys you about eight seconds at the front door."},
-	"window_bars":{"name": "Window Bars",    "price": 150, "desc": "They stop using the window as an entrance."},
-	"floor_trap": {"name": "Bear Trap",      "price": 80,  "desc": "First one through the door goes down."},
-	"camera":     {"name": "Street Camera",  "price": 120, "desc": "Warns you a few seconds before the breach."},
+	"door_bar":   {"name": "Side Door Barricade", "price": 95,  "desc": "Shuts the pavement door. They all have to use the hatch."},
+	"window_bars":{"name": "Hatch Bars",          "price": 150, "desc": "Shuts the serving hatch. They all have to use the side door."},
+	"floor_trap": {"name": "Bear Trap",           "price": 80,  "desc": "Takes the first one through, whichever way that is."},
+	"camera":     {"name": "Street Camera",       "price": 120, "desc": "Warns you a few seconds before the breach."},
 }
 
 
@@ -77,6 +80,7 @@ func reset_run() -> void:
 	heat = 0.0
 	alive = true
 	nights_survived = 0
+	fled_through_sewer = false
 	drug_stock = 6
 	weapons = ["bat"]
 	equipped_weapon = ""
@@ -124,6 +128,28 @@ func spend(amount: int) -> bool:
 func add_heat(amount: float) -> void:
 	heat = clampf(heat + amount, 0.0, 100.0)
 	Signals.heat_changed.emit(heat)
+
+
+## Going down the manhole while they are coming through the door.
+##
+## You live, but the kiosk does not: they take what is under the counter and
+## whatever was in the till, and the heat stays exactly where it was. Running is
+## meant to be the expensive way out, not the free one — otherwise the weapons
+## and the fittings would never be worth buying.
+func flee_through_sewer() -> Dictionary:
+	var lost_cash := takings + illicit_takings + tips
+	var lost_stash := drug_stock
+	money = maxi(0, money - lost_cash)
+	drug_stock = 0
+	takings = 0
+	illicit_takings = 0
+	tips = 0
+	fled_through_sewer = true
+	evidence_against_you = 0
+	raid_reason = ""
+	add_heat(6.0)
+	Signals.money_changed.emit(money)
+	return {"cash": lost_cash, "stash": lost_stash}
 
 
 # --- Difficulty curve --------------------------------------------------------
@@ -256,6 +282,7 @@ func save_run() -> void:
 	cfg.set_value("run", "money", money)
 	cfg.set_value("run", "heat", heat)
 	cfg.set_value("run", "nights_survived", nights_survived)
+	cfg.set_value("run", "found_easter_egg", found_easter_egg)
 	cfg.set_value("stock", "drugs", drug_stock)
 	cfg.set_value("stock", "shelf", shelf_stock)
 	cfg.set_value("stock", "crate", crate_stock)
@@ -274,6 +301,7 @@ func load_run() -> bool:
 	money = cfg.get_value("run", "money", 85)
 	heat = cfg.get_value("run", "heat", 0.0)
 	nights_survived = cfg.get_value("run", "nights_survived", 0)
+	found_easter_egg = cfg.get_value("run", "found_easter_egg", false)
 	drug_stock = cfg.get_value("stock", "drugs", 6)
 	shelf_stock = cfg.get_value("stock", "shelf", shelf_stock)
 	crate_stock = cfg.get_value("stock", "crate", crate_stock)

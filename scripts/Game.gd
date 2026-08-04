@@ -26,6 +26,8 @@ var raid_director: RaidDirector
 
 var _screen_effect: ColorRect
 var _flash_rect: ColorRect
+var _fade_rect: ColorRect
+var _travelling: bool = false
 var _flicker_timer: float = 0.0
 var _flicker_energy: float = 2.3
 var _pending_summary: Dictionary = {}
@@ -173,7 +175,7 @@ func _build_screen_effect() -> void:
 	m.shader = load("res://shaders/crt.gdshader")
 	m.set_shader_parameter("scanline_strength", 0.16)
 	m.set_shader_parameter("scanline_count", 270.0)
-	m.set_shader_parameter("vignette_strength", 0.95)
+	m.set_shader_parameter("vignette_strength", 0.72)
 	m.set_shader_parameter("aberration", 0.5)
 	m.set_shader_parameter("grain", 0.045)
 	m.set_shader_parameter("posterize_steps", 40.0)
@@ -192,6 +194,16 @@ func _build_screen_effect() -> void:
 	_flash_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_flash_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	flash_layer.add_child(_flash_rect)
+
+	# Black, above everything, for the ladder transitions.
+	var fade_layer := CanvasLayer.new()
+	fade_layer.layer = 22
+	add_child(fade_layer)
+	_fade_rect = ColorRect.new()
+	_fade_rect.color = Color(0, 0, 0, 0)
+	_fade_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_fade_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fade_layer.add_child(_fade_rect)
 
 
 func _build_directors() -> void:
@@ -228,6 +240,11 @@ func _wire() -> void:
 
 	Signals.player_died.connect(_on_player_died)
 	Signals.flashbang.connect(_on_flashbang)
+	Signals.travel_requested.connect(_on_travel_requested)
+
+	var egg: EasterEgg = world.anchors.get("easter_egg")
+	if egg != null:
+		egg.found.connect(_on_easter_egg_found)
 
 
 # --- Panels ------------------------------------------------------------------
@@ -360,6 +377,73 @@ func _restart() -> void:
 	get_tree().reload_current_scene()
 
 
+## Ladder and manhole transitions: fade out, move, fade back in.
+func _on_travel_requested(destination: Vector3, label: String, is_escape: bool) -> void:
+	if _travelling or player == null or player.dead:
+		return
+	_travelling = true
+	player.ui_locked = true
+
+	var tw := create_tween()
+	tw.tween_property(_fade_rect, "color:a", 1.0, 0.45)
+	await tw.finished
+
+	player.velocity = Vector3.ZERO
+	player.global_position = destination
+	Signals.notice.emit(label, "info")
+
+	# Climbing down out of the kiosk while they are coming through the door is
+	# the escape, and it is the only place the sewer changes the run.
+	if is_escape and phase == Phase.RAID and raid_director.phase != RaidDirector.Phase.DONE:
+		_flee_raid()
+
+	var back := create_tween()
+	back.tween_interval(0.25)
+	back.tween_property(_fade_rect, "color:a", 0.0, 0.6)
+	await back.finished
+
+	_travelling = false
+	if not _any_panel_open():
+		player.ui_locked = false
+
+
+func _flee_raid() -> void:
+	var lost := GameState.flee_through_sewer()
+	raid_director.stop()
+	raid_director.phase = RaidDirector.Phase.IDLE
+	Audio.stop_ambience()
+	Signals.notice.emit("You get the cover back over your head. Above you, they are taking the place apart.", "warn")
+	Signals.notice.emit("Gone: %d in cash, %d units." % [int(lost["cash"]), int(lost["stash"])], "bad")
+	_advance_night()
+
+
+## Walking into the thing at the end of the road takes a picture by itself.
+## The whole point of it is having proof you got there, and asking the player to
+## remember to press a screenshot key at that moment would defeat it.
+func _on_easter_egg_found(_unused: String) -> void:
+	var path := await _capture_screenshot("kiosk_master")
+	Signals.notice.emit("YOU ARE THE MASTER OF MASTER %s" % PlayerIdentity.display_name().to_upper(), "good")
+	if path.is_empty():
+		Signals.notice.emit("(Screenshot failed to save.)", "bad")
+	else:
+		Signals.notice.emit("Screenshot saved: %s" % path, "info")
+
+
+## Writes a PNG next to the save file. Returns the absolute path, or "".
+func _capture_screenshot(prefix: String) -> String:
+	await RenderingServer.frame_post_draw
+	var img := get_viewport().get_texture().get_image()
+	if img == null:
+		return ""
+	var dir := "user://screenshots"
+	DirAccess.make_dir_recursive_absolute(dir)
+	var stamp := Time.get_datetime_string_from_system().replace(":", "-").replace("T", "_")
+	var path := "%s/%s_%s.png" % [dir, prefix, stamp]
+	if img.save_png(path) != OK:
+		return ""
+	return ProjectSettings.globalize_path(path)
+
+
 ## They throw something through the hatch before they follow it. The white-out
 ## is short but total, and it is the reason the breach has a rhythm you can
 ## brace for rather than simply losing to.
@@ -381,7 +465,7 @@ func _apply_settings() -> void:
 		var m: ShaderMaterial = _screen_effect.material
 		var k := Settings.crt_intensity
 		m.set_shader_parameter("scanline_strength", 0.16 * k)
-		m.set_shader_parameter("vignette_strength", 0.95 * k)
+		m.set_shader_parameter("vignette_strength", 0.72 * k)
 		m.set_shader_parameter("aberration", 0.5 * k)
 		m.set_shader_parameter("grain", 0.045 * k)
 		# Colour banding is the one part worth keeping a little of even at

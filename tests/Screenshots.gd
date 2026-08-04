@@ -104,13 +104,36 @@ func _ready() -> void:
 	Settings.reset()
 	await _settle(15)
 
+	# --- A tour of the places that did not exist before ---------------------
+	await _look_from(Vector3(-1.2, 0.1, 1.4), 0.0, "13_shop_floor")
+	await _look_from(Vector3(-2.2, 0.1, 3.4), 0.0, "14_through_to_stockroom")
+	await _look_from(Vector3(-1.4, 0.1, 3.3), 2.36, "15_stockroom")
+	await _look_from(Vector3(-3.4, 0.1, 4.5), 3.14, "16_manhole", -0.5)
+
+	# Outside, through the side door, then a long look west down the street.
+	await _look_from(Vector3(World.SHOP_HALF_X + 1.6, 0.3, 1.5), 1.57, "17_outside_side_door")
+	await _look_from(Vector3(-8.0, 0.3, -2.0), 1.57, "18_street_looking_west")
+
+	# Down the ladder.
+	game.player.toggle_torch()
+	await _look_from(Vector3(World.MANHOLE.x - 1.0, World.SEWER_Y + 0.2, World.MANHOLE.z), 1.57, "19_sewer")
+	await _look_from(Vector3(-30.0, World.SEWER_Y + 0.2, World.MANHOLE.z), 1.57, "20_sewer_tunnel")
+
+	# The far end. Approach it the way a player would, from down the street.
+	await _look_from(Vector3(World.STREET_END + 7.0, 0.3, 0.5), 2.2, "21_far_end_approach")
+	await _look_from(Vector3(World.STREET_END, 0.3, 3.4), 3.14, "22_easter_egg")
+	game.player.toggle_torch()
+
 	# And the raid.
+	game.player.global_position = Vector3(0, 0.1, -1.35)
+	game.player.rotation.y = 0.0
+	await _settle(20)
 	GameState.night = 4
 	game.raid_director.start(2, 4)
 	await _settle(120)
-	await _shot("13_raid_forming")
+	await _shot("23_raid_forming")
 	await _settle(300)
-	await _shot("14_raid_breach")
+	await _shot("24_raid_breach")
 
 	print("Screenshots written to %s" % out_dir)
 	get_tree().quit()
@@ -126,6 +149,18 @@ func _tap(action: String) -> void:
 		ev.pressed = pressed
 		Input.parse_input_event(ev)
 		await get_tree().process_frame
+
+
+## Puts the player somewhere, points them, waits for the world to catch up and
+## takes the picture. Physics needs a couple of frames after a teleport before
+## lights and triggers have settled.
+func _look_from(pos: Vector3, yaw: float, name: String, pitch: float = 0.0) -> void:
+	game.player.velocity = Vector3.ZERO
+	game.player.global_position = pos
+	game.player.rotation.y = yaw
+	game.player.camera.rotation.x = pitch
+	await _settle(24)
+	await _shot(name)
 
 
 func _settle(frames: int) -> void:

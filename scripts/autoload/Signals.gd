@@ -34,3 +34,7 @@ signal player_died(cause: String)
 
 # --- Interaction prompts ---
 signal prompt_changed(text: String)
+
+# --- Getting about ---
+signal travel_requested(destination: Vector3, label: String, is_escape: bool)
+signal easter_egg_found(path: String)

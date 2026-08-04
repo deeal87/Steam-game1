@@ -20,6 +20,7 @@ const BINDINGS := {
 	"notebook": [KEY_TAB],
 	"cancel": [KEY_ESCAPE],
 	"restock": [KEY_Q],
+	"torch": [KEY_T],
 }
 
 const MOUSE_BINDINGS := {

@@ -72,6 +72,26 @@ func _rebuild() -> void:
 	_slider("Mouse sensitivity", Settings.mouse_sensitivity, 0.25, 3.0, "",
 		func(v: float) -> void: Settings.mouse_sensitivity = v, 0.05)
 
+	# What the board at the end of the road calls you. Left blank it works it
+	# out from Steam, or failing that from the OS account.
+	var name_row := HBoxContainer.new()
+	name_row.add_theme_constant_override("separation", 10)
+	var name_label := UIKit.label("Name", UIKit.FONT_S, UIKit.WHITE)
+	name_label.custom_minimum_size = Vector2(200, 0)
+	name_row.add_child(name_label)
+	var name_field := LineEdit.new()
+	name_field.text = Settings.player_name
+	name_field.placeholder_text = PlayerIdentity.display_name()
+	name_field.custom_minimum_size = Vector2(280, 0)
+	name_field.add_theme_font_size_override("font_size", UIKit.FONT_S)
+	name_field.text_changed.connect(func(v: String) -> void:
+		Settings.player_name = v)
+	name_row.add_child(name_field)
+	_body.add_child(name_row)
+	_body.add_child(UIKit.label(
+		"    Leave blank to use your Steam name, or your computer's account name.",
+		UIKit.FONT_S, UIKit.GREEN_DIM))
+
 	var subs := CheckBox.new()
 	subs.text = "Subtitles"
 	subs.button_pressed = Settings.subtitles

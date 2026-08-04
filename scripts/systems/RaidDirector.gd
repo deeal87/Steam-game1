@@ -60,13 +60,23 @@ func start(evidence: int, night: int) -> void:
 		_shutter_hp += 5.0
 	_trap_armed = GameState.defenses.has("floor_trap")
 
-	# Where they come through. Window bars close the hatch as an entrance, so
-	# the whole team has to funnel through the back door instead — which is a
-	# much easier thing to point a shotgun at.
+	# The shop has two ways in from the street: the serving hatch and the side
+	# door onto the pavement. Each fitting closes one of them, and closing one
+	# forces the whole team through the other — which is a far easier thing to
+	# point a shotgun at than two open approaches.
+	#
+	# Barring both does not make you safe. It makes them spend longer on the
+	# shutter and then come through the hatch anyway.
 	_entries = []
-	if not GameState.defenses.has("window_bars"):
-		_entries.append(Vector3(0.0, 0.0, -World.HALF_Z + 0.9))
-	_entries.append(Vector3(1.30, 0.0, World.HALF_Z - 0.7))
+	var hatch_barred := GameState.defenses.has("window_bars")
+	var side_barred := GameState.defenses.has("door_bar")
+	if not hatch_barred:
+		_entries.append(Vector3(0.0, 0.0, -World.SHOP_HALF_Z + 0.9))
+	if not side_barred:
+		_entries.append(Vector3(World.SHOP_HALF_X - 0.9, 0.0, World.SIDE_DOOR_Z))
+	if _entries.is_empty():
+		_shutter_hp += 10.0
+		_entries.append(Vector3(0.0, 0.0, -World.SHOP_HALF_Z + 0.9))
 
 	var squad := clampi(GameState.raid_squad_size() + evidence - 1, 3, 14)
 	var tier := night + int(GameState.heat / 30.0)

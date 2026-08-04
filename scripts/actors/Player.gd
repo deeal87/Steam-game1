@@ -40,6 +40,8 @@ var _look_target: Node = null
 var _view_root: Node3D
 var _view_item: Node3D
 var _muzzle_flash: OmniLight3D
+var _torch: SpotLight3D
+var torch_on: bool = false
 
 var _ray: RayCast3D
 var world: World
@@ -47,6 +49,8 @@ var world: World
 
 func _ready() -> void:
 	name = "Player"
+	# The easter egg and its reveal light both look for this group.
+	add_to_group("player")
 	collision_layer = 1
 	collision_mask = 1
 	var caps := CapsuleShape3D.new()
@@ -82,6 +86,18 @@ func _ready() -> void:
 	_muzzle_flash.light_energy = 0.0
 	_muzzle_flash.omni_range = 6.0
 	camera.add_child(_muzzle_flash)
+
+	# The kiosk is the only lit room in the game. Once you can walk out of it,
+	# down a street with three working lamps and into a sewer, you need to be
+	# able to carry light with you or the whole map is unplayable.
+	_torch = SpotLight3D.new()
+	_torch.position = Vector3(0.16, -0.12, 0.0)
+	_torch.light_color = Color(1.0, 0.95, 0.84)
+	_torch.light_energy = 0.0
+	_torch.spot_range = 22.0
+	_torch.spot_angle = 34.0
+	_torch.spot_attenuation = 1.2
+	camera.add_child(_torch)
 
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
@@ -201,6 +217,8 @@ func _handle_actions() -> void:
 		_reload()
 	if Input.is_action_pressed("fire") and not equipped.is_empty():
 		_fire()
+	if Input.is_action_just_pressed("torch"):
+		toggle_torch()
 	if Input.is_action_just_pressed("scanner") and holding_scanner:
 		_use_scanner()
 	if Input.is_action_just_pressed("restock"):
@@ -269,12 +287,43 @@ func _interact() -> void:
 				world.set_shutter_closed(not closed)
 				Audio.play("beep_low", -12.0)
 				Signals.notice.emit("Shutter down. Nobody's buying anything now." if not closed else "Shutter up.", "info")
+		"manhole", "manhole_street", "ladder_up_stock", "ladder_up_street":
+			_travel(id)
 		"cash":
 			var value := int(hit.get_meta("value", 5))
 			GameState.add_money(value, "tips")
 			Audio.play("register", -18.0)
 			Signals.notice.emit("Found %d." % value, "good")
 			(hit as Node).queue_free()
+
+
+## Ladders move you rather than being climbed. Climbing is a physics problem
+## with no gameplay in it, and a hatch you press E on is unambiguous in a way a
+## ladder collider never is. Game.gd does the fade and the actual move.
+func _travel(which: String) -> void:
+	if world == null:
+		return
+	var destination := Vector3.ZERO
+	var label := ""
+	match which:
+		"manhole":
+			destination = world.anchors.get("sewer_shaft_bottom", Vector3.ZERO)
+			label = "Down into the dark."
+		"manhole_street":
+			destination = world.anchors.get("sewer_exit_bottom", Vector3.ZERO)
+			label = "Down into the dark."
+		"ladder_up_stock":
+			destination = world.anchors.get("manhole", Vector3.ZERO) + Vector3(0, 0.2, -0.9)
+			label = "Back up into the stockroom."
+		"ladder_up_street":
+			destination = world.anchors.get("sewer_exit_top", Vector3.ZERO) + Vector3(0, 0.2, -1.0)
+			label = "Out into the alley."
+	if destination == Vector3.ZERO:
+		return
+	# Going down from inside the kiosk is the escape route during a raid.
+	var is_escape := which == "manhole"
+	Audio.play("click", -14.0)
+	Signals.travel_requested.emit(destination, label, is_escape)
 
 
 func _restock_looked_at() -> void:
@@ -322,6 +371,13 @@ func clear_hands() -> void:
 
 
 # --- Scanner -----------------------------------------------------------------
+
+func toggle_torch() -> void:
+	torch_on = not torch_on
+	_torch.light_energy = 5.5 if torch_on else 0.0
+	Audio.play("click", -20.0)
+	Signals.notice.emit("Torch on." if torch_on else "Torch off.", "info")
+
 
 func _use_scanner() -> void:
 	var target := _look_target
