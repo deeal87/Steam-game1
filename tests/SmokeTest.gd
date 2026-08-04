@@ -43,6 +43,14 @@ func _check(ok: bool, label: String) -> void:
 		failures.append(label)
 
 
+## For assertions inside a loop, where printing a PASS line per iteration would
+## bury the run. Silent unless it fails.
+func _check_quiet(ok: bool, label: String) -> void:
+	if not ok:
+		print("  FAIL  %s" % label)
+		failures.append(label)
+
+
 # --- Assets that are generated rather than loaded -----------------------------
 
 func test_audio() -> void:
@@ -463,15 +471,16 @@ func test_rebinding() -> void:
 
 func test_score() -> void:
 	print("\nThe score:")
+	var names: Array = Music.BASE.keys()
 	var lengths: Array[int] = []
 	var built := 0
-	for name: String in ["bed", "pulse", "dread", "deep"]:
+	for name: String in names:
 		var layer: Dictionary = Music._layers.get(name, {})
 		var p: AudioStreamPlayer = layer.get("player")
 		if p != null and p.stream != null and (p.stream as AudioStreamWAV).data.size() > 0:
 			built += 1
 			lengths.append((p.stream as AudioStreamWAV).data.size())
-	_check(built == 4, "all four layers synthesise (%d built)" % built)
+	_check(built == names.size(), "all %d layers synthesise (%d built)" % [names.size(), built])
 	# They are mixed by volume while playing together, so any difference in
 	# length would drift them apart over a night.
 	var same := true
@@ -479,9 +488,24 @@ func test_score() -> void:
 		if l != lengths[0]:
 			same = false
 	_check(same, "every layer is exactly the same length, so they stay in sync")
-	for name: String in ["bed", "pulse", "dread", "deep"]:
+	for name: String in names:
 		var stream: AudioStreamWAV = Music._layers[name]["player"].stream
 		_check(stream.loop_mode == AudioStreamWAV.LOOP_FORWARD, "%s loops" % name)
+
+	# Every layer a section asks for has to actually exist, or that section
+	# silently plays less than it was written to.
+	var missing: Array[String] = []
+	for section: Dictionary in Music.SECTIONS:
+		for name: String in section:
+			if not Music.BASE.has(name):
+				missing.append(name)
+	_check(missing.is_empty(), "every section names layers that exist%s" %
+		("" if missing.is_empty() else " (missing %s)" % ", ".join(missing)))
+	_check(int(Music.SECTIONS[0].size()) < int(Music.SECTIONS[-1].size()),
+		"the arrangement is thicker at the top than the bottom (%d layers vs %d)" %
+			[int(Music.SECTIONS[0].size()), int(Music.SECTIONS[-1].size())])
+
+	_test_sections()
 
 	# The invariant the whole detective mechanic depends on.
 	var cop := ProfileGenerator.generate(31337, 3, 1.0)
@@ -497,6 +521,98 @@ func test_score() -> void:
 	_check(Music.tension_from(0.0, false, false, 0) < Music.tension_from(90.0, false, false, 0),
 		"and with heat")
 	_check(Music.tension_from(100.0, true, false, 5) <= 1.0, "and never runs past full")
+
+
+## The arrangement has to walk, not jump, and it has to be willing to come back
+## down. Both of those are what separate a score that develops from a score that
+## is four faders being pushed around.
+func _test_sections() -> void:
+	var top: int = Music.SECTIONS.size() - 1
+
+	# Climbing: hold the tension at full and count how many bars it takes to
+	# arrive. One step per bar means the number of steps is the number of bars.
+	var s := 0
+	var steps := 0
+	for bar in 20:
+		var next: int = Music.wanted_section(s, 1.0)
+		if next == s:
+			break
+		_check_quiet(absi(next - s) == 1, "the arrangement only ever moves one step")
+		s = next
+		steps += 1
+	_check(s == top, "full tension eventually reaches the top section (%d)" % s)
+	_check(steps == top, "and takes %d bars to get there rather than jumping" % top)
+
+	# Falling: drop the tension to nothing and it has to come all the way back.
+	steps = 0
+	for bar in 20:
+		var next: int = Music.wanted_section(s, 0.0)
+		if next == s:
+			break
+		s = next
+		steps += 1
+	_check(s == 0, "and it unwinds back to quiet when the night calms down")
+	_check(steps == top, "one step at a time on the way down too")
+
+	# Hysteresis: a tension that is enough to *stay* in a section must not be
+	# enough to have *entered* it, or the score flaps on the boundary.
+	var flaps := 0
+	for i in Music.CLIMB.size():
+		if float(Music.FALL[i]) >= float(Music.CLIMB[i]):
+			flaps += 1
+	_check(flaps == 0, "climbing costs more tension than staying does")
+	var edge := (float(Music.CLIMB[0]) + float(Music.FALL[0])) * 0.5
+	_check(Music.wanted_section(0, edge) == 0 and Music.wanted_section(1, edge) == 1,
+		"so a tension between the two thresholds leaves the section where it is")
+
+	# The night bias. Same tension, later night, higher floor.
+	Music.set_night(1)
+	var early := Music._night_bias
+	Music.set_night(10)
+	var late := Music._night_bias
+	_check(late > early, "later nights bias the arrangement upward (%.2f vs %.2f)" % [late, early])
+	_check(Music.wanted_section(0, 0.10 + late) > Music.wanted_section(0, 0.10 + early),
+		"a quiet moment on night 10 is not as quiet as one on night 1")
+	Music.set_night(1)
+
+	# The hour of the night thins the pad and lifts the sub. Checked as a trim
+	# rather than by ear, but it is the only part that changes without tension.
+	Music.set_progress(0.0)
+	var pad_open := Music._hour_trim("bed")
+	var sub_open := Music._hour_trim("deep")
+	Music.set_progress(1.0)
+	_check(Music._hour_trim("bed") < pad_open, "the pad recedes as it gets late")
+	_check(Music._hour_trim("deep") > sub_open, "and the sub comes up under it")
+	Music.set_progress(0.0)
+
+	# Layers must never be stopped while a scene is running. A stopped stream
+	# restarts at zero, and one layer a bar out of phase with the rest is the
+	# one failure here that would be obvious to every player and invisible in a
+	# volume check.
+	Music.play_shift()
+	Music.set_tension(1.0)
+	for bar in 6:
+		Music._process(Music.bar_seconds())
+	var stopped: Array[String] = []
+	for name: String in Music.BASE:
+		if not (Music._layers[name]["player"] as AudioStreamPlayer).playing:
+			stopped.append(name)
+	_check(stopped.is_empty(), "no layer is ever stopped mid-shift%s" %
+		("" if stopped.is_empty() else " (stopped: %s)" % ", ".join(stopped)))
+	_check(Music.section() > 0, "and six bars of full tension has moved the arrangement (%d)"
+		% Music.section())
+
+	# But the end of the night does have to release them, or they keep mixing
+	# into a scene that is over.
+	Music.stop_all()
+	for i in 40:
+		Music._process(0.25)
+	var still_going: Array[String] = []
+	for name: String in Music.BASE:
+		if (Music._layers[name]["player"] as AudioStreamPlayer).playing:
+			still_going.append(name)
+	_check(still_going.is_empty(), "and every layer lets go once the night ends%s" %
+		("" if still_going.is_empty() else " (still playing: %s)" % ", ".join(still_going)))
 
 
 func test_queue() -> void:

@@ -220,11 +220,29 @@ It knows your name. In order of preference:
 
 ## Sound
 
-There is no music file. The score is four layers synthesised at boot — a
-chord bed, a limping bass pulse, a sour high tone and a subterranean drone —
-all the same length and tempo. They play in sync from the moment the shift
-starts and are mixed by fading volumes, so calm becoming dread is a crossfade
-rather than a cut.
+There is no music file. The score is eight layers synthesised at boot — two
+chord beds, two bass pulses, a plucked motif, a sour high tone, a tremolo
+strain and a subterranean drone — all the same length and tempo. They play in
+sync from the moment the shift starts and are never stopped while a scene is
+running, so they stay in phase all night. Only their volumes ever change.
+
+What makes it an arrangement rather than a mix is the **section**. There are
+four — settled, working, wary, bad — and each names a different set of layers.
+Sections move **one step at a time, on a bar line**, so the score builds and
+unwinds in a musical order instead of crossfading wherever the tension happens
+to land. Climbing takes more tension than staying does, so a single tense
+moment does not make the music flap on a threshold.
+
+Two things move the score that are nothing to do with tension:
+
+- **Which night it is.** Later nights bias the whole arrangement upward, so
+  night ten never opens as quietly as night one did.
+- **How late it is.** As the shift wears on the pad recedes and the sub comes
+  up underneath it. The small hours sound emptier and heavier.
+
+The wary and bad sections switch the bed from Am–F–C–G to Am–F–Dm–E. That E is
+a major chord in a minor key, and its G# is why the dark bed sounds like it is
+leaning on you.
 
 **The score is not allowed to know who is police.** A sting when an officer
 walks in would hand you the answer the entire game is built on withholding.
@@ -232,7 +250,8 @@ Tension is computed from three things you can already see on your own screen:
 the heat meter, whether the person at the counter has made the ask, and
 whether somebody walked out tonight who shouldn't have. `tension_from()` takes
 no argument that could distinguish an officer from a civilian, and the smoke
-suite asserts that two identical situations score identically.
+suite asserts that two identical situations score identically. The night number
+and the clock *are* fair game — both are on screen already.
 
 ## Settings
 
@@ -444,8 +463,6 @@ the raid, the economy and the detective system all live and tuned.
 
 Known gaps, in rough priority order:
 
-- **The score is four loops.** It reacts, but it does not develop — there is no
-  arrangement, only a mix.
 - **Nobody pushes in.** People shift their weight, glance about and complain
   as the wait drags, but the order of the queue never changes once it is set.
 - **The sewer has one route.** It is a corridor between two ladders rather than

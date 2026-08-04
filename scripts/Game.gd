@@ -107,6 +107,15 @@ func _run_self_test(path: String) -> void:
 		GameState.night, GameState.money,
 		night_director.present_count(), night_director.waiting_count(),
 		"yes" if night_director.current_customer() != null else "no"])
+	# The score is the one system a screenshot cannot vouch for, so it reports
+	# itself: which section the arrangement is in, and what is audible.
+	var audible: Array[String] = []
+	for name: String in Music.BASE:
+		var p: AudioStreamPlayer = Music._layers[name]["player"]
+		if p.playing and p.volume_db > -50.0:
+			audible.append(name)
+	print("[selftest] score section %d · playing: %s" % [
+		Music.section(), ", ".join(audible) if not audible.is_empty() else "nothing"])
 	get_tree().quit(0)
 
 
@@ -367,6 +376,8 @@ func _on_panel_closed() -> void:
 func _start_shift() -> void:
 	phase = Phase.SHIFT
 	checkout.clear()
+	Music.set_night(GameState.night)
+	Music.set_progress(0.0)
 	Music.play_shift()
 	player.ui_locked = false
 	player.health = player.max_health
@@ -589,6 +600,8 @@ func _score(delta: float) -> void:
 	var sold := customer != null and customer.profile.sold_illicit
 	Music.set_tension(Music.tension_from(
 		GameState.heat, asked, sold, GameState.evidence_against_you))
+	# How late it is. Also on screen, so the score is not telling tales.
+	Music.set_progress(1.0 - night_director.minutes_left / NightDirector.SHIFT_MINUTES)
 
 
 ## The strip light is failing. It mostly holds, then drops out for a frame or
