@@ -188,10 +188,34 @@ It knows your name. In order of preference:
 3. Your operating system account name.
 4. `STRANGER`.
 
+## Sound
+
+There is no music file. The score is four layers synthesised at boot — a
+chord bed, a limping bass pulse, a sour high tone and a subterranean drone —
+all the same length and tempo. They play in sync from the moment the shift
+starts and are mixed by fading volumes, so calm becoming dread is a crossfade
+rather than a cut.
+
+**The score is not allowed to know who is police.** A sting when an officer
+walks in would hand you the answer the entire game is built on withholding.
+Tension is computed from three things you can already see on your own screen:
+the heat meter, whether the person at the counter has made the ask, and
+whether somebody walked out tonight who shouldn't have. `tension_from()` takes
+no argument that could distinguish an officer from a civilian, and the smoke
+suite asserts that two identical situations score identically.
+
 ## Settings
 
-`Esc` opens a pause menu that actually freezes the game. Volume, mouse
-sensitivity, field of view and subtitles are there, plus the two that matter:
+`Esc` opens a pause menu that actually freezes the game, on two pages.
+
+**Controls** rebinds every key. Bindings are stored by *physical* key, so a
+QWERTZ or AZERTY keyboard already works without touching anything — rebinding
+is there for people playing one-handed or left-handed, which layout does not
+help with. A key already doing another job is refused rather than silently
+accepted, `Esc` cannot be taken, and overrides persist to `user://keybinds.cfg`.
+
+**Settings** has volume, music, mouse sensitivity, field of view, subtitles,
+your name for the board at the end of the road, plus the two that matter:
 
 - **Screen effect** — scanlines, grain, vignette and colour fringing.
 - **Retro geometry** — vertex jitter and affine texture warping.
@@ -213,6 +237,7 @@ nothing but the look.
 | `TAB` | notepad — what you have on the person at the window |
 | `X` | change what is in your hands |
 | `T` | torch |
+| | all rebindable in the pause menu |
 | `Mouse 1` | use it |
 | `1`–`9` | choose a dialogue option |
 | `Esc` | close a panel · pause and settings |
@@ -296,7 +321,7 @@ real title screen, plays a few seconds, writes a frame to disk and exits 0:
 ```sh
 ./build/linux/KioskAtMidnight.x86_64 --selftest=/tmp/shot.png
 # [selftest] wrote /tmp/shot.png (1280x720)
-# [selftest] night 1 · money 85 · in shop 3 · in line 1 · at the till: yes
+# [selftest] night 1 · money 85 · in shop 4 · in line 1 · at the till: yes
 ```
 
 This exists because "it didn't crash" proves very little, and a headless test
@@ -361,7 +386,7 @@ running the shipped binary and grepping for them. Don't chase it.
 scenes/Boot.tscn            entry point; everything else is built in code
 scripts/
   Game.gd                   phase machine, panel routing, the SubViewport
-  autoload/                 GameState · Signals · Audio · InputSetup · Settings
+  autoload/                 GameState · Signals · Audio · Music · InputSetup · Settings
   systems/
     Tells.gd                the evidence database — every tell, question, answer
     Checkout.gd             scanning, bagging, the till
@@ -389,14 +414,12 @@ the raid, the economy and the detective system all live and tuned.
 
 Known gaps, in rough priority order:
 
-- **No music, and audio is minimal.** Everything is synthesised, which sounds
-  appropriately cheap but is not the same as sound design.
-- **The queue does not react to itself.** People stand on their marks and wait;
-  they do not shuffle impatiently, comment on the wait, or push in.
+- **The score is four loops.** It reacts, but it does not develop — there is no
+  arrangement, only a mix.
+- **Nobody pushes in.** People shift their weight, glance about and complain
+  as the wait drags, but the order of the queue never changes once it is set.
 - **The sewer has one route.** It is a corridor between two ladders rather than
   a network.
-- **No key rebinding.** Bindings are built in code in `InputSetup.gd` and
-  there is no interface for changing them. Steam players will expect one.
 - **The raid still has no flanking or squad coordination.** It has pacing and
   line-of-sight now, but they do not work as a team.
 - **The body-bag mechanic is vestigial.** Bags auto-consume to reduce heat

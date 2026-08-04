@@ -105,6 +105,11 @@ func _ready() -> void:
 	game.pause.show_pause()
 	await _settle(20)
 	await _shot("11_pause_settings")
+	game.pause._page = "keys"
+	game.pause._rebuild()
+	await _settle(20)
+	await _shot("11b_pause_controls")
+	game.pause._page = "settings"
 	game.pause.close()
 	await _settle(10)
 

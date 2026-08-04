@@ -40,6 +40,8 @@ var patience_seconds: float = 110.0
 ## Waiting in line burns patience too, just more slowly than being ignored at
 ## the counter does.
 var _time_queued: float = 0.0
+var _next_grumble: float = 0.0
+var _shift_phase: float = 0.0
 var _time_at_counter: float = 0.0
 var _asked_for_illicit: bool = false
 var _body: Node3D
@@ -212,11 +214,54 @@ func _hold_position(delta: float) -> void:
 		if queue_index == 0:
 			_arrive()
 			return
+		_wait_behaviour(delta)
 
 	_time_queued += delta
 	if _time_queued > patience_seconds * 1.4:
 		Signals.notice.emit("%s gave up waiting in the queue." % profile.full_name.split(" ")[0], "warn")
 		_leave("impatient")
+
+
+## What somebody does while they stand in a queue at four in the morning.
+##
+## Two reasons this exists beyond decoration. A line of statues reads as broken,
+## and — more usefully — the longer somebody waits the more they say, which is
+## free information about a person you have not reached yet.
+func _wait_behaviour(delta: float) -> void:
+	# Shift weight from foot to foot, more as the wait drags.
+	_shift_phase += delta * (0.7 + _time_queued * 0.02)
+	var restless: float = minf(1.0, _time_queued / 30.0)
+	_body.position.x = sin(_shift_phase) * 0.035 * (0.4 + restless)
+	# Glance around: they look at the counter, then away, then back.
+	var glance := sin(_shift_phase * 0.43) * 0.5 * restless
+	rotation.y = lerp_angle(rotation.y, glance, delta * 2.0)
+
+	_next_grumble -= delta
+	if _next_grumble > 0.0:
+		return
+	# The first complaint is a long way in; after that they get quicker.
+	_next_grumble = randf_range(16.0, 26.0) * (1.0 - restless * 0.5)
+	if _time_queued < 12.0:
+		return
+	Signals.customer_spoke.emit(profile.full_name, _grumble(restless))
+
+
+const GRUMBLES_MILD := [
+	"Any chance?",
+	"Take your time.",
+	"Is it always like this?",
+	"I've only got the two things.",
+]
+const GRUMBLES_SHARP := [
+	"I have been stood here ten minutes.",
+	"There is one of me and one of you. How is this hard?",
+	"Right. I'm going to put these back.",
+	"Do you actually work here?",
+]
+
+func _grumble(restless: float) -> String:
+	var pool: Array = GRUMBLES_SHARP if restless > 0.6 else GRUMBLES_MILD
+	return pool[randi() % pool.size()]
 
 
 func _arrive() -> void:

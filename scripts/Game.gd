@@ -367,6 +367,7 @@ func _on_panel_closed() -> void:
 func _start_shift() -> void:
 	phase = Phase.SHIFT
 	checkout.clear()
+	Music.play_shift()
 	player.ui_locked = false
 	player.health = player.max_health
 	player.dead = false
@@ -377,6 +378,7 @@ func _start_shift() -> void:
 
 func _on_shift_finished(summary: Dictionary) -> void:
 	phase = Phase.REPORT
+	Music.stop_all()
 	_pending_summary = summary
 	player.ui_locked = true
 	GameState.nights_survived += 1
@@ -408,12 +410,14 @@ func _on_report_continued() -> void:
 				player._show_in_hand("weapon")
 				Signals.notice.emit("%s in your hands." %
 					GameState.WEAPONS[player.equipped]["name"], "info")
+			Music.play_raid()
 			raid_director.start(int(_pending_summary.get("evidence", 0)), GameState.night)
 
 
 func _on_raid_over(survived: bool) -> void:
 	raid_director.stop()
 	raid_director.phase = RaidDirector.Phase.IDLE
+	Music.stop_all()
 	if survived:
 		_advance_night()
 
@@ -434,6 +438,7 @@ func _on_player_died(cause: String) -> void:
 	raid_director.stop()
 	sewer_director.stop()
 	checkout.clear()
+	Music.stop_all()
 	Audio.stop_ambience()
 	var text := "They came through the door and you were still holding a bag of crisps."
 	if cause != "shot":
@@ -467,8 +472,13 @@ func _on_travel_requested(destination: Vector3, label: String, is_escape: bool) 
 	# the tunnels; coming up clears them.
 	if destination.y < World.SEWER_Y + 2.0:
 		sewer_director.enter()
+		Music.play_sewer()
 	else:
 		sewer_director.leave()
+		if phase == Phase.RAID:
+			Music.play_raid()
+		elif phase == Phase.SHIFT:
+			Music.play_shift()
 
 	# Climbing down out of the kiosk while they are coming through the door is
 	# the escape, and it is the only place the sewer changes the run.
@@ -555,6 +565,30 @@ func _apply_settings() -> void:
 
 func _process(delta: float) -> void:
 	_flicker(delta)
+	_score(delta)
+
+
+var _score_timer: float = 0.0
+
+## Feeds the score.
+##
+## Only two inputs, and both are things the player is already looking at: the
+## heat meter, and whether the person at the counter has made the ask. Wiring
+## this to whether they are actually police would give the game away — the
+## music would answer the only question that matters.
+func _score(delta: float) -> void:
+	if phase != Phase.SHIFT:
+		return
+	_score_timer -= delta
+	if _score_timer > 0.0:
+		return
+	_score_timer = 0.35
+
+	var customer := night_director.current_customer()
+	var asked := customer != null and customer._asked_for_illicit
+	var sold := customer != null and customer.profile.sold_illicit
+	Music.set_tension(Music.tension_from(
+		GameState.heat, asked, sold, GameState.evidence_against_you))
 
 
 ## The strip light is failing. It mostly holds, then drops out for a frame or

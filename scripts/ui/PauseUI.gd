@@ -12,6 +12,11 @@ signal restart_requested
 
 var open: bool = false
 var _body: VBoxContainer
+## Which action is waiting for a key, or "" when nothing is.
+var _listening: String = ""
+var _listen_label: Label
+## Two panes: the settings, and the key list.
+var _page: String = "settings"
 
 
 func _ready() -> void:
@@ -42,6 +47,29 @@ func close() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not open:
 		return
+
+	# While waiting for a key, swallow everything: the next press is the binding,
+	# not a menu command. Escape cancels rather than binding itself.
+	if not _listening.is_empty():
+		if event is InputEventKey and event.pressed and not event.is_echo():
+			get_viewport().set_input_as_handled()
+			var code := (event as InputEventKey).physical_keycode
+			if code == KEY_ESCAPE:
+				_listening = ""
+				_rebuild()
+				return
+			var bind := InputEventKey.new()
+			bind.physical_keycode = code
+			var action := _listening
+			_listening = ""
+			if InputSetup.rebind(action, bind):
+				Audio.play("confirm", -16.0)
+			else:
+				Audio.play("deny", -14.0)
+				Signals.notice.emit("That key is already doing something else.", "warn")
+			_rebuild()
+		return
+
 	if event.is_action_pressed("cancel"):
 		close()
 		get_viewport().set_input_as_handled()
@@ -51,9 +79,32 @@ func _rebuild() -> void:
 	for child in get_children():
 		child.queue_free()
 
-	var m := UIKit.modal("PAUSED", 0.62, 0.88)
+	var m := UIKit.modal("PAUSED", 0.68, 0.92)
 	_body = m["body"]
 	add_child(m["root"])
+
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 8)
+	for conf: Array in [["settings", "SETTINGS"], ["keys", "CONTROLS"]]:
+		var b := Button.new()
+		b.text = conf[1]
+		b.flat = true
+		b.add_theme_font_size_override("font_size", UIKit.FONT_S)
+		b.add_theme_color_override("font_color",
+			UIKit.GREEN if _page == conf[0] else UIKit.GREEN_DIM)
+		b.pressed.connect(func() -> void:
+			_page = conf[0]
+			_listening = ""
+			Audio.play("click", -20.0)
+			_rebuild())
+		tabs.add_child(b)
+	_body.add_child(tabs)
+	_body.add_child(UIKit.rule())
+
+	if _page == "keys":
+		_build_keys()
+		_build_footer()
+		return
 
 	_body.add_child(UIKit.label("PRESENTATION", UIKit.FONT_S, UIKit.GREEN_DIM))
 	_slider("Screen effect", Settings.crt_intensity, 0.0, 1.0,
@@ -69,6 +120,8 @@ func _rebuild() -> void:
 	_body.add_child(UIKit.label("SOUND AND INPUT", UIKit.FONT_S, UIKit.GREEN_DIM))
 	_slider("Volume", Settings.master_volume, 0.0, 1.0, "",
 		func(v: float) -> void: Settings.master_volume = v)
+	_slider("Music", Settings.music_volume, 0.0, 1.0, "",
+		func(v: float) -> void: Settings.music_volume = v)
 	_slider("Mouse sensitivity", Settings.mouse_sensitivity, 0.25, 3.0, "",
 		func(v: float) -> void: Settings.mouse_sensitivity = v, 0.05)
 
@@ -102,6 +155,57 @@ func _rebuild() -> void:
 		Settings.apply())
 	_body.add_child(subs)
 
+	_build_footer()
+
+
+func _build_keys() -> void:
+	_body.add_child(UIKit.label(
+		"Click a key to change it. Bindings are stored by physical key, so a "
+		+ "QWERTZ or AZERTY keyboard already works without touching anything.",
+		UIKit.FONT_S, UIKit.GREEN_DIM))
+	_body.add_child(UIKit.spacer(4))
+
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.custom_minimum_size = Vector2(0, 330)
+	_body.add_child(scroll)
+
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 2)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
+
+	for entry: Array in InputSetup.REBINDABLE:
+		var action: String = entry[0]
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		var name_label := UIKit.label(str(entry[1]), UIKit.FONT_S, UIKit.WHITE)
+		name_label.custom_minimum_size = Vector2(280, 0)
+		row.add_child(name_label)
+
+		var b := Button.new()
+		var waiting := _listening == action
+		b.text = "press a key…" if waiting else InputSetup.binding_label(action)
+		b.custom_minimum_size = Vector2(170, 0)
+		b.add_theme_font_size_override("font_size", UIKit.FONT_S)
+		b.add_theme_color_override("font_color", UIKit.AMBER if waiting else UIKit.GREEN)
+		b.pressed.connect(func() -> void:
+			_listening = action
+			Audio.play("beep", -18.0)
+			_rebuild())
+		row.add_child(b)
+		list.add_child(row)
+
+	_body.add_child(UIKit.spacer(6))
+	var reset := _button("Reset all keys", func() -> void:
+		InputSetup.reset_bindings()
+		_listening = ""
+		Audio.play("click", -18.0)
+		_rebuild())
+	_body.add_child(reset)
+
+
+func _build_footer() -> void:
 	_body.add_child(UIKit.spacer(10))
 	_body.add_child(UIKit.rule())
 

@@ -19,6 +19,7 @@ Signals="*res://scripts/autoload/Signals.gd"
 GameState="*res://scripts/autoload/GameState.gd"
 InputSetup="*res://scripts/autoload/InputSetup.gd"
 Audio="*res://scripts/autoload/Audio.gd"
+Music="*res://scripts/autoload/Music.gd"
 Settings="*res://scripts/autoload/Settings.gd"
 
 [display]

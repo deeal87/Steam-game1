@@ -24,6 +24,8 @@ func _ready() -> void:
 	test_sewer_escape()
 	await test_transaction()
 	await test_shopping_trip()
+	test_rebinding()
+	test_score()
 	await test_queue()
 	test_sewer_threat()
 	await test_illicit_and_departure()
@@ -362,6 +364,81 @@ func test_shopping_trip() -> void:
 
 	c.queue_free()
 	await get_tree().process_frame
+
+
+func test_rebinding() -> void:
+	print("\nRebinding keys:")
+	InputSetup.reset_bindings()
+	_check(InputSetup.binding_label("interact") == "E", "interact starts on E")
+
+	# Move it somewhere free.
+	var to_j := InputEventKey.new()
+	to_j.physical_keycode = KEY_J
+	_check(InputSetup.rebind("interact", to_j), "it can be moved to a free key")
+	_check(InputSetup.binding_label("interact") == "J", "and the menu shows the new key")
+	_check(InputMap.event_is_action(to_j, "interact"), "and the game actually listens to it")
+
+	# Taking a key another action already uses would make two things happen at
+	# once, so it must be refused rather than silently accepted.
+	var to_w := InputEventKey.new()
+	to_w.physical_keycode = KEY_W
+	_check(not InputSetup.rebind("interact", to_w), "a key already in use is refused")
+	_check(InputSetup.binding_label("interact") == "J", "and the old binding survives the attempt")
+	_check(InputSetup.binding_label("move_forward") == "W", "as does the one it clashed with")
+
+	# Escape has to stay escape or the menu becomes impossible to leave.
+	var to_esc := InputEventKey.new()
+	to_esc.physical_keycode = KEY_ESCAPE
+	_check(not InputSetup.rebind("interact", to_esc), "escape cannot be taken")
+
+	# Overrides have to survive a restart.
+	InputSetup.save_overrides()
+	InputSetup.reset_bindings()
+	_check(InputSetup.binding_label("interact") == "E", "resetting puts it back")
+	InputSetup.rebind("interact", to_j)
+	InputSetup.load_overrides()
+	_check(InputSetup.binding_label("interact") == "J", "and a saved binding reloads")
+
+	InputSetup.reset_bindings()
+	_check(InputSetup.binding_label("interact") == "E", "left as it was found")
+
+
+func test_score() -> void:
+	print("\nThe score:")
+	var lengths: Array[int] = []
+	var built := 0
+	for name: String in ["bed", "pulse", "dread", "deep"]:
+		var layer: Dictionary = Music._layers.get(name, {})
+		var p: AudioStreamPlayer = layer.get("player")
+		if p != null and p.stream != null and (p.stream as AudioStreamWAV).data.size() > 0:
+			built += 1
+			lengths.append((p.stream as AudioStreamWAV).data.size())
+	_check(built == 4, "all four layers synthesise (%d built)" % built)
+	# They are mixed by volume while playing together, so any difference in
+	# length would drift them apart over a night.
+	var same := true
+	for l in lengths:
+		if l != lengths[0]:
+			same = false
+	_check(same, "every layer is exactly the same length, so they stay in sync")
+	for name: String in ["bed", "pulse", "dread", "deep"]:
+		var stream: AudioStreamWAV = Music._layers[name]["player"].stream
+		_check(stream.loop_mode == AudioStreamWAV.LOOP_FORWARD, "%s loops" % name)
+
+	# The invariant the whole detective mechanic depends on.
+	var cop := ProfileGenerator.generate(31337, 3, 1.0)
+	var civ := ProfileGenerator.generate(31337, 3, 0.0)
+	_check(cop.kind == CustomerProfile.Kind.UNDERCOVER and civ.kind == CustomerProfile.Kind.CIVILIAN,
+		"got one of each to compare")
+	var as_cop := Music.tension_from(40.0, true, false, 0)
+	var as_civ := Music.tension_from(40.0, true, false, 0)
+	_check(is_equal_approx(as_cop, as_civ),
+		"the score cannot tell an officer from a civilian (%.3f vs %.3f)" % [as_cop, as_civ])
+	_check(Music.tension_from(0.0, false, false, 0) < Music.tension_from(0.0, true, false, 0),
+		"but it does rise when they make the ask")
+	_check(Music.tension_from(0.0, false, false, 0) < Music.tension_from(90.0, false, false, 0),
+		"and with heat")
+	_check(Music.tension_from(100.0, true, false, 5) <= 1.0, "and never runs past full")
 
 
 func test_queue() -> void:

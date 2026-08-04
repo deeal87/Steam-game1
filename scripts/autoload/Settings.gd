@@ -13,6 +13,7 @@ const PATH := "user://settings.cfg"
 signal changed
 
 var master_volume: float = 0.8      ## 0-1
+var music_volume: float = 0.55
 var mouse_sensitivity: float = 1.0  ## multiplier on the base look speed
 var field_of_view: float = 68.0
 var crt_intensity: float = 1.0      ## scanlines, grain, aberration, vignette
@@ -30,6 +31,7 @@ func _ready() -> void:
 func apply() -> void:
 	AudioServer.set_bus_volume_db(0, linear_to_db(clampf(master_volume, 0.0001, 1.0)))
 	AudioServer.set_bus_mute(0, master_volume <= 0.001)
+	Music.set_volume(music_volume)
 
 	# The PS1 vertex and texture effects are driven by global shader
 	# parameters, so one write here reaches every material in the world
@@ -42,6 +44,7 @@ func apply() -> void:
 
 func reset() -> void:
 	master_volume = 0.8
+	music_volume = 0.55
 	mouse_sensitivity = 1.0
 	field_of_view = 68.0
 	crt_intensity = 1.0
@@ -55,6 +58,7 @@ func reset() -> void:
 func save_settings() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("audio", "master", master_volume)
+	cfg.set_value("audio", "music", music_volume)
 	cfg.set_value("input", "sensitivity", mouse_sensitivity)
 	cfg.set_value("video", "fov", field_of_view)
 	cfg.set_value("video", "crt", crt_intensity)
@@ -69,6 +73,7 @@ func load_settings() -> void:
 	if cfg.load(PATH) != OK:
 		return
 	master_volume = cfg.get_value("audio", "master", master_volume)
+	music_volume = cfg.get_value("audio", "music", music_volume)
 	mouse_sensitivity = cfg.get_value("input", "sensitivity", mouse_sensitivity)
 	field_of_view = cfg.get_value("video", "fov", field_of_view)
 	crt_intensity = cfg.get_value("video", "crt", crt_intensity)
