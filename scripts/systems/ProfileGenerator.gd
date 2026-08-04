@@ -177,8 +177,24 @@ static func generate(seed_value: int, night: int, undercover_chance: float) -> C
 		if not p.record.has(entry):
 			p.record.append(entry)
 
-	p.height_scale = rng.randf_range(0.90, 1.10)
-	p.bulk_scale = rng.randf_range(0.88, 1.18)
+	# --- Things you notice without asking ---
+	#
+	# Drawn from their own hashed stream rather than from `rng`, and that is not
+	# fussiness. `kind` is the very first draw off `rng`, so every later value on
+	# that stream is conditioned on it — measurably, at two to three standard
+	# errors over three thousand profiles. Far too small for a player to spot,
+	# but exactly the kind of leak this game must not have: if how big somebody
+	# is, or whether they push in, drifts with whether they are police, the game
+	# answers its own question through behaviour nobody can help noticing.
+	#
+	# A separate stream cannot correlate with `kind` at all, which is a better
+	# guarantee than a difference that merely measures small today.
+	var visible := RandomNumberGenerator.new()
+	visible.seed = hash("visible-%d" % seed_value)
+	p.height_scale = visible.randf_range(0.90, 1.10)
+	p.bulk_scale = visible.randf_range(0.88, 1.18)
+	p.pushiness = visible.randf()
+
 	p.greeting = _pick(GREETINGS, rng)
 
 	# --- What they came in for ---

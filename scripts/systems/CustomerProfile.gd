@@ -39,6 +39,11 @@ var employment_note: String = ""
 var height_scale: float = 1.0
 var bulk_scale: float = 1.0
 
+# --- Temperament ---
+## 0 waits their turn all night, 1 will not stand behind anybody. Drawn from the
+## same distribution whatever they are, so it is never a tell.
+var pushiness: float = 0.0
+
 # --- What they want ---
 var order: Array[String] = []
 var wants_illicit: bool = false

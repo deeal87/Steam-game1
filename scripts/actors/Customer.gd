@@ -40,6 +40,10 @@ var patience_seconds: float = 110.0
 ## Waiting in line burns patience too, just more slowly than being ignored at
 ## the counter does.
 var _time_queued: float = 0.0
+## Builds while they are standing behind somebody and resets when they move up.
+## Once it crosses PUSH_AT they will step in front of the person ahead — see
+## NightDirector, which owns the line and does the actual swapping.
+var _push_pressure: float = 0.0
 var _next_grumble: float = 0.0
 var _shift_phase: float = 0.0
 var _time_at_counter: float = 0.0
@@ -218,7 +222,9 @@ func _hold_position(delta: float) -> void:
 
 	_time_queued += delta
 	if _time_queued > patience_seconds * 1.4:
-		Signals.notice.emit("%s gave up waiting in the queue." % profile.full_name.split(" ")[0], "warn")
+		GameState.note_gave_up_waiting()
+		Signals.notice.emit("%s put their basket down and walked out." %
+			profile.full_name.split(" ")[0], "warn")
 		_leave("impatient")
 
 
@@ -235,6 +241,11 @@ func _wait_behaviour(delta: float) -> void:
 	# Glance around: they look at the counter, then away, then back.
 	var glance := sin(_shift_phase * 0.43) * 0.5 * restless
 	rotation.y = lerp_angle(rotation.y, glance, delta * 2.0)
+
+	# Standing behind somebody is what winds them up. Somebody easy-going barely
+	# accumulates; somebody at the top of the range gets there in about half a
+	# minute.
+	_push_pressure += delta * profile.pushiness
 
 	_next_grumble -= delta
 	if _next_grumble > 0.0:
@@ -262,6 +273,63 @@ const GRUMBLES_SHARP := [
 func _grumble(restless: float) -> String:
 	var pool: Array = GRUMBLES_SHARP if restless > 0.6 else GRUMBLES_MILD
 	return pool[randi() % pool.size()]
+
+
+# --- Stepping in front of people ---------------------------------------------
+
+## How much standing-behind-somebody it takes before they stop putting up with
+## it. A pushiness of 1.0 gets there in about half a minute; below about 0.35
+## they will never get there before the queue moves on its own.
+const PUSH_AT := 9.0
+
+const PUSH_LINES := [
+	"You don't mind, do you.",
+	"I'm only after the one thing.",
+	"'Scuse me.",
+	"I'll be quicker than you, mate.",
+]
+const PUSHED_BACK_LINES := [
+	"Oi. I was here.",
+	"Are you serious?",
+	"Right, lovely. Thanks.",
+	"Did you not see the queue?",
+]
+
+
+## Whether they are ready to step in front of `ahead`, and if so, doing it.
+## The line itself is reordered by NightDirector — this only decides and
+## performs the bit of it that is about these two people.
+func ready_to_push(ahead: Customer) -> bool:
+	if state != State.QUEUEING or profile == null:
+		return false
+	if _push_pressure < PUSH_AT:
+		return false
+	if not is_instance_valid(ahead) or ahead.state != State.QUEUEING:
+		return false
+	_push_pressure = 0.0
+	Signals.customer_spoke.emit(profile.full_name, PUSH_LINES[randi() % PUSH_LINES.size()])
+	ahead.on_pushed_past(self)
+	Signals.notice.emit("%s stepped in front of %s." %
+		[profile.full_name.split(" ")[0], ahead.profile.full_name.split(" ")[0]], "warn")
+	Audio.play("click", -20.0)
+	return true
+
+
+## Being stepped in front of. It costs them patience, and it makes them readier
+## to do the same thing to somebody else — which is how a queue churns instead
+## of just swapping one pair over and settling.
+func on_pushed_past(_by: Customer) -> void:
+	_time_queued += patience_seconds * 0.18
+	_push_pressure += PUSH_AT * 0.5
+	_next_grumble = 0.6
+	Signals.customer_spoke.emit(profile.full_name,
+		PUSHED_BACK_LINES[randi() % PUSHED_BACK_LINES.size()])
+
+
+## Moving up resets the grievance. Somebody who has just got closer to the
+## counter is not, at that moment, angry about being far from it.
+func note_moved_up() -> void:
+	_push_pressure = 0.0
 
 
 func _arrive() -> void:

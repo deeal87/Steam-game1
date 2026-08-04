@@ -148,6 +148,10 @@ func _build_report() -> void:
 	if int(bill.get("killed_count", 0)) > 0:
 		col.add_child(UIKit.field("People you were wrong about",
 			"%d   -%d" % [int(bill["killed_count"]), int(bill["killed"])], UIKit.RED))
+	# Not a mistake and not billed — just trade that walked out of the door
+	# because the queue was not moving. Shown so the number has somewhere to go.
+	if int(_payload.get("gave_up", 0)) > 0:
+		col.add_child(UIKit.field("Gave up waiting", str(int(_payload["gave_up"])), UIKit.AMBER))
 
 	col.add_child(UIKit.field("Rent", "-%d" % int(_payload.get("rent", 0)), UIKit.WHITE))
 	col.add_child(UIKit.field("In hand", str(GameState.money), UIKit.WHITE))

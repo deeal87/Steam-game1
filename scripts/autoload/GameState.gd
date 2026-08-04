@@ -43,6 +43,7 @@ var customers_served: int = 0
 var cops_identified: int = 0
 var civilians_killed: int = 0
 var civilians_dismissed: int = 0
+var customers_gave_up: int = 0
 var evidence_against_you: int = 0  ## >0 at shift end means a raid.
 var raid_reason: String = ""
 
@@ -112,6 +113,7 @@ func reset_night_tally() -> void:
 	cops_identified = 0
 	civilians_killed = 0
 	civilians_dismissed = 0
+	customers_gave_up = 0
 	evidence_against_you = 0
 	raid_reason = ""
 
@@ -178,6 +180,8 @@ const KILL_REPUTATION := 28.0
 const KILL_FINE := 110
 ## A clean night with people served earns a little back.
 const CLEAN_NIGHT_RECOVERY := 5.0
+## Being too slow is not the same as being wrong, and is priced accordingly.
+const ABANDON_REPUTATION := 2.5
 
 
 func add_reputation(amount: float) -> void:
@@ -194,6 +198,17 @@ func note_wrong_dismissal() -> void:
 ## Worse.
 func note_wrong_killing() -> void:
 	add_reputation(-KILL_REPUTATION)
+
+
+## Somebody put their basket down and walked out rather than keep queueing.
+##
+## Not a mistake — you were not wrong about anybody, you were just slow — so it
+## stays out of the end-of-night bill. It still costs a little of your name,
+## because a shop where people give up waiting is a thing people mention. Small
+## enough that a clean night's recovery still outweighs one of them.
+func note_gave_up_waiting() -> void:
+	customers_gave_up += 1
+	add_reputation(-ABANDON_REPUTATION)
 
 
 ## What tonight's mistakes cost, settled at the end of the shift alongside rent.

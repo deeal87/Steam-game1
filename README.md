@@ -115,6 +115,7 @@ for the people you were wrong about, itemised rather than as a lump sum.
 | Shot a regular customer | −28% | −110 |
 | Sent an officer away | nothing | nothing |
 | A whole night without a mistake | +5% | — |
+| Somebody gave up queueing | −2.5% | not billed |
 
 **Your name on the street** is the meter marked `NAME` in the corner. It decides
 how many people bother walking down here tomorrow — at a ruined name you get
@@ -156,8 +157,30 @@ Three fittings from the supplier change the shape of the fight:
 Four marks on the floor: one at the till, three behind it. Someone is always
 watching you work, and the person third in line is someone you can have
 already scanned and read the file on by the time they reach you. Waiting burns
-their patience too — leave a queue standing and people walk out with their
-shopping still in their hands.
+their patience too — leave a queue standing and people put the basket down and
+walk out. That costs a little of your name: not a mistake, just slow, and
+priced well below being wrong about somebody.
+
+**The order does not hold.** Everybody has a *pushiness*, and standing behind
+somebody winds them up in proportion to it. Enough of that and they step
+forward one place. The person they stepped in front of loses patience over it
+and gets readier to do the same to whoever is now ahead of them, so a busy
+queue churns rather than swapping one pair and settling. Two rules keep it from
+becoming noise: nobody is ever stepped in front of at the counter itself, and
+only one swap happens per frame.
+
+The reason it matters is that the queue is your reading order. You scanned the
+person third in line and started on their file; now they are second and the
+one you had not looked at yet is about to be standing in front of you.
+
+**Pushiness is drawn from a stream that cannot correlate with whether they are
+police** — as are height and build. Anything a player perceives without
+investigating has to be independent of the answer, or the game gives itself
+away through a behaviour nobody can help noticing. The smoke suite measures all
+four such traits and fails if officers and civilians differ by as much as two
+standard errors. That test is not decoration: it caught a real 2.3-sigma bias
+the first time it ran, because these traits were being drawn off the same
+random stream that had already decided who was police.
 
 ## The checkout
 
@@ -505,8 +528,6 @@ the raid, the economy and the detective system all live and tuned.
 
 Known gaps, in rough priority order:
 
-- **Nobody pushes in.** People shift their weight, glance about and complain
-  as the wait drags, but the order of the queue never changes once it is set.
 - **The sewer has one route.** It is a corridor between two ladders rather than
   a network.
 - **The raid still has no flanking or squad coordination.** It has pacing and

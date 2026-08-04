@@ -86,6 +86,7 @@ func _process(delta: float) -> void:
 	Signals.shift_clock.emit(minutes_left)
 
 	_prune()
+	_consider_pushing()
 	_reassign_line()
 
 	if _queue_remaining > 0 and minutes_left > 12.0 and _present.size() < MAX_IN_SHOP:
@@ -117,7 +118,32 @@ func _prune() -> void:
 ## Hands out queue positions. Whoever is at the front gets served.
 func _reassign_line() -> void:
 	for i in _line.size():
-		_line[i].queue_index = i
+		var c := _line[i]
+		if c.queue_index > i:
+			c.note_moved_up()
+		c.queue_index = i
+
+
+## Lets an impatient person step in front of the one ahead of them.
+##
+## Two rules keep this from turning the queue into noise. It never touches the
+## person at the front — they are at the counter with their shopping on it, and
+## stepping in front of *that* is not queue-jumping, it is a robbery. And only
+## one swap happens per frame, so a line can shuffle but it can never invert in
+## a single tick.
+##
+## Checked from the back forwards, because the person who has been stuck
+## longest is at the back and should get first refusal on the idea.
+func _consider_pushing() -> void:
+	for i in range(_line.size() - 1, 1, -1):
+		var behind := _line[i]
+		var ahead := _line[i - 1]
+		if not is_instance_valid(behind) or not is_instance_valid(ahead):
+			continue
+		if behind.ready_to_push(ahead):
+			_line[i] = ahead
+			_line[i - 1] = behind
+			return
 
 
 func _spawn_next() -> void:
@@ -188,6 +214,7 @@ func _finish() -> void:
 		"cops": GameState.cops_identified,
 		"civilians": GameState.civilians_killed,
 		"dismissed": GameState.civilians_dismissed,
+		"gave_up": GameState.customers_gave_up,
 		"bill": bill,
 		"reputation": GameState.reputation,
 		"evidence": GameState.evidence_against_you,

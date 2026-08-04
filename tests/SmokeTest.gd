@@ -720,6 +720,137 @@ func test_queue() -> void:
 		c.queue_free()
 	director.queue_free()
 	await get_tree().process_frame
+	await test_pushing_in()
+
+
+## Somebody impatient enough will step in front of the person ahead of them.
+##
+## The rule that matters most here is the last one: how pushy somebody is must
+## have nothing to do with whether they are police. A queue-jumper who turned
+## out to be an officer more often than not would answer the only question the
+## game asks, for free, through a behaviour nobody can avoid noticing.
+func test_pushing_in() -> void:
+	print("\nPushing in:")
+	GameState.reset_run()
+	var director := NightDirector.new()
+	director.setup(_world)
+	add_child(director)
+
+	var made: Array[Customer] = []
+	for i in 4:
+		var p := ProfileGenerator.generate(7000 + i * 31, 2, 0.0)
+		# Everyone waits their turn except the person at the back.
+		p.pushiness = 1.0 if i == 3 else 0.0
+		var c := Customer.new()
+		c.setup(p, _world)
+		_world.add_child(c)
+		c.state = Customer.State.QUEUEING
+		made.append(c)
+		director._present.append(c)
+		director._on_finished_shopping(c)
+
+	# Nobody has been standing there yet, so nobody has a grievance.
+	director._consider_pushing()
+	director._reassign_line()
+	_check(made[3].queue_index == 3, "nobody pushes in the moment they join the line")
+
+	# Let the one at the back stew.
+	for tick in 400:
+		made[3]._wait_behaviour(0.1)
+	director._consider_pushing()
+	director._reassign_line()
+	_check(made[3].queue_index == 2, "somebody impatient enough steps forward one place")
+	_check(made[2].queue_index == 3, "and the person they stepped in front of drops back")
+	_check(made[0].queue_index == 0, "the person being served is never stepped in front of")
+
+	# One swap per tick, so a line can shuffle but never invert at once.
+	for tick in 400:
+		made[3]._wait_behaviour(0.1)
+	director._consider_pushing()
+	director._reassign_line()
+	_check(made[3].queue_index == 1, "and only one place at a time")
+
+	# Patient people never do it, however long they stand there.
+	var patient := made[0]
+	patient.state = Customer.State.QUEUEING
+	patient.profile.pushiness = 0.0
+	for tick in 2000:
+		patient._wait_behaviour(0.1)
+	_check(not patient.ready_to_push(made[1]),
+		"somebody easy-going waits all night without trying it")
+
+	# Being pushed past costs the person in front patience, which is what makes
+	# a busy queue something you have to actually manage.
+	var before := made[2]._time_queued
+	made[2].on_pushed_past(made[3])
+	_check(made[2]._time_queued > before, "being stepped in front of burns their patience")
+
+	for c in made:
+		c.queue_free()
+	director.queue_free()
+	await get_tree().process_frame
+
+	# The invariant.
+	#
+	# Judged in standard errors, not in raw difference. A flat tolerance is
+	# useless here: uniform draws over three thousand profiles have a standard
+	# error near 0.008, so "within 0.05" would wave through a bias six times
+	# larger than anything sampling noise could produce. Two standard errors is
+	# the line where a difference stops looking like chance.
+	# Checked for every trait a player perceives without investigating, not just
+	# for pushiness. These are all things you cannot help noticing — how big
+	# somebody is, how they behave in a queue — so any of them drifting with
+	# `kind` would be a free answer. `cover_strength` and `patience_max` are
+	# excluded on purpose: those *are* meant to differ, and neither is visible.
+	var stats := {}
+	for field: String in ["height_scale", "bulk_scale", "pushiness", "nerves"]:
+		stats[field] = {"cop": 0.0, "civ": 0.0, "cop_sq": 0.0, "civ_sq": 0.0}
+	var cop_n := 0
+	var civ_n := 0
+	for i in 3000:
+		var p := ProfileGenerator.generate(i * 29 + 3, 4, 0.5)
+		var side := "cop" if p.kind == CustomerProfile.Kind.UNDERCOVER else "civ"
+		if side == "cop":
+			cop_n += 1
+		else:
+			civ_n += 1
+		for field: String in stats:
+			var v: float = p.get(field)
+			stats[field][side] += v
+			stats[field][side + "_sq"] += v * v
+
+	var leaked: Array[String] = []
+	for field: String in stats:
+		var s: Dictionary = stats[field]
+		var ca: float = float(s["cop"]) / maxf(1.0, float(cop_n))
+		var va: float = float(s["civ"]) / maxf(1.0, float(civ_n))
+		var cvar: float = maxf(float(s["cop_sq"]) / maxf(1.0, float(cop_n)) - ca * ca, 0.0)
+		var vvar: float = maxf(float(s["civ_sq"]) / maxf(1.0, float(civ_n)) - va * va, 0.0)
+		# Standard error of the difference of two means. Judged in standard
+		# errors rather than as a flat tolerance: these traits have wildly
+		# different scales, and a fixed threshold would be far too strict for one
+		# and useless for another.
+		var sem: float = sqrt(cvar / maxf(1.0, float(cop_n)) + vvar / maxf(1.0, float(civ_n)))
+		var sigmas: float = absf(ca - va) / maxf(sem, 0.0000001)
+		print("   %-13s officers %.4f · civilians %.4f · %.1f sigma apart" %
+			[field, ca, va, sigmas])
+		# Two standard errors is where a difference stops looking like chance.
+		if sigmas >= 2.0:
+			leaked.append("%s (%.1f sigma)" % [field, sigmas])
+	_check(leaked.is_empty(), "nothing a player can see says whether they are police%s" %
+		("" if leaked.is_empty() else " — leaking: %s" % ", ".join(leaked)))
+
+	# And someone who gives up waiting costs you a little of your name, but far
+	# less than being wrong about somebody does.
+	GameState.reset_run()
+	GameState.note_gave_up_waiting()
+	_check(GameState.customers_gave_up == 1, "giving up waiting is counted")
+	_check(GameState.reputation < 100.0, "and costs you a little of your name")
+	_check(int(GameState.mistake_bill()["total"]) == 0,
+		"but is not billed — being slow is not the same as being wrong")
+	_check(GameState.ABANDON_REPUTATION < GameState.CLEAN_NIGHT_RECOVERY,
+		"and an otherwise clean night still comes out ahead of one of them")
+	GameState.reset_run()
 
 
 func test_sewer_threat() -> void:
