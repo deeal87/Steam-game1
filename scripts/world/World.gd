@@ -90,6 +90,16 @@ const DOOR_OUTSIDE := Vector3(FRONT_DOOR_X, 0, -SHOP_HALF_Z - 1.40)
 const DOOR_INSIDE := Vector3(FRONT_DOOR_X, 0, -SHOP_HALF_Z + 1.10)
 const AISLE := Vector3(3.10, 0, CHECKOUT_Z - 1.05)
 
+## The queue, front first. Slot 0 is being served; the rest wait along the
+## customer side of the counter toward the door, which is the direction they
+## came from and the direction they leave in.
+const QUEUE_SLOTS := [
+	Vector3(-0.60, 0, CHECKOUT_Z - 1.05),
+	Vector3(0.70, 0, CHECKOUT_Z - 1.20),
+	Vector3(1.90, 0, CHECKOUT_Z - 1.20),
+	Vector3(3.05, 0, CHECKOUT_Z - 1.20),
+]
+
 var anchors: Dictionary = {}
 var shelf_slots: Dictionary = {}      ## item_id -> Array[MeshInstance3D]
 var shelf_points: Dictionary = {}     ## item_id -> Vector3 a shopper can stand at

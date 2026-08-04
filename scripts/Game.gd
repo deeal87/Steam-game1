@@ -82,8 +82,17 @@ func _run_self_test(path: String) -> void:
 	# _start_shift directly — otherwise the title stays on top of the shift and
 	# the frame proves nothing about the transition.
 	report._continue()
-	# Long enough for a customer to walk out of the fog and reach the hatch.
-	for i in 260:
+	# Wait for someone to come off the street, do their shopping and reach the
+	# till, rather than for a fixed number of frames — the walk takes as long as
+	# it takes, and on a slow machine a fixed budget just reports "nobody yet".
+	# Capped so the check can never hang a build server.
+	var waited := 0
+	while waited < 2400:
+		if night_director.current_customer() != null:
+			break
+		await get_tree().process_frame
+		waited += 1
+	for i in 20:
 		await get_tree().process_frame
 
 	await RenderingServer.frame_post_draw
@@ -94,8 +103,9 @@ func _run_self_test(path: String) -> void:
 		get_tree().quit(1)
 		return
 	print("[selftest] wrote %s (%dx%d)" % [path, img.get_width(), img.get_height()])
-	print("[selftest] night %d · money %d · customer at window: %s" % [
+	print("[selftest] night %d · money %d · in shop %d · in line %d · at the till: %s" % [
 		GameState.night, GameState.money,
+		night_director.present_count(), night_director.waiting_count(),
 		"yes" if night_director.current_customer() != null else "no"])
 	get_tree().quit(0)
 
@@ -239,6 +249,7 @@ func _wire() -> void:
 
 	night_director.customer_ready.connect(_on_customer_ready)
 	Signals.customer_arrived.connect(_on_customer_arrived)
+	Signals.customer_departed.connect(_on_customer_departed)
 	checkout.completed.connect(_on_checkout_completed)
 	checkout.changed.connect(_on_checkout_changed)
 	night_director.shift_finished.connect(_on_shift_finished)
@@ -296,6 +307,10 @@ func _on_customer_ready(customer: Customer) -> void:
 ## They reach the counter and put their shopping down. If the shelves were bare
 ## there is nothing to ring up and they say so.
 func _on_customer_arrived(customer: Customer) -> void:
+	if checkout.active and checkout.customer != null and is_instance_valid(checkout.customer) \
+			and checkout.customer != customer:
+		# Someone is still being rung up. The new arrival waits their turn.
+		return
 	var basket: Array[String] = customer.basket
 	var placed := checkout.begin(customer, basket)
 	if placed <= 0:
@@ -305,8 +320,25 @@ func _on_customer_arrived(customer: Customer) -> void:
 			[placed, "" if placed == 1 else "s"], "info")
 
 
+## If the person being rung up walks off — refused, dismissed, shot, or simply
+## fed up — their shopping cannot stay sitting on the counter for the next one.
+func _on_customer_departed(customer: Customer, _outcome: String) -> void:
+	if checkout.active and checkout.customer == customer:
+		if checkout.remaining() > 0:
+			Signals.notice.emit("They left their shopping on the counter.", "warn")
+		checkout.clear()
+	# Whoever is at the front now gets the counter.
+	var next := night_director.current_customer()
+	if next != null and not checkout.active:
+		_on_customer_arrived(next)
+
+
 func _on_checkout_completed(total: int) -> void:
-	var customer := night_director.current_customer()
+	# The checkout knows who it was serving; the front of the queue may already
+	# have changed by the time the till closes.
+	var customer := checkout.customer
+	if customer == null or not is_instance_valid(customer):
+		customer = night_director.current_customer()
 	if customer != null:
 		customer.on_paid(total)
 

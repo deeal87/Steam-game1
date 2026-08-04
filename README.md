@@ -53,8 +53,12 @@ you can leave it the street and the sewer are genuinely dark.
 
 One night is one shift, 23:00 to 05:00.
 
-1. **Trade.** People walk in, take what they want off the racks themselves and
-   put it on the counter. **Scan each item** (`E`), which rings up the price and
+1. **Trade.** Up to four people are in the shop at once. They walk in, browse
+   at their own pace, and join the back of the queue when they are done — so
+   the order they reach your counter is not the order they came in. Only the
+   person at the front is served; everyone behind can still be swept and looked
+   up while they wait, which is the point of a queue. They take what they want
+   off the racks themselves and put it on the counter. **Scan each item** (`E`), which rings up the price and
    drops it in the bag, then **work the till** — which refuses while anything is
    still unscanned. Restock from the stockroom when a run empties: an empty
    shelf is a customer who arrives at the counter with nothing. Shelf trade
@@ -116,6 +120,14 @@ Three fittings from the supplier change the shape of the fight:
 | **Barricade** | Roughly doubles how long the shutter holds |
 | **Window bars** | Closes the hatch as an entrance, so the whole team has to funnel through the back door — much easier to point a shotgun at |
 | **Bear trap** | Takes the first one through, whichever door that is |
+
+## The queue
+
+Four marks on the floor: one at the till, three behind it. Someone is always
+watching you work, and the person third in line is someone you can have
+already scanned and read the file on by the time they reach you. Waiting burns
+their patience too — leave a queue standing and people walk out with their
+shopping still in their hands.
 
 ## The checkout
 
@@ -284,7 +296,7 @@ real title screen, plays a few seconds, writes a frame to disk and exits 0:
 ```sh
 ./build/linux/KioskAtMidnight.x86_64 --selftest=/tmp/shot.png
 # [selftest] wrote /tmp/shot.png (1280x720)
-# [selftest] night 1 · money 85 · customer at window: yes
+# [selftest] night 1 · money 85 · in shop 3 · in line 1 · at the till: yes
 ```
 
 This exists because "it didn't crash" proves very little, and a headless test
@@ -379,8 +391,8 @@ Known gaps, in rough priority order:
 
 - **No music, and audio is minimal.** Everything is synthesised, which sounds
   appropriately cheap but is not the same as sound design.
-- **One customer at a time.** They come in, shop, pay and leave before the next
-  one arrives. A real queue would be better and is the obvious next step.
+- **The queue does not react to itself.** People stand on their marks and wait;
+  they do not shuffle impatiently, comment on the wait, or push in.
 - **The sewer has one route.** It is a corridor between two ladders rather than
   a network.
 - **No key rebinding.** Bindings are built in code in `InputSetup.gd` and

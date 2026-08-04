@@ -35,12 +35,17 @@ func _ready() -> void:
 	# Wait for the first customer to walk in, shop, and reach the counter.
 	var director: NightDirector = game.night_director
 	var waited := 0
-	while waited < 900:
+	while waited < 1800:
 		var c: Customer = director.current_customer()
-		if c != null and c.state == Customer.State.AT_COUNTER:
+		# Hold out for someone served AND someone else waiting, so the shot
+		# shows the queue rather than a single customer.
+		if c != null and c.state == Customer.State.AT_COUNTER and director.waiting_count() >= 2:
 			break
 		await get_tree().process_frame
 		waited += 1
+	print("  [diag] in shop=%d  in line=%d  served=%s" % [
+		director.present_count(), director.waiting_count(),
+		str(director.current_customer() != null)])
 	await _settle(30)
 	await _shot("03_customer_at_hatch")
 

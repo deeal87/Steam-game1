@@ -133,6 +133,7 @@ func take_payment() -> bool:
 	GameState.add_money(paid, "takings")
 	GameState.customers_served += 1
 	Audio.play("register", -10.0)
+	# Emit before clearing, so listeners can still see who was being served.
 	completed.emit(paid)
 	clear()
 	return true

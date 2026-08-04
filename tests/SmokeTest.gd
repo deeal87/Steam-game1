@@ -24,6 +24,7 @@ func _ready() -> void:
 	test_sewer_escape()
 	await test_transaction()
 	await test_shopping_trip()
+	await test_queue()
 	test_sewer_threat()
 	await test_illicit_and_departure()
 	await test_violence()
@@ -360,6 +361,61 @@ func test_shopping_trip() -> void:
 		"and room behind it for you")
 
 	c.queue_free()
+	await get_tree().process_frame
+
+
+func test_queue() -> void:
+	print("\nThe queue:")
+	GameState.reset_run()
+	var director := NightDirector.new()
+	director.setup(_world)
+	add_child(director)
+
+	var made: Array[Customer] = []
+	for i in 4:
+		var p := ProfileGenerator.generate(7000 + i * 31, 2, 0.0)
+		var c := Customer.new()
+		c.setup(p, _world)
+		_world.add_child(c)
+		c.state = Customer.State.QUEUEING
+		made.append(c)
+		director._present.append(c)
+		director._on_finished_shopping(c)
+
+	_check(director.waiting_count() == 4, "four people can be in line at once")
+	var indices: Array[int] = []
+	for c in made:
+		indices.append(c.queue_index)
+	print("   indices in arrival order: %s" % str(indices))
+	_check(indices == [0, 1, 2, 3], "positions are handed out in arrival order")
+	_check(World.QUEUE_SLOTS.size() >= NightDirector.MAX_IN_SHOP,
+		"there is a floor mark for everyone who can be inside")
+
+	# Nobody is served until the front is actually standing at the counter.
+	_check(director.current_customer() == null, "queueing is not the same as being served")
+	made[0].state = Customer.State.AT_COUNTER
+	_check(director.current_customer() == made[0], "the front of the line is who you serve")
+
+	# The front leaves; everyone steps up immediately rather than waiting for
+	# them to walk out of the door.
+	made[0].state = Customer.State.LEAVING
+	director._prune()
+	director._reassign_line()
+	_check(director.waiting_count() == 3, "someone leaving drops out of the line")
+	_check(made[1].queue_index == 0, "the next person steps up straight away")
+	_check(made[3].queue_index == 2, "and everyone behind them shuffles forward")
+
+	# Every queue mark has to be somewhere a person can stand.
+	await get_tree().physics_frame
+	var blocked := 0
+	for slot: Vector3 in World.QUEUE_SLOTS:
+		if not _point_is_clear(slot + Vector3(0, 0.9, 0), 0.32):
+			blocked += 1
+	_check(blocked == 0, "every queue mark is clear of the furniture (%d blocked)" % blocked)
+
+	for c in made:
+		c.queue_free()
+	director.queue_free()
 	await get_tree().process_frame
 
 

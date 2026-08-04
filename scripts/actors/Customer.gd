@@ -12,9 +12,10 @@ extends CharacterBody3D
 ## that needs solving and a hand-written path solves them exactly.
 
 signal wants_conversation(customer: Customer)
+signal finished_shopping(customer: Customer)
 signal finished(customer: Customer, outcome: String)
 
-enum State { APPROACHING, AT_COUNTER, LEAVING, DEAD }
+enum State { APPROACHING, QUEUEING, AT_COUNTER, LEAVING, DEAD }
 
 const WALK_SPEED := 1.45
 const FLEE_SPEED := 3.6
@@ -33,7 +34,12 @@ var basket: Array[String] = []
 var served_items: Array[String] = []
 var paid: bool = false
 
+## Position in the queue. 0 is being served, -1 means still shopping.
+var queue_index: int = -1
 var patience_seconds: float = 110.0
+## Waiting in line burns patience too, just more slowly than being ignored at
+## the counter does.
+var _time_queued: float = 0.0
 var _time_at_counter: float = 0.0
 var _asked_for_illicit: bool = false
 var _body: Node3D
@@ -97,8 +103,9 @@ func _build_inbound_path() -> void:
 			_path.append({"pos": point, "take": id})
 		last = point
 
+	# The path stops at the aisle. Where they stand after that depends on how
+	# many people are already in front of them, which is not knowable yet.
 	_path.append({"pos": World.AISLE, "take": ""})
-	_path.append({"pos": World.CUSTOMER_STAND, "take": ""})
 
 
 func _build_outbound_path() -> void:
@@ -117,6 +124,8 @@ func interaction_prompt() -> String:
 		return "%s — leaving" % profile.full_name.split(" ")[0]
 	if state == State.APPROACHING:
 		return "%s — shopping" % profile.full_name.split(" ")[0]
+	if state == State.QUEUEING:
+		return "[E] Talk  (%s, %d in line)" % [profile.full_name.split(" ")[0], queue_index]
 	return "[E] Talk"
 
 
@@ -124,6 +133,8 @@ func _physics_process(delta: float) -> void:
 	match state:
 		State.APPROACHING:
 			_follow_path(delta, WALK_SPEED)
+		State.QUEUEING:
+			_hold_position(delta)
 		State.AT_COUNTER:
 			_face_toward(Vector3(0, 0, 1))
 			_time_at_counter += delta
@@ -148,7 +159,9 @@ func _follow_path(delta: float, speed: float) -> void:
 
 	if _path_index >= _path.size():
 		if state == State.APPROACHING:
-			_arrive()
+			# Done shopping. The director decides where in the line they stand.
+			state = State.QUEUEING
+			finished_shopping.emit(self)
 		else:
 			finished.emit(self, outcome)
 		return
@@ -177,6 +190,33 @@ func _take_from_shelf(item_id: String) -> void:
 		Signals.customer_spoke.emit(profile.full_name,
 			"You're out of %s." % str(GameState.ITEMS[item_id]["name"]).to_lower())
 		Signals.notice.emit("Empty shelf cost you a sale.", "warn")
+
+
+## Walks to their slot in the line and waits there. Once they are at the front
+## and standing on the mark, the counter opens for them.
+func _hold_position(delta: float) -> void:
+	var slot: int = clampi(queue_index, 0, World.QUEUE_SLOTS.size() - 1)
+	var target: Vector3 = World.QUEUE_SLOTS[slot]
+	var flat := Vector2(target.x - global_position.x, target.z - global_position.z)
+
+	if flat.length() > 0.22:
+		_walk_toward(target, WALK_SPEED, delta)
+	else:
+		velocity.x = 0.0
+		velocity.z = 0.0
+		if not is_on_floor():
+			velocity.y -= 18.0 * delta
+		move_and_slide()
+		_face_toward(Vector3(0, 0, 1))
+		_idle_animation(delta)
+		if queue_index == 0:
+			_arrive()
+			return
+
+	_time_queued += delta
+	if _time_queued > patience_seconds * 1.4:
+		Signals.notice.emit("%s gave up waiting in the queue." % profile.full_name.split(" ")[0], "warn")
+		_leave("impatient")
 
 
 func _arrive() -> void:

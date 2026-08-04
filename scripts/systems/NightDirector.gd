@@ -1,28 +1,40 @@
 class_name NightDirector
 extends Node
-## Runs a single shift: the clock, the queue at the window, and the tally at
-## the end of it.
+## Runs a single shift: the clock, the shop floor, and the tally at the end.
 ##
-## Only one person is ever at the hatch. That is a design choice rather than a
-## limitation — it means every customer gets your full attention and every
-## mistake is unambiguously yours.
+## Several people are in the shop at once now. They arrive, do their own
+## shopping at their own pace, and join the back of the queue when they are
+## done — which means the order they reach your counter is not the order they
+## came in, and somebody is always watching you work.
+##
+## Only the person at the front is served. Everyone behind them can still be
+## swept with the scanner and looked up on the terminal while they wait, which
+## is the point of having a queue at all: it buys you time to do the reading
+## before you have to make the decision.
 
 signal shift_finished(summary: Dictionary)
 signal customer_ready(customer: Customer)
 
-const SHIFT_MINUTES := 360.0          ## 23:00 to 05:00.
-const GAP_MIN := 2.4
-const GAP_MAX := 5.5
+const SHIFT_MINUTES := 360.0
+const GAP_MIN := 3.0
+const GAP_MAX := 7.5
+## How many people will be in the shop at once. The queue has four marks, so
+## this is one being served plus three waiting.
+const MAX_IN_SHOP := 4
 
 var running: bool = false
 var minutes_left: float = SHIFT_MINUTES
 var _minutes_per_second: float = 1.0
 var _queue_remaining: int = 0
-var _current: Customer = null
 var _gap: float = 2.0
 var _rng := RandomNumberGenerator.new()
 var _world: World
 var _seed_counter: int = 0
+
+## Everyone currently in the shop, in the order they walked in.
+var _present: Array[Customer] = []
+## Those who have finished shopping, in the order they joined the line.
+var _line: Array[Customer] = []
 
 
 func setup(world: World) -> void:
@@ -36,13 +48,11 @@ func start_night() -> void:
 	_queue_remaining = GameState.customer_count()
 	minutes_left = SHIFT_MINUTES
 
-	# Pace the clock so the shift runs out at roughly the moment the queue
-	# does, with enough slack that a careful player is never cut off mid-sale.
-	var expected_seconds := 24.0 + float(_queue_remaining) * 26.0
+	var expected_seconds := 24.0 + float(_queue_remaining) * 20.0
 	_minutes_per_second = SHIFT_MINUTES / expected_seconds
 
 	_gap = 2.0
-	_current = null
+	_clear_everyone()
 	running = true
 
 	if _world != null:
@@ -57,9 +67,15 @@ func start_night() -> void:
 
 func stop() -> void:
 	running = false
-	if _current != null and is_instance_valid(_current):
-		_current.queue_free()
-	_current = null
+	_clear_everyone()
+
+
+func _clear_everyone() -> void:
+	for c in _present:
+		if is_instance_valid(c):
+			c.queue_free()
+	_present.clear()
+	_line.clear()
 
 
 func _process(delta: float) -> void:
@@ -69,15 +85,39 @@ func _process(delta: float) -> void:
 	minutes_left = maxf(0.0, minutes_left - _minutes_per_second * delta)
 	Signals.shift_clock.emit(minutes_left)
 
-	if _current == null or not is_instance_valid(_current):
+	_prune()
+	_reassign_line()
+
+	if _queue_remaining > 0 and minutes_left > 12.0 and _present.size() < MAX_IN_SHOP:
 		_gap -= delta
 		if _gap <= 0.0:
-			if _queue_remaining > 0 and minutes_left > 12.0:
-				_spawn_next()
-			elif _queue_remaining <= 0:
-				_finish()
-	elif minutes_left <= 0.0 and _current.state != Customer.State.AT_COUNTER:
+			_spawn_next()
+			_gap = _rng.randf_range(GAP_MIN, GAP_MAX)
+	elif _queue_remaining <= 0 and _present.is_empty():
 		_finish()
+
+
+## Drops anyone who has left or been freed.
+func _prune() -> void:
+	var kept: Array[Customer] = []
+	for c in _present:
+		if is_instance_valid(c):
+			kept.append(c)
+	_present = kept
+
+	var kept_line: Array[Customer] = []
+	for c in _line:
+		# Once they start leaving they are out of the line, so the person behind
+		# them steps up immediately rather than waiting for them to reach the door.
+		if is_instance_valid(c) and c.state in [Customer.State.QUEUEING, Customer.State.AT_COUNTER]:
+			kept_line.append(c)
+	_line = kept_line
+
+
+## Hands out queue positions. Whoever is at the front gets served.
+func _reassign_line() -> void:
+	for i in _line.size():
+		_line[i].queue_index = i
 
 
 func _spawn_next() -> void:
@@ -88,18 +128,27 @@ func _spawn_next() -> void:
 	var c := Customer.new()
 	c.setup(profile, _world)
 	c.finished.connect(_on_customer_finished)
+	c.finished_shopping.connect(_on_finished_shopping)
 	_world.add_child(c)
-	_current = c
+	_present.append(c)
 	customer_ready.emit(c)
+
+
+func _on_finished_shopping(customer: Customer) -> void:
+	if not _line.has(customer):
+		_line.append(customer)
+	_reassign_line()
+	if _line.size() > 1:
+		Signals.notice.emit("%d waiting." % _line.size(), "info")
 
 
 func _on_customer_finished(customer: Customer, outcome: String) -> void:
 	Signals.customer_departed.emit(customer, outcome)
+	_present.erase(customer)
+	_line.erase(customer)
 	if is_instance_valid(customer):
 		customer.queue_free()
-	if customer == _current:
-		_current = null
-	_gap = _rng.randf_range(GAP_MIN, GAP_MAX)
+	_reassign_line()
 
 
 func _finish() -> void:
@@ -112,8 +161,6 @@ func _finish() -> void:
 	var rent := GameState.rent_due()
 	var paid := GameState.spend(rent)
 	if not paid:
-		# Falling short does not end the run on its own. It puts you in debt to
-		# someone who will be back, which is what the heat is for.
 		GameState.money = 0
 		GameState.add_heat(14.0)
 		Signals.money_changed.emit(GameState.money)
@@ -136,5 +183,19 @@ func _finish() -> void:
 	shift_finished.emit(summary)
 
 
+## The person actually at the counter, or null when nobody is.
 func current_customer() -> Customer:
-	return _current if is_instance_valid(_current) else null
+	if _line.is_empty():
+		return null
+	var front := _line[0]
+	if is_instance_valid(front) and front.state == Customer.State.AT_COUNTER:
+		return front
+	return null
+
+
+func waiting_count() -> int:
+	return _line.size()
+
+
+func present_count() -> int:
+	return _present.size()
