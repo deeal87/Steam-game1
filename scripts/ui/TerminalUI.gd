@@ -97,24 +97,25 @@ func _rebuild() -> void:
 	right.add_child(UIKit.field("NAME", p.full_name, UIKit.WHITE))
 	right.add_child(UIKit.field("DATE OF BIRTH", "%s  (age %d)" % [p.dob, p.age]))
 	right.add_child(UIKit.field("IDENTITY NO.", p.id_number))
-	right.add_child(UIKit.field("ISSUED", p.id_issued,
-		UIKit.AMBER if p.has_tell("id_recent") and p.tell_state("id_recent")["discovered"] else UIKit.WHITE))
+	right.add_child(UIKit.field("ISSUED", p.id_issued, _flag_colour(p, "id_recent")))
 	right.add_child(UIKit.field("EXPIRES", p.id_expires))
 	right.add_child(UIKit.spacer(4))
-	right.add_child(UIKit.field("ADDRESS", p.address_line(),
-		UIKit.AMBER if p.has_tell("address_precinct") and p.tell_state("address_precinct")["discovered"] else UIKit.WHITE))
+	right.add_child(UIKit.field("ADDRESS", p.address_line(), _flag_colour(p, "address_precinct")))
 	right.add_child(UIKit.field("OCCUPATION", p.occupation))
-	right.add_child(UIKit.field("EMPLOYER", p.employer,
-		UIKit.AMBER if p.has_tell("employer_front") and p.tell_state("employer_front")["discovered"] else UIKit.WHITE))
-	right.add_child(UIKit.field("VEHICLE", p.vehicle_desc,
-		UIKit.AMBER if p.has_tell("vehicle_fleet") and p.tell_state("vehicle_fleet")["discovered"] else UIKit.WHITE))
+	right.add_child(UIKit.field("EMPLOYER", p.employer, _flag_colour(p, "employer_front")))
+	right.add_child(UIKit.field("VEHICLE", p.vehicle_desc, _flag_colour(p, "vehicle_fleet")))
+	right.add_child(UIKit.spacer(4))
+	right.add_child(UIKit.field("TELEPHONE", "%s  (registered %s)" % [p.phone, p.phone_registered],
+		_flag_colour(p, "phone_new")))
+	right.add_child(UIKit.field("UTILITIES", p.utilities, _flag_colour(p, "no_utilities")))
+	right.add_child(UIKit.field("EMPLOYMENT", p.employment_note, _flag_colour(p, "employment_gap")))
+	right.add_child(UIKit.field("NEXT OF KIN", p.next_of_kin, _flag_colour(p, "kin_switchboard")))
 	right.add_child(UIKit.spacer(4))
 
 	var record_text := "None on file."
 	if not p.record.is_empty():
 		record_text = "\n".join(p.record)
-	right.add_child(UIKit.field("PRIOR MATTERS", record_text,
-		UIKit.AMBER if p.has_tell("record_scrubbed") and p.tell_state("record_scrubbed")["discovered"] else UIKit.WHITE))
+	right.add_child(UIKit.field("PRIOR MATTERS", record_text, _flag_colour(p, "record_scrubbed")))
 
 	_body.add_child(UIKit.spacer(6))
 	_body.add_child(UIKit.rule())
@@ -128,6 +129,14 @@ func _rebuild() -> void:
 	_body.add_child(_assessment)
 
 	_footer()
+
+
+## Amber once the player has actually turned the anomaly up. Until then the
+## field reads like any other, which is the whole reason you have to look.
+func _flag_colour(p: CustomerProfile, tell_id: String) -> Color:
+	if p.has_tell(tell_id) and p.tell_state(tell_id).get("discovered", false):
+		return UIKit.AMBER
+	return UIKit.WHITE
 
 
 func _photo_column(p: CustomerProfile) -> Control:
@@ -144,7 +153,7 @@ func _photo_column(p: CustomerProfile) -> Control:
 	col.add_child(UIKit.label("REGISTRY PHOTOGRAPH", UIKit.FONT_S, UIKit.GREEN_DIM))
 	var history := "Images on file: %d" % (1 if p.has_tell("file_thin") else randi_range(2, 5))
 	col.add_child(UIKit.label(history, UIKit.FONT_S,
-		UIKit.AMBER if p.has_tell("file_thin") and p.tell_state("file_thin")["discovered"] else UIKit.GREEN_DIM))
+		UIKit.AMBER if p.has_tell("file_thin") and p.tell_state("file_thin").get("discovered", false) else UIKit.GREEN_DIM))
 	return col
 
 

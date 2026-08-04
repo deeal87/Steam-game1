@@ -26,6 +26,14 @@ var employer: String = ""
 var vehicle_desc: String = ""
 var plate: String = ""
 var record: Array[String] = []
+## Secondary record fields. Each exists so a specific tell has something real
+## in the file to contradict, rather than the terminal simply asserting that
+## something is wrong.
+var phone: String = ""
+var phone_registered: String = ""
+var next_of_kin: String = ""
+var utilities: String = ""
+var employment_note: String = ""
 
 # --- Appearance ---
 var height_scale: float = 1.0

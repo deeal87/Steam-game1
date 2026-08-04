@@ -38,6 +38,58 @@ func _ready() -> void:
 	report.show_title()
 	player.ui_locked = true
 
+	_maybe_self_test()
+
+
+## `--selftest` opens the kiosk, renders a few seconds of the real game, writes
+## a frame to disk and quits.
+##
+## This ships in the release binary on purpose. It is the only way to confirm
+## that an exported build actually renders on a machine you cannot look at —
+## a headless test proves the logic runs, and "it didn't crash" proves very
+## little. Pass `--selftest=/some/path.png` to choose where the frame goes.
+func _maybe_self_test() -> void:
+	var args := OS.get_cmdline_args() + OS.get_cmdline_user_args()
+	var path := ""
+	var wanted := false
+	for arg: String in args:
+		if arg == "--selftest":
+			wanted = true
+		elif arg.begins_with("--selftest="):
+			wanted = true
+			path = arg.substr(11)
+	if not wanted:
+		return
+	if path.is_empty():
+		path = "user://selftest.png"
+	_run_self_test(path)
+
+
+func _run_self_test(path: String) -> void:
+	print("[selftest] opening up")
+	for i in 40:
+		await get_tree().process_frame
+	# Go through the title screen the way a player does, rather than calling
+	# _start_shift directly — otherwise the title stays on top of the shift and
+	# the frame proves nothing about the transition.
+	report._continue()
+	# Long enough for a customer to walk out of the fog and reach the hatch.
+	for i in 260:
+		await get_tree().process_frame
+
+	await RenderingServer.frame_post_draw
+	var img := get_viewport().get_texture().get_image()
+	var err := img.save_png(path)
+	if err != OK:
+		printerr("[selftest] could not write %s (error %d)" % [path, err])
+		get_tree().quit(1)
+		return
+	print("[selftest] wrote %s (%dx%d)" % [path, img.get_width(), img.get_height()])
+	print("[selftest] night %d · money %d · customer at window: %s" % [
+		GameState.night, GameState.money,
+		"yes" if night_director.current_customer() != null else "no"])
+	get_tree().quit(0)
+
 
 # --- Construction ------------------------------------------------------------
 

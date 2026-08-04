@@ -102,6 +102,11 @@ const STALE_SLANG_LINES := [
 const MONTHS := ["January", "February", "March", "April", "May", "June",
 	"July", "August", "September", "October", "November", "December"]
 
+## Tells that cannot coexist on one person. The second of each pair is dropped.
+const CONFLICTING_TELLS := [
+	["record_scrubbed", "employment_gap"],
+]
+
 
 static func _pick(arr: Array, rng: RandomNumberGenerator) -> Variant:
 	return arr[rng.randi() % arr.size()]
@@ -152,6 +157,19 @@ static func generate(seed_value: int, night: int, undercover_chance: float) -> C
 	else:
 		p.vehicle_desc = "None registered"
 		p.plate = "—"
+
+	p.phone = "07%d%d %d%d%d %d%d%d" % [rng.randi() % 10, rng.randi() % 10,
+		rng.randi() % 10, rng.randi() % 10, rng.randi() % 10,
+		rng.randi() % 10, rng.randi() % 10, rng.randi() % 10]
+	p.phone_registered = _date(rng, 2018, 2025)
+	p.next_of_kin = "%s %s (%s)" % [_pick(FIRST_NAMES, rng), _pick(SURNAMES, rng),
+		_pick(["sister", "brother", "mother", "father", "partner", "daughter", "son"], rng)]
+	p.utilities = _pick([
+		"Electricity, water, refuse — all in name",
+		"Electricity in name. Water with the landlord",
+		"All accounts in name since 2021",
+	], rng)
+	p.employment_note = "Continuous since %d" % rng.randi_range(2012, 2023)
 
 	var n_record := rng.randi_range(0, 3)
 	for i in n_record:
@@ -231,6 +249,14 @@ static func _assign_tells(p: CustomerProfile, rng: RandomNumberGenerator, night:
 		if not chosen.has(id):
 			chosen.append(id)
 
+	# Some pairs cannot both be true of one person. `record_scrubbed` means an
+	# empty record, but the innocent explanation for `employment_gap` is a
+	# custodial sentence that would have to appear in it. Keeping both would
+	# make the terminal cite a conviction that is not there.
+	for pair: Array in CONFLICTING_TELLS:
+		if chosen.has(pair[0]) and chosen.has(pair[1]):
+			chosen.erase(pair[1])
+
 	for id: String in chosen:
 		p.tells[id] = {"discovered": false, "asked": false, "outcome": ""}
 
@@ -251,6 +277,20 @@ static func _apply_tell_consequences(p: CustomerProfile, rng: RandomNumberGenera
 		p.vehicle_desc = "white Kolt panel van (%s)" % p.plate
 	if p.has_tell("wrong_slang"):
 		p.wants_illicit = true
+	if p.has_tell("phone_new"):
+		p.phone_registered = "%d %s 2026" % [rng.randi_range(1, 28), MONTHS[2]]
+	if p.has_tell("no_utilities"):
+		p.utilities = "No accounts at this address in this name"
+	if p.has_tell("employment_gap"):
+		p.employment_note = "Seven-month gap, 2025. Unaccounted for."
+	if p.has_tell("kin_switchboard"):
+		p.next_of_kin = "0800 %d%d %d%d%d%d — switchboard, no name given" % [
+			rng.randi() % 10, rng.randi() % 10, rng.randi() % 10,
+			rng.randi() % 10, rng.randi() % 10, rng.randi() % 10]
+	# An officer whose cover includes a spell inside needs the record to show
+	# it, otherwise the honest explanation would contradict their own file.
+	if p.has_tell("employment_gap") and p.kind == CustomerProfile.Kind.CIVILIAN:
+		p.record.append("Custodial sentence, 8 months (2025)")
 
 
 ## Answers to the four standing questions.
@@ -310,6 +350,15 @@ static func _write_base_answers(p: CustomerProfile, rng: RandomNumberGenerator, 
 					matches = false
 				else:
 					text = "%s. It's on the card." % p.full_name
+			"q_born":
+				var year := int(p.dob.split(" ")[-1])
+				if slipped:
+					# A cover identity's date of birth is the detail that goes
+					# first, because it is the one they never had to live with.
+					text = "%d. Why?" % (year + [-3, -2, 2, 3][rng.randi() % 4])
+					matches = false
+				else:
+					text = "%d. It's on the card as well, you know." % year
 
 		p.base_answers[qid] = {"text": text, "matches_file": matches, "truth": truth}
 

@@ -101,9 +101,9 @@ Current figures at night 4:
 
 ```
 A player who investigates properly:
-   officers  min -11  median  11  mean  10.3  max  27
-   civilians min  -6  median   0  mean  -0.9  max   5
-   officers caught 94% · civilians wrongly flagged 8%
+   officers  min -10  median  11  mean  10.8  max  29
+   civilians min  -6  median   0  mean  -0.9  max   4
+   officers caught 95% · civilians wrongly flagged 7%
 
 A player who scans and reads but never asks:
    officers caught 100% · civilians wrongly flagged 50%
@@ -128,14 +128,37 @@ godot --headless --export-release "Linux"           build/linux/KioskAtMidnight.
 godot --headless --export-release "macOS"           build/macos/KioskAtMidnight.zip
 ```
 
-Presets for all three are in `export_presets.cfg`. They have not been built
-against templates in this repository, so treat the first export on each
-platform as unverified.
+**All three have been built and checked:**
+
+| | |
+|---|---|
+| Windows | `PE32+ executable (GUI) x86-64` |
+| Linux | `ELF 64-bit x86-64`, launched and played |
+| macOS | `Mach-O universal binary` — x86_64 **and** arm64, so Intel and Apple Silicon |
+
+Writing branded metadata and an icon into the Windows `.exe` header needs the
+external `rcedit` tool, which is not wired up here — `application/modify_resources`
+is off in the preset. Turn it back on once you have rcedit configured.
+
+### Verifying a build you can't watch
+
+Release binaries ship with a `--selftest` flag. It opens the kiosk through the
+real title screen, plays a few seconds, writes a frame to disk and exits 0:
+
+```sh
+./build/linux/KioskAtMidnight.x86_64 --selftest=/tmp/shot.png
+# [selftest] wrote /tmp/shot.png (1280x720)
+# [selftest] night 1 · money 85 · customer at window: yes
+```
+
+This exists because "it didn't crash" proves very little, and a headless test
+cannot tell you the exported build renders at all. It is how the table above
+was confirmed.
 
 ## Assets
 
 **There are no imported assets in this repository.** No `.png`, no `.wav`, no
-`.glb`, no fonts. Everything is generated at runtime:
+`.glb`, no fonts — nothing binary at all. Everything is generated at runtime:
 
 - **Textures** — `scripts/util/ProcTex.gd` paints brick, asphalt, lino,
   corrugated steel, product boxes and faces into small images. Faces are
@@ -197,8 +220,6 @@ the raid, the economy and the detective system all live and tuned.
 
 Known gaps, in rough priority order:
 
-- **Exports are unverified.** The presets are written but have never been built
-  against templates. This is the first thing to check.
 - **The raid is thin.** Units advance and shoot; there is no flanking, no
   suppression, no stacking on the door. The three defences (barricade, bars,
   trap) work but are blunt.
@@ -208,5 +229,8 @@ Known gaps, in rough priority order:
   options — all of which Steam players will expect.
 - **The body-bag mechanic is vestigial.** Bags auto-consume to reduce heat
   rather than being something you actually do.
-- **Content depth.** Sixteen tells and four standing questions is enough to be
-  interesting for a handful of nights and will start repeating after that.
+- **Content depth.** Twenty-eight tells and five standing questions carries
+  noticeably longer than the first pass did, but a determined player will still
+  start recognising them. This is the main thing between the slice and a
+  release.
+- **No icon.** Ships with Godot's default, on every platform.
