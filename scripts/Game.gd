@@ -37,6 +37,7 @@ var _pending_summary: Dictionary = {}
 
 func _ready() -> void:
 	randomize()
+	_set_window_icon()
 	_build_world()
 	_build_ui()
 	_build_directors()
@@ -48,6 +49,22 @@ func _ready() -> void:
 	player.ui_locked = true
 
 	_maybe_self_test()
+
+
+## Draws the window icon rather than loading the committed one.
+##
+## Godot will apply `application/config/icon` on its own, but only on the
+## platforms and window managers that support it, and silently where it does
+## not. Setting it here means the running game carries its icon everywhere the
+## display server has one at all — and it comes from the same generator as the
+## files on disk, so the two can never disagree. 64px costs about four thousand
+## pixels, which is nothing.
+func _set_window_icon() -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	var img := ProcIcon.build(64)
+	if img != null:
+		DisplayServer.set_icon(img)
 
 
 ## `--selftest` opens the kiosk, renders a few seconds of the real game, writes

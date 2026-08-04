@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://bkiosk0icon01"]
+
+[ext_resource type="Script" path="res://tools/MakeIcon.gd" id="1_icon"]
+
+[node name="MakeIcon" type="Node"]
+script = ExtResource("1_icon")

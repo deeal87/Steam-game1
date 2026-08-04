@@ -17,6 +17,7 @@ func _ready() -> void:
 	GameState.reset_run()
 	test_audio()
 	test_textures()
+	test_icon()
 	test_world()
 	test_customer_construction()
 	await test_sewer_is_traversable()
@@ -64,6 +65,57 @@ func test_audio() -> void:
 		if stream != null and stream.data.size() > 0:
 			built += 1
 	_check(built == cues.size(), "all %d cues synthesise (%d built)" % [cues.size(), built])
+
+
+## The icon is the one generated asset that has to exist as a file on disk
+## before a build runs, which means it can go stale without anything noticing.
+## These checks are mostly here to catch that.
+func test_icon() -> void:
+	print("\nThe icon:")
+	for size: int in [16, 32, 256]:
+		var img := ProcIcon.build(size)
+		_check(img != null and img.get_width() == size and img.get_height() == size,
+			"draws at %d×%d" % [size, size])
+
+	# It has to be a lit window in the dark at *every* size, not just the big
+	# one. If the figure or the frame ever grows enough to swallow the light,
+	# the small icons go black and this is the only thing that would say so.
+	for size: int in [16, 24, 32, 48, 64, 128, 256]:
+		var img := ProcIcon.build(size)
+		var hatch := img.get_pixel(int(size * 0.26), int(size * 0.36))
+		var corner := img.get_pixel(int(size * 0.03), int(size * 0.03))
+		_check_quiet(hatch.get_luminance() > corner.get_luminance() + 0.25,
+			"at %dpx the hatch is not clearly brighter than the corner (%.2f vs %.2f)"
+				% [size, hatch.get_luminance(), corner.get_luminance()])
+	_check(true, "the hatch reads brighter than the night at every size")
+
+	# And the committed files have to match what the generator produces now,
+	# or the shipped build carries an icon nobody has looked at.
+	var on_disk := Image.new()
+	var err := on_disk.load("res://icon.png")
+	_check(err == OK, "icon.png is present in the project")
+	if err == OK:
+		var fresh := ProcIcon.build(on_disk.get_width())
+		_check(on_disk.get_size() == fresh.get_size(),
+			"and is the size the generator makes (%v)" % on_disk.get_size())
+		_check(_images_match(on_disk, fresh),
+			"and is up to date — rerun tools/MakeIcon.tscn if this fails")
+
+
+## Compares two images on a coarse grid rather than pixel by pixel: PNG round
+## trips are lossless but the imported copy can come back in a different format,
+## and a handful of sample points is enough to catch a stale icon.
+func _images_match(a: Image, b: Image) -> bool:
+	if a.get_size() != b.get_size():
+		return false
+	var step: int = maxi(1, a.get_width() / 24)
+	for y in range(0, a.get_height(), step):
+		for x in range(0, a.get_width(), step):
+			var pa := a.get_pixel(x, y)
+			var pb := b.get_pixel(x, y)
+			if absf(pa.r - pb.r) > 0.02 or absf(pa.g - pb.g) > 0.02 or absf(pa.b - pb.b) > 0.02:
+				return false
+	return true
 
 
 func test_textures() -> void:

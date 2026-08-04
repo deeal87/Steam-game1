@@ -13,6 +13,13 @@ run/main_scene="res://scenes/Boot.tscn"
 config/features=PackedStringArray("4.3", "GL Compatibility")
 boot_splash/show_image=false
 
+; Drawn by tools/MakeIcon.tscn from scripts/util/ProcIcon.gd, like everything
+; else here. Regenerate with:
+;   godot --headless --path . res://tools/MakeIcon.tscn
+config/icon="res://icon.png"
+config/windows_native_icon="res://icon.ico"
+config/macos_native_icon="res://icon.icns"
+
 [autoload]
 
 Signals="*res://scripts/autoload/Signals.gd"
