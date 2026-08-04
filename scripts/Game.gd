@@ -20,9 +20,11 @@ var dialogue: DialogueUI
 var notebook: NotebookUI
 var shop: ShopUI
 var report: ReportUI
+var pause: PauseUI
 var night_director: NightDirector
 var raid_director: RaidDirector
 
+var _screen_effect: ColorRect
 var _flicker_timer: float = 0.0
 var _flicker_energy: float = 2.3
 var _pending_summary: Dictionary = {}
@@ -34,6 +36,8 @@ func _ready() -> void:
 	_build_ui()
 	_build_directors()
 	_wire()
+
+	_apply_settings()
 
 	report.show_title()
 	player.ui_locked = true
@@ -148,6 +152,9 @@ func _build_ui() -> void:
 	report = ReportUI.new()
 	add_child(report)
 
+	pause = PauseUI.new()
+	add_child(pause)
+
 	_build_screen_effect()
 
 
@@ -171,6 +178,7 @@ func _build_screen_effect() -> void:
 	m.set_shader_parameter("posterize_steps", 40.0)
 	m.set_shader_parameter("grade", Color(0.88, 0.93, 1.0))
 	rect.material = m
+	_screen_effect = rect
 	layer.add_child(rect)
 
 
@@ -198,6 +206,10 @@ func _wire() -> void:
 	night_director.shift_finished.connect(_on_shift_finished)
 	raid_director.raid_over.connect(_on_raid_over)
 
+	pause.closed.connect(_on_panel_closed)
+	pause.restart_requested.connect(_restart)
+	Settings.changed.connect(_apply_settings)
+
 	report.continued.connect(_on_report_continued)
 	report.restart_requested.connect(_restart)
 	report.quit_requested.connect(func() -> void: get_tree().quit())
@@ -208,7 +220,8 @@ func _wire() -> void:
 # --- Panels ------------------------------------------------------------------
 
 func _any_panel_open() -> bool:
-	return terminal.open or dialogue.open or notebook.open or shop.open or report.open
+	return terminal.open or dialogue.open or notebook.open or shop.open \
+		or report.open or pause.open
 
 
 func _open_terminal() -> void:
@@ -334,6 +347,23 @@ func _restart() -> void:
 	get_tree().reload_current_scene()
 
 
+## Settings that live on a node rather than in a shader global have to be
+## pushed out whenever they change.
+func _apply_settings() -> void:
+	if player != null and is_instance_valid(player) and player.camera != null:
+		player.camera.fov = Settings.field_of_view
+	if _screen_effect != null and is_instance_valid(_screen_effect):
+		var m: ShaderMaterial = _screen_effect.material
+		var k := Settings.crt_intensity
+		m.set_shader_parameter("scanline_strength", 0.16 * k)
+		m.set_shader_parameter("vignette_strength", 0.95 * k)
+		m.set_shader_parameter("aberration", 0.5 * k)
+		m.set_shader_parameter("grain", 0.045 * k)
+		# Colour banding is the one part worth keeping a little of even at
+		# zero, or the image looks flatly modern rather than merely clean.
+		m.set_shader_parameter("posterize_steps", lerpf(0.0, 40.0, k))
+
+
 # --- Atmosphere --------------------------------------------------------------
 
 func _process(delta: float) -> void:
@@ -358,7 +388,6 @@ func _flicker(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	# Escape with nothing open frees the cursor, so the window can be left.
 	if event.is_action_pressed("cancel") and not _any_panel_open():
-		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if \
-			Input.mouse_mode == Input.MOUSE_MODE_CAPTURED else Input.MOUSE_MODE_CAPTURED
+		pause.show_pause()
+		get_viewport().set_input_as_handled()

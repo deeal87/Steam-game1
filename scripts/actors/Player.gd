@@ -91,8 +91,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseMotion and not ui_locked and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		var mm := event as InputEventMouseMotion
-		rotate_y(-mm.relative.x * MOUSE_SENS)
-		camera.rotate_x(-mm.relative.y * MOUSE_SENS)
+		var sens := MOUSE_SENS * Settings.mouse_sensitivity
+		rotate_y(-mm.relative.x * sens)
+		camera.rotate_x(-mm.relative.y * sens)
 		camera.rotation.x = clampf(camera.rotation.x, -1.35, 1.35)
 
 

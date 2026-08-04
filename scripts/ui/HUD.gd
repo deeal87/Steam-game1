@@ -206,6 +206,8 @@ func _on_clock(minutes_left: float) -> void:
 
 
 func _on_spoke(speaker: String, line: String) -> void:
+	if not Settings.subtitles:
+		return
 	_subtitle.text = "%s:  \"%s\"" % [speaker.split(" ")[0], line]
 	_subtitle_timer = 4.5
 	_subtitle.modulate.a = 1.0

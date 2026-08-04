@@ -14,6 +14,8 @@ var game: Node
 
 
 func _ready() -> void:
+	# PauseUI freezes the tree, so this harness has to keep running through it.
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--shots="):
 			out_dir = arg.substr(8)
@@ -85,14 +87,30 @@ func _ready() -> void:
 	await _settle(20)
 	await _shot("10_back_of_kiosk")
 
-	# And the raid.
+	# The pause menu, and proof the accessibility toggles actually do something.
 	game.player.rotation.y = 0.0
+	await _settle(20)
+	game.pause.show_pause()
+	await _settle(20)
+	await _shot("11_pause_settings")
+	game.pause.close()
+	await _settle(10)
+
+	Settings.retro_intensity = 0.0
+	Settings.crt_intensity = 0.0
+	Settings.apply()
+	await _settle(25)
+	await _shot("12_effects_disabled")
+	Settings.reset()
+	await _settle(15)
+
+	# And the raid.
 	GameState.night = 4
 	game.raid_director.start(2, 4)
-	await _settle(150)
-	await _shot("11_raid_forming")
-	await _settle(360)
-	await _shot("12_raid_breach")
+	await _settle(120)
+	await _shot("13_raid_forming")
+	await _settle(300)
+	await _shot("14_raid_breach")
 
 	print("Screenshots written to %s" % out_dir)
 	get_tree().quit()

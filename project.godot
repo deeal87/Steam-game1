@@ -19,6 +19,7 @@ Signals="*res://scripts/autoload/Signals.gd"
 GameState="*res://scripts/autoload/GameState.gd"
 InputSetup="*res://scripts/autoload/InputSetup.gd"
 Audio="*res://scripts/autoload/Audio.gd"
+Settings="*res://scripts/autoload/Settings.gd"
 
 [display]
 
@@ -46,3 +47,16 @@ textures/canvas_textures/default_texture_filter=0
 textures/vram_compression/import_etc2_astc=true
 anti_aliasing/quality/msaa_3d=0
 environment/defaults/default_clear_color=Color(0.02, 0.02, 0.03, 1)
+
+[shader_globals]
+
+; Driven by the settings menu. Declared globally so one write reaches every
+; material in the world rather than having to walk the scene tree.
+ps1_snap={
+"type": "float",
+"value": 1.0
+}
+ps1_affine={
+"type": "float",
+"value": 1.0
+}

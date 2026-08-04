@@ -23,6 +23,11 @@ uniform float affine_strength : hint_range(0.0, 1.0) = 1.0;
 uniform float alpha_scissor : hint_range(0.0, 1.0) = 0.0;
 uniform float uv_scale = 1.0;
 
+// Scaled by the settings menu, so a player who finds the jitter or the texture
+// swim uncomfortable can dial either back to nothing.
+global uniform float ps1_snap;
+global uniform float ps1_affine;
+
 varying vec2 v_uv_w;   // UV premultiplied by clip w
 varying float v_w;     // clip w, interpolated the same way
 
@@ -33,7 +38,7 @@ void vertex() {
 	// so the jitter stays constant in screen pixels regardless of distance,
 	// which is what makes distant geometry wobble the most.
 	vec2 snapped = round(clip.xy / clip.w * snap_grid) / snap_grid * clip.w;
-	clip.xy = mix(clip.xy, snapped, snap_strength);
+	clip.xy = mix(clip.xy, snapped, snap_strength * ps1_snap);
 	POSITION = clip;
 
 	// Hardware interpolates varyings with a perspective divide. Feeding it
@@ -46,7 +51,7 @@ void vertex() {
 void fragment() {
 	vec2 affine_uv = v_uv_w / v_w;
 	vec2 correct_uv = UV * uv_scale;
-	vec2 uv = mix(correct_uv, affine_uv, affine_strength);
+	vec2 uv = mix(correct_uv, affine_uv, affine_strength * ps1_affine);
 
 	vec4 c = texture(albedo_tex, uv) * tint;
 

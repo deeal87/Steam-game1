@@ -325,6 +325,13 @@ func test_panels() -> void:
 	_check(shop.open, "every supplier tab builds")
 	shop.close()
 
+	var pause := PauseUI.new()
+	add_child(pause)
+	pause.show_pause()
+	_check(pause.open, "pause menu builds")
+	pause.close()
+	_check(not get_tree().paused, "closing the pause menu unfreezes the tree")
+
 	var report := ReportUI.new()
 	add_child(report)
 	report.show_title()
