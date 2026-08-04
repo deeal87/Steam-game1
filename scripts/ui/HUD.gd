@@ -15,6 +15,8 @@ var _heat_bar: Control
 var _heat_box: HBoxContainer
 var _health_bar: Control
 var _health_box: HBoxContainer
+var _rep_bar: Control
+var _rep_box: HBoxContainer
 var _prompt: Label
 var _notice_col: VBoxContainer
 var _subtitle: Label
@@ -34,6 +36,7 @@ func _ready() -> void:
 	Signals.customer_spoke.connect(_on_spoke)
 	Signals.money_changed.connect(func(_m: int) -> void: _refresh_stats())
 	Signals.heat_changed.connect(func(_h: float) -> void: _refresh_stats())
+	Signals.reputation_changed.connect(func(_r: float) -> void: _refresh_stats())
 	Signals.shift_clock.connect(_on_clock)
 	Signals.quota_changed.connect(func(_c: int, _t: int) -> void: _refresh_stats())
 	Signals.checkout_changed.connect(_on_checkout)
@@ -84,6 +87,13 @@ func _build() -> void:
 	_health_bar = UIKit.meter(100, 100, METER_W, UIKit.RED)
 	_health_box.add_child(_health_bar)
 	tr.add_child(_health_box)
+
+	_rep_box = HBoxContainer.new()
+	_rep_box.add_theme_constant_override("separation", 6)
+	_rep_box.add_child(UIKit.label("NAME", UIKit.FONT_S, UIKit.GREEN_DIM))
+	_rep_bar = UIKit.meter(100, 100, METER_W, UIKit.GREEN)
+	_rep_box.add_child(_rep_bar)
+	tr.add_child(_rep_box)
 
 	_hands = UIKit.label("", UIKit.FONT_S, UIKit.GREEN_DIM)
 	_hands.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -178,6 +188,8 @@ func _refresh_stats() -> void:
 	_quota_label.add_theme_color_override("font_color",
 		UIKit.GREEN if earned >= GameState.rent_due() else UIKit.GREEN_DIM)
 	_replace_meter(_heat_box, _heat_bar, GameState.heat, 100.0, UIKit.AMBER)
+	_replace_meter(_rep_box, _rep_bar, GameState.reputation, 100.0,
+		UIKit.GREEN if GameState.reputation > 60.0 else UIKit.RED)
 
 
 ## Meters are plain ColorRects, so changing one means rebuilding it.
@@ -192,6 +204,8 @@ func _replace_meter(box: HBoxContainer, old: Control, value: float, maximum: flo
 	box.move_child(fresh, idx)
 	if box == _heat_box:
 		_heat_bar = fresh
+	elif box == _rep_box:
+		_rep_bar = fresh
 	else:
 		_health_bar = fresh
 

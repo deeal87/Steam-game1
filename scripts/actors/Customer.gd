@@ -358,10 +358,17 @@ func refuse() -> void:
 	get_tree().create_timer(1.6).timeout.connect(func() -> void: _leave("refused"))
 
 
+## Telling someone to get out. Free when you are right; expensive when the
+## person you threw out was only ever here for cigarettes.
 func dismiss() -> void:
-	if state != State.AT_COUNTER:
+	if state not in [State.AT_COUNTER, State.QUEUEING]:
 		return
-	Signals.customer_spoke.emit(profile.full_name, "Alright, alright. I'm going.")
+	if profile.kind == CustomerProfile.Kind.CIVILIAN:
+		GameState.note_wrong_dismissal()
+		Signals.customer_spoke.emit(profile.full_name, "...You're joking. I come in here every night.")
+		Signals.notice.emit("You threw out a regular. Word gets round.", "bad")
+	else:
+		Signals.customer_spoke.emit(profile.full_name, "Alright, alright. I'm going.")
 	_leave("dismissed")
 
 
@@ -447,6 +454,7 @@ func _die() -> void:
 		GameState.civilians_killed += 1
 		GameState.add_heat(22.0)
 		GameState.evidence_against_you += 1
+		GameState.note_wrong_killing()
 		Signals.notice.emit("No badge. No wire. Nothing. You just shot a customer.", "bad")
 
 	if GameState.body_bags > 0:

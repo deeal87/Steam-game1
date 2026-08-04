@@ -23,6 +23,7 @@ func _ready() -> void:
 	test_separation()
 	test_lazy_player()
 	test_economy()
+	test_strategies()
 	_report()
 	get_tree().quit(1 if not failures.is_empty() else 0)
 
@@ -251,6 +252,113 @@ func test_economy() -> void:
 		# being a reason to take the next risky sale.
 		_check(surplus > 60.0, "night %d leaves something to spend" % night)
 		_check(surplus < float(rent) * 1.3, "night %d does not make you rich" % night)
+
+
+## The rule this exists to prove.
+##
+## Before there was a penalty for it, throwing everybody out was the safest way
+## to play: no sale to an officer, no raid, no risk. It was also the least
+## interesting way, because it skipped the entire decision the game is about.
+## Refusing has to be survivable-but-poor, and refusing *everybody* has to be
+## ruinous, or the detective work is optional.
+func test_strategies() -> void:
+	print("\nThree ways to play, five nights each:")
+
+	var results := {}
+	for strategy: String in ["serve", "cautious", "paranoid"]:
+		GameState.reset_run()
+		var broke_on := 0
+		var missed := 0
+		# Money in hand is a bad yardstick here: a night that comes up short zeroes
+		# the till, so two strategies that both fail end up indistinguishable at 0.
+		# What separates them is how much they earned and how long they lasted.
+		var gross := 0
+		for night in range(1, 6):
+			GameState.night = night
+			GameState.reset_night_tally()
+			var customers := GameState.customer_count()
+			var rng := RandomNumberGenerator.new()
+			rng.seed = 900 + night
+
+			for i in customers:
+				var p := ProfileGenerator.generate(night * 1000 + i * 7, night,
+					GameState.undercover_ratio())
+				var civilian := p.kind == CustomerProfile.Kind.CIVILIAN
+
+				if strategy == "paranoid":
+					# Everyone goes, no exceptions.
+					if civilian:
+						GameState.note_wrong_dismissal()
+					continue
+
+				# Otherwise they get served their shelf goods.
+				var basket := 0
+				for id: String in p.order:
+					basket += int(GameState.ITEMS[id]["price"]) - int(GameState.ITEMS[id]["cost"])
+				GameState.add_money(basket, "takings")
+				if rng.randf() < 0.45:
+					GameState.add_money(rng.randi_range(1, 7), "tips")
+
+				if not p.wants_illicit:
+					continue
+				if strategy == "cautious":
+					# Refuse the ask. Costs nothing but the margin.
+					continue
+				# "serve" sells to anyone who asks, which is how you get raided.
+				var units := p.illicit_units
+				GameState.add_money(
+					(GameState.illicit_unit_price(rng) - GameState.illicit_unit_cost()) * units,
+					"illicit")
+
+			gross += GameState.takings + GameState.illicit_takings + GameState.tips
+
+			var bill := GameState.mistake_bill()
+			GameState.money = maxi(0, GameState.money - int(bill["total"]))
+			if not GameState.spend(GameState.rent_due()):
+				GameState.money = 0
+				missed += 1
+				if broke_on == 0:
+					broke_on = night
+			if int(bill["total"]) == 0:
+				GameState.add_reputation(GameState.CLEAN_NIGHT_RECOVERY)
+
+		results[strategy] = {
+			"money": GameState.money,
+			"reputation": GameState.reputation,
+			"broke_on": broke_on,
+			"missed": missed,
+			"gross": gross,
+		}
+		print("   %-9s · earned %5d over 5 nights · %4d in hand · name %3d%% · missed rent %d/5%s" % [
+			strategy, gross, GameState.money, int(GameState.reputation), missed,
+			"" if broke_on == 0 else " (first on night %d)" % broke_on])
+
+	var paranoid: Dictionary = results["paranoid"]
+	var cautious: Dictionary = results["cautious"]
+	var serve: Dictionary = results["serve"]
+
+	_check(int(paranoid["broke_on"]) > 0, "throwing everybody out cannot pay the rent")
+	_check(float(paranoid["reputation"]) < 30.0, "and ruins your name")
+
+	# Refusing the ask is a worse night than serving it, but it is a night. Both
+	# of these have to hold or "throw everybody out" is still on the table:
+	# refusing everybody has to earn less and fail sooner.
+	_check(int(cautious["gross"]) > int(paranoid["gross"]),
+		"refusing the ask out-earns refusing everybody (%d vs %d)"
+			% [int(cautious["gross"]), int(paranoid["gross"])])
+	_check(int(cautious["missed"]) < int(paranoid["missed"]),
+		"and survives longer (missed %d nights vs %d)"
+			% [int(cautious["missed"]), int(paranoid["missed"])])
+	_check(int(paranoid["broke_on"]) <= int(cautious["broke_on"]),
+		"paranoia hits the wall first (night %d vs night %d)"
+			% [int(paranoid["broke_on"]), int(cautious["broke_on"])])
+	_check(int(serve["gross"]) > int(cautious["gross"]),
+		"and taking the risk beats playing it safe (%d vs %d)"
+			% [int(serve["gross"]), int(cautious["gross"])])
+	# The point of the whole design: the safe play must be *poor*, not *dead*.
+	_check(int(cautious["broke_on"]) > 0,
+		"but playing it safe still cannot make the rent on shelf trade alone")
+	GameState.reset_run()
 
 
 func _report() -> void:

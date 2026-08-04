@@ -94,6 +94,11 @@ func _rebuild() -> void:
 		UIKit.GREEN if GameState.takings + GameState.illicit_takings + GameState.tips >= GameState.rent_due() else UIKit.RED))
 	right.add_child(UIKit.field("Under the counter", "%d units" % GameState.drug_stock))
 	right.add_child(UIKit.field("Body bags", str(GameState.body_bags)))
+	right.add_child(UIKit.field("Your name", "%d%%" % int(GameState.reputation),
+		UIKit.GREEN if GameState.reputation > 60.0 else UIKit.RED))
+	var bill := GameState.mistake_bill()
+	if int(bill["total"]) > 0:
+		right.add_child(UIKit.field("Owed for tonight", "-%d" % int(bill["total"]), UIKit.RED))
 	if GameState.evidence_against_you > 0:
 		right.add_child(UIKit.spacer(4))
 		right.add_child(UIKit.label("Someone walked away tonight who shouldn't have.", UIKit.FONT_S, UIKit.RED))

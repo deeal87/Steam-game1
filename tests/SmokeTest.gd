@@ -28,6 +28,7 @@ func _ready() -> void:
 	test_score()
 	await test_queue()
 	test_sewer_threat()
+	await test_being_wrong()
 	await test_illicit_and_departure()
 	await test_violence()
 	test_raid()
@@ -205,6 +206,63 @@ func test_identity_and_egg() -> void:
 	_check(egg.global_position.distance_to(Vector3.ZERO) > 40.0,
 		"it is a long way from the counter (%.0f m)" % egg.global_position.distance_to(Vector3.ZERO))
 	Settings.player_name = ""
+
+
+func test_being_wrong() -> void:
+	print("\nThe cost of being wrong:")
+	GameState.reset_run()
+	GameState.reset_night_tally()
+	_check(GameState.reputation == 100.0, "you start with a clean name")
+
+	# Throwing out an officer is correct play and must stay free.
+	var cop := _spawn_at_counter(80081, int(CustomerProfile.Kind.UNDERCOVER))
+	var rep_before := GameState.reputation
+	cop.dismiss()
+	_check(GameState.reputation == rep_before, "sending an officer away costs nothing")
+	_check(GameState.civilians_dismissed == 0, "and is not counted as a mistake")
+
+	# Throwing out an ordinary customer is not.
+	var civ := _spawn_at_counter(80081, int(CustomerProfile.Kind.CIVILIAN))
+	civ.dismiss()
+	_check(GameState.civilians_dismissed == 1, "throwing out a regular is counted")
+	_check(GameState.reputation < rep_before, "and takes your name down (%d%%)" % int(GameState.reputation))
+
+	# Shooting one is worse than throwing one out, on both counts.
+	GameState.reset_run()
+	GameState.reset_night_tally()
+	var civ2 := _spawn_at_counter(4711, int(CustomerProfile.Kind.CIVILIAN))
+	civ2.take_damage(500.0, _player)
+	var kill_drop := 100.0 - GameState.reputation
+	_check(kill_drop > GameState.DISMISS_REPUTATION,
+		"shooting costs more name than dismissing (%d vs %d)" % [int(kill_drop), int(GameState.DISMISS_REPUTATION)])
+	_check(GameState.mistake_bill()["killed"] > GameState.DISMISS_FINE,
+		"and more money")
+
+	# The bill has to actually be itemised for the report.
+	GameState.reset_run()
+	GameState.reset_night_tally()
+	GameState.civilians_dismissed = 2
+	GameState.civilians_killed = 1
+	var bill := GameState.mistake_bill()
+	_check(int(bill["dismissed"]) == 2 * GameState.DISMISS_FINE, "dismissals are itemised")
+	_check(int(bill["killed"]) == GameState.KILL_FINE, "killings are itemised")
+	_check(int(bill["total"]) == int(bill["dismissed"]) + int(bill["killed"]), "and add up")
+
+	# And a bad name has to actually thin tomorrow's trade.
+	GameState.reset_run()
+	GameState.night = 5
+	var busy := GameState.customer_count()
+	GameState.reputation = 0.0
+	var quiet := GameState.customer_count()
+	print("   night 5: %d customers on a clean name, %d on a ruined one" % [busy, quiet])
+	_check(quiet < busy, "a ruined name costs you trade")
+	_check(quiet >= 4, "but never leaves you with nobody at all")
+
+	cop.queue_free()
+	civ.queue_free()
+	civ2.queue_free()
+	GameState.reset_run()
+	await get_tree().process_frame
 
 
 func test_sewer_escape() -> void:

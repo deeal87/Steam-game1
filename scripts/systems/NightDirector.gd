@@ -159,6 +159,17 @@ func _finish() -> void:
 
 	var earned := GameState.takings + GameState.illicit_takings + GameState.tips
 	var rent := GameState.rent_due()
+
+	# The night's mistakes are settled before the rent is, because the people
+	# you were wrong about do not wait for the landlord.
+	var bill := GameState.mistake_bill()
+	if int(bill["total"]) > 0:
+		GameState.money = maxi(0, GameState.money - int(bill["total"]))
+		Signals.money_changed.emit(GameState.money)
+	elif GameState.customers_served > 0:
+		# A clean night earns a little of your name back.
+		GameState.add_reputation(GameState.CLEAN_NIGHT_RECOVERY)
+
 	var paid := GameState.spend(rent)
 	if not paid:
 		GameState.money = 0
@@ -176,6 +187,9 @@ func _finish() -> void:
 		"rent_paid": paid,
 		"cops": GameState.cops_identified,
 		"civilians": GameState.civilians_killed,
+		"dismissed": GameState.civilians_dismissed,
+		"bill": bill,
+		"reputation": GameState.reputation,
 		"evidence": GameState.evidence_against_you,
 		"raid_reason": GameState.raid_reason,
 	}

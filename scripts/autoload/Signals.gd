@@ -19,6 +19,7 @@ signal customer_spoke(speaker: String, line: String)
 # --- Player-facing state ---
 signal money_changed(amount: int)
 signal heat_changed(amount: float)
+signal reputation_changed(amount: float)
 signal notice(text: String, tone: String)
 
 # --- Devices ---

@@ -19,6 +19,9 @@ var fled_through_sewer: bool = false
 ## Every trip down the ladder, counted for the whole run. The tunnels get worse
 ## and they never get better.
 var sewer_trips: int = 0
+## How the street sees you, 0-100. Being wrong about ordinary people is what
+## takes it down, and it is slow to come back.
+var reputation: float = 100.0
 
 # --- Consumables ---
 var drug_stock: int = 6        ## Units under the counter.
@@ -39,6 +42,7 @@ var tips: int = 0
 var customers_served: int = 0
 var cops_identified: int = 0
 var civilians_killed: int = 0
+var civilians_dismissed: int = 0
 var evidence_against_you: int = 0  ## >0 at shift end means a raid.
 var raid_reason: String = ""
 
@@ -85,6 +89,7 @@ func reset_run() -> void:
 	nights_survived = 0
 	fled_through_sewer = false
 	sewer_trips = 0
+	reputation = 100.0
 	drug_stock = 6
 	weapons = ["bat"]
 	equipped_weapon = ""
@@ -106,6 +111,7 @@ func reset_night_tally() -> void:
 	customers_served = 0
 	cops_identified = 0
 	civilians_killed = 0
+	civilians_dismissed = 0
 	evidence_against_you = 0
 	raid_reason = ""
 
@@ -156,6 +162,60 @@ func flee_through_sewer() -> Dictionary:
 	return {"cash": lost_cash, "stash": lost_stash}
 
 
+# --- Being wrong about people ------------------------------------------------
+#
+# Throwing someone out and shooting someone were both, until now, free. That
+# made "refuse everybody" the safest way to play, which is the opposite of what
+# this game is about — the whole point is that you have to decide, and deciding
+# wrongly has to cost something.
+#
+# Two costs. Word gets round the street, which thins out tomorrow's custom; and
+# there is a bill at the end of the night for the mess.
+
+const DISMISS_REPUTATION := 7.0
+const DISMISS_FINE := 30
+const KILL_REPUTATION := 28.0
+const KILL_FINE := 110
+## A clean night with people served earns a little back.
+const CLEAN_NIGHT_RECOVERY := 5.0
+
+
+func add_reputation(amount: float) -> void:
+	reputation = clampf(reputation + amount, 0.0, 100.0)
+	Signals.reputation_changed.emit(reputation)
+
+
+## You told an ordinary customer to get out. They tell people.
+func note_wrong_dismissal() -> void:
+	civilians_dismissed += 1
+	add_reputation(-DISMISS_REPUTATION)
+
+
+## Worse.
+func note_wrong_killing() -> void:
+	add_reputation(-KILL_REPUTATION)
+
+
+## What tonight's mistakes cost, settled at the end of the shift alongside rent.
+func mistake_bill() -> Dictionary:
+	var dismissed := civilians_dismissed * DISMISS_FINE
+	var killed := civilians_killed * KILL_FINE
+	return {
+		"dismissed_count": civilians_dismissed,
+		"dismissed": dismissed,
+		"killed_count": civilians_killed,
+		"killed": killed,
+		"total": dismissed + killed,
+	}
+
+
+## Reputation thins the queue rather than emptying it: at rock bottom you still
+## get a bit over half the trade, which is enough to claw back from but not
+## enough to make rent on.
+func reputation_multiplier() -> float:
+	return 0.55 + 0.45 * (reputation / 100.0)
+
+
 # --- Difficulty curve --------------------------------------------------------
 
 ## Rent due at the end of the shift. It rises faster than shelf trade can,
@@ -179,9 +239,11 @@ func illicit_unit_cost() -> int:
 	return 21 + int(float(night) * 1.2)
 
 
-## How many customers walk in tonight.
+## How many customers walk in tonight. A bad name on the street costs you trade
+## before you have even opened.
 func customer_count() -> int:
-	return clampi(9 + night, 9, 22)
+	var base := clampi(9 + night, 9, 22)
+	return maxi(4, int(round(float(base) * reputation_multiplier())))
 
 
 ## Share of tonight's customers who are police. Heat makes them take notice.
@@ -301,6 +363,7 @@ func save_run() -> void:
 	cfg.set_value("run", "nights_survived", nights_survived)
 	cfg.set_value("run", "found_easter_egg", found_easter_egg)
 	cfg.set_value("run", "sewer_trips", sewer_trips)
+	cfg.set_value("run", "reputation", reputation)
 	cfg.set_value("stock", "drugs", drug_stock)
 	cfg.set_value("stock", "shelf", shelf_stock)
 	cfg.set_value("stock", "crate", crate_stock)
@@ -321,6 +384,7 @@ func load_run() -> bool:
 	nights_survived = cfg.get_value("run", "nights_survived", 0)
 	found_easter_egg = cfg.get_value("run", "found_easter_egg", false)
 	sewer_trips = cfg.get_value("run", "sewer_trips", 0)
+	reputation = cfg.get_value("run", "reputation", 100.0)
 	drug_stock = cfg.get_value("stock", "drugs", 6)
 	shelf_stock = cfg.get_value("stock", "shelf", shelf_stock)
 	crate_stock = cfg.get_value("stock", "crate", crate_stock)

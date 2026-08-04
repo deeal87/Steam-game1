@@ -72,7 +72,9 @@ One night is one shift, 23:00 to 05:00.
    door team comes back between shifts — a hard one if they left with a buy, a
    lighter one if they left empty-handed. Shoot a civilian and you get the raid
    *and* the heat.
-5. **Survive the raid**, pay the rent, and the next night is worse.
+5. **Settle up.** Being wrong about someone is billed at 05:00, before the rent
+   (see below).
+6. **Survive the raid**, pay the rent, and the next night is worse.
 
 ## Reading people
 
@@ -100,6 +102,34 @@ can never be treated as guilt on its own).
 Officers get better as the nights go on. Not more numerous — *better covered*.
 Their documents start holding up to questions that would have broken them on
 night three, which is the main reason the game gets harder.
+
+## Being wrong about people
+
+Guessing has to cost something, or the game has an obvious answer: throw
+everybody out, sell to nobody, never get raided. So the shift report bills you
+for the people you were wrong about, itemised rather than as a lump sum.
+
+| What you did | Your name | Cash |
+|---|---|---|
+| Sent a regular customer away | −7% | −30 |
+| Shot a regular customer | −28% | −110 |
+| Sent an officer away | nothing | nothing |
+| A whole night without a mistake | +5% | — |
+
+**Your name on the street** is the meter marked `NAME` in the corner. It decides
+how many people bother walking down here tomorrow — at a ruined name you get
+roughly 45% fewer customers, which is fewer baskets, fewer tips and fewer people
+who might ask for what's under the counter. It compounds: a bad night makes the
+next night thinner, and a thin night is harder to make rent on.
+
+Refusing the ask is always free. Refusing the *person* is not. The distinction
+is the whole game: you can decline to sell to anyone you're unsure about and
+still take their shopping, and that costs you only the margin.
+
+The three-strategy check in `tests/BalanceTest.gd` exists to prove the rule
+holds. Over five nights: serving the ask earns ~2300 and never misses rent,
+refusing every ask earns ~320 and misses rent four nights in five, and throwing
+everybody out earns nothing, misses every night, and ends with a name at 0%.
 
 ## The raid
 

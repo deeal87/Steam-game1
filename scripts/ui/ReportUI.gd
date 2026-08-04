@@ -134,27 +134,39 @@ func _build_report() -> void:
 	var survived := bool(_payload.get("rent_paid", false))
 	var col := _frame("SHIFT %d" % int(_payload.get("night", 1)), "05:00. You put the shutter down.")
 
-	var rows := {
-		"Customers served": str(_payload.get("served", 0)),
-		"Over the counter": str(_payload.get("takings", 0)),
-		"Under the counter": str(_payload.get("illicit", 0)),
-		"Tips and loose cash": str(_payload.get("tips", 0)),
-		"Rent": "-%d" % int(_payload.get("rent", 0)),
-		"In hand": str(GameState.money),
-	}
-	for k: String in rows:
-		var f := UIKit.field(k, rows[k], UIKit.WHITE)
-		col.add_child(f)
+	var bill: Dictionary = _payload.get("bill", {})
+	col.add_child(UIKit.field("Customers served", str(_payload.get("served", 0)), UIKit.WHITE))
+	col.add_child(UIKit.field("Over the counter", str(_payload.get("takings", 0)), UIKit.WHITE))
+	col.add_child(UIKit.field("Under the counter", str(_payload.get("illicit", 0)), UIKit.WHITE))
+	col.add_child(UIKit.field("Tips and loose cash", str(_payload.get("tips", 0)), UIKit.WHITE))
+
+	# The bill for being wrong about people, itemised, because a lump sum
+	# labelled "penalty" teaches the player nothing.
+	if int(bill.get("dismissed_count", 0)) > 0:
+		col.add_child(UIKit.field("Customers you threw out",
+			"%d   -%d" % [int(bill["dismissed_count"]), int(bill["dismissed"])], UIKit.RED))
+	if int(bill.get("killed_count", 0)) > 0:
+		col.add_child(UIKit.field("People you were wrong about",
+			"%d   -%d" % [int(bill["killed_count"]), int(bill["killed"])], UIKit.RED))
+
+	col.add_child(UIKit.field("Rent", "-%d" % int(_payload.get("rent", 0)), UIKit.WHITE))
+	col.add_child(UIKit.field("In hand", str(GameState.money), UIKit.WHITE))
+
+	var rep := float(_payload.get("reputation", 100.0))
+	col.add_child(UIKit.field("Your name on the street", "%d%%" % int(rep),
+		UIKit.GREEN if rep > 70.0 else (UIKit.AMBER if rep > 40.0 else UIKit.RED)))
+	if rep < 95.0:
+		var lost := int(round((1.0 - GameState.reputation_multiplier()) * 100.0))
+		col.add_child(UIKit.label(
+			"    Fewer people will bother coming tomorrow — about %d%% down." % lost,
+			UIKit.FONT_S, UIKit.GREEN_DIM))
 
 	col.add_child(UIKit.spacer(8))
 	col.add_child(UIKit.rule())
 
 	var cops: int = int(_payload.get("cops", 0))
-	var civs: int = int(_payload.get("civilians", 0))
 	if cops > 0:
 		col.add_child(UIKit.label("Officers dealt with: %d" % cops, UIKit.FONT_S, UIKit.GREEN))
-	if civs > 0:
-		col.add_child(UIKit.label("People you were wrong about: %d" % civs, UIKit.FONT_S, UIKit.RED))
 	if not survived:
 		col.add_child(UIKit.label("You are short on the rent. He will want it tomorrow, with interest.",
 			UIKit.FONT_S, UIKit.RED))
