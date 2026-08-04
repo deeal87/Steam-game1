@@ -25,6 +25,7 @@ var night_director: NightDirector
 var raid_director: RaidDirector
 
 var _screen_effect: ColorRect
+var _flash_rect: ColorRect
 var _flicker_timer: float = 0.0
 var _flicker_energy: float = 2.3
 var _pending_summary: Dictionary = {}
@@ -181,6 +182,17 @@ func _build_screen_effect() -> void:
 	_screen_effect = rect
 	layer.add_child(rect)
 
+	# Sits above the CRT pass so the flashbang whites out the grade as well as
+	# the picture. Ignores mouse input and starts fully transparent.
+	var flash_layer := CanvasLayer.new()
+	flash_layer.layer = 21
+	add_child(flash_layer)
+	_flash_rect = ColorRect.new()
+	_flash_rect.color = Color(1, 1, 1, 0)
+	_flash_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_flash_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	flash_layer.add_child(_flash_rect)
+
 
 func _build_directors() -> void:
 	night_director = NightDirector.new()
@@ -215,6 +227,7 @@ func _wire() -> void:
 	report.quit_requested.connect(func() -> void: get_tree().quit())
 
 	Signals.player_died.connect(_on_player_died)
+	Signals.flashbang.connect(_on_flashbang)
 
 
 # --- Panels ------------------------------------------------------------------
@@ -345,6 +358,18 @@ func _restart() -> void:
 	GameState.clear_save()
 	GameState.reset_run()
 	get_tree().reload_current_scene()
+
+
+## They throw something through the hatch before they follow it. The white-out
+## is short but total, and it is the reason the breach has a rhythm you can
+## brace for rather than simply losing to.
+func _on_flashbang() -> void:
+	if _flash_rect == null or not is_instance_valid(_flash_rect):
+		return
+	_flash_rect.color = Color(1, 1, 1, 0.95)
+	var tw := create_tween()
+	tw.tween_property(_flash_rect, "color:a", 0.0, 1.7).set_trans(Tween.TRANS_EXPO)
+	Audio.play("breach", -4.0, 1.6)
 
 
 ## Settings that live on a node rather than in a shader global have to be

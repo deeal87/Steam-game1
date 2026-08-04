@@ -268,9 +268,37 @@ func test_raid() -> void:
 			uses_hatch = true
 	_check(not uses_hatch, "window bars force them through the back door")
 
+	# They must arrive in waves rather than as one crowd, and the raid must not
+	# declare victory while a wave is still queued outside.
+	raid.stop()
+	GameState.defenses = []
+	raid.phase = RaidDirector.Phase.IDLE
+	raid.start(2, 5)
+	var squad_size := raid._units.size()
+	raid._open_up()
+	_check(raid.phase == RaidDirector.Phase.FLASH, "the shutter failing throws a flashbang first")
+	_check(raid._queue.size() == squad_size, "the whole squad queues up outside")
+	raid._breach()
+	var breaching := 0
+	for u in raid._units:
+		if is_instance_valid(u) and u.state == RaidUnit.State.BREACHING:
+			breaching += 1
+	_check(breaching <= RaidDirector.WAVE_SIZE,
+		"only a wave comes through at a time (%d of %d)" % [breaching, squad_size])
+	_check(raid._queue.size() == squad_size - breaching, "the rest are still waiting")
+
+	# Killing everyone inside must not end it while others are still queued.
+	for u in raid._units:
+		if is_instance_valid(u) and u.state == RaidUnit.State.BREACHING:
+			u.take_damage(9999.0)
+	raid._process(0.016)
+	_check(raid.phase != RaidDirector.Phase.DONE,
+		"the raid is not over while a wave is still outside")
+
 	for u in raid._units:
 		if is_instance_valid(u):
 			u.take_damage(9999.0)
+	raid._queue.clear()
 	_check(raid._live_count() == 0, "the squad can be killed")
 	raid.stop()
 	raid.queue_free()

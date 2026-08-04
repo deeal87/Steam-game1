@@ -28,6 +28,7 @@ signal evidence_logged(entry: Dictionary)
 
 # --- Danger ---
 signal raid_incoming(reason: String)
+signal flashbang()
 signal raid_resolved(survived: bool)
 signal player_died(cause: String)
 

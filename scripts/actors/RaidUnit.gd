@@ -8,7 +8,7 @@ extends CharacterBody3D
 
 signal died(unit: RaidUnit)
 
-enum State { ADVANCING, ENGAGING, BREACHING, DEAD }
+enum State { ADVANCING, ENGAGING, BREACHING, SEARCHING, DEAD }
 
 const ADVANCE_SPEED := 2.4
 const BREACH_SPEED := 1.9
@@ -29,6 +29,15 @@ var _target: Vector3
 var _spawn: Vector3
 var _muzzle: OmniLight3D
 
+## Where they last actually saw the player. They push to this rather than
+## tracking you through the counter, so crouching and moving genuinely breaks
+## their aim instead of merely delaying it.
+var _last_known: Vector3
+var _has_contact: bool = false
+## Time between seeing you and firing. Without it, stepping into a doorway is
+## instant death and the fight has no texture.
+var _acquire: float = 0.0
+
 
 ## Called before the unit is in the tree, so the spawn point is stored and
 ## applied in `_ready` rather than written to `global_position` here.
@@ -41,6 +50,7 @@ func setup(player: Player, spawn: Vector3, target: Vector3, tier: int) -> void:
 	damage = 8.0 + float(tier) * 1.6
 	fire_interval = maxf(0.55, 1.20 - float(tier) * 0.07)
 	accuracy = minf(0.90, 0.58 + float(tier) * 0.035)
+	_last_known = target
 
 
 func _ready() -> void:
@@ -114,14 +124,28 @@ func _physics_process(delta: float) -> void:
 			if global_position.distance_to(_target) < 0.6:
 				state = State.ENGAGING
 		State.ENGAGING:
-			_face_player()
 			_idle(delta)
-			_try_fire(delta)
+			if _sees_player():
+				_face_player()
+				_try_fire(delta)
+			else:
+				# Lost them. Push to where they were last seen.
+				_acquire = 0.0
+				state = State.SEARCHING
 		State.BREACHING:
 			_move_to(_target, BREACH_SPEED, delta)
-			_try_fire(delta)
+			if _sees_player():
+				_try_fire(delta)
 			if global_position.distance_to(_target) < 0.7:
 				state = State.ENGAGING
+		State.SEARCHING:
+			if _sees_player():
+				state = State.ENGAGING
+			else:
+				_move_to(_last_known, BREACH_SPEED, delta)
+				if global_position.distance_to(_last_known) < 0.8:
+					# Nothing here. Hold and watch the room.
+					_idle(delta)
 
 	_muzzle.light_energy = maxf(0.0, _muzzle.light_energy - delta * 30.0)
 
@@ -134,23 +158,34 @@ func breach(entry: Vector3) -> void:
 	state = State.BREACHING
 
 
-func _try_fire(delta: float) -> void:
-	_fire_timer -= delta
-	if _fire_timer > 0.0:
-		return
-	_fire_timer = fire_interval * randf_range(0.85, 1.30)
-
-	# They only shoot when they can actually see you, so crouching behind the
-	# counter genuinely works.
+## True when there is a clear line from their eyeline to the player's chest.
+## Crouching behind the counter breaks it, which is the room's one real defence.
+func _sees_player() -> bool:
+	if _player == null or _player.dead:
+		return false
 	var space := get_world_3d().direct_space_state
 	var from := global_position + Vector3(0, 1.35, 0)
 	var to := _player.global_position + Vector3(0, 1.2, 0)
 	var q := PhysicsRayQueryParameters3D.create(from, to)
 	q.collision_mask = 1
 	q.exclude = [get_rid()]
-	var blocked := space.intersect_ray(q)
-	if not blocked.is_empty():
+	if not space.intersect_ray(q).is_empty():
+		_has_contact = false
+		return false
+	_last_known = _player.global_position
+	_has_contact = true
+	return true
+
+
+func _try_fire(delta: float) -> void:
+	# A beat between acquiring you and pulling the trigger.
+	_acquire += delta
+	if _acquire < 0.38:
 		return
+	_fire_timer -= delta
+	if _fire_timer > 0.0:
+		return
+	_fire_timer = fire_interval * randf_range(0.85, 1.30)
 
 	Audio.play("gunshot", -10.0, randf_range(0.95, 1.08))
 	_muzzle.light_energy = 2.6
@@ -167,6 +202,7 @@ func take_damage(amount: float, _source: Object = null) -> void:
 	else:
 		# Getting hit throws their aim off for a moment.
 		_fire_timer = maxf(_fire_timer, 0.5)
+		_acquire = minf(_acquire, 0.15)
 
 
 func _die() -> void:

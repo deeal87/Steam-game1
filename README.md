@@ -59,6 +59,40 @@ Officers get better as the nights go on. Not more numerous — *better covered*.
 Their documents start holding up to questions that would have broken them on
 night three, which is the main reason the game gets harder.
 
+## The raid
+
+When the shutter fails they throw something through the hatch, and there is a
+beat of white before the first man follows it. They come through **in pairs**,
+not as one crowd — eight people arriving simultaneously in a room four metres
+wide is not a firefight, it is a cutscene where you lose.
+
+They shoot at where they last *saw* you, not where you are. Crouching behind
+the counter genuinely breaks their line, and there is a beat between them
+acquiring you and pulling the trigger, so stepping into a doorway is a
+mistake rather than an execution. The room's geometry is the weapon.
+
+Three fittings from the supplier change the shape of the fight:
+
+| | |
+|---|---|
+| **Barricade** | Roughly doubles how long the shutter holds |
+| **Window bars** | Closes the hatch as an entrance, so the whole team has to funnel through the back door — much easier to point a shotgun at |
+| **Bear trap** | Takes the first one through, whichever door that is |
+
+## Settings
+
+`Esc` opens a pause menu that actually freezes the game. Volume, mouse
+sensitivity, field of view and subtitles are there, plus the two that matter:
+
+- **Screen effect** — scanlines, grain, vignette and colour fringing.
+- **Retro geometry** — vertex jitter and affine texture warping.
+
+Both go down to zero independently, and at zero the game renders clean, stable
+and perspective-correct. This is an accessibility control, not a taste one:
+those effects cause real eye strain for some people, and the jitter that sells
+the era is motion instability by another name. Turning them off costs you
+nothing but the look.
+
 ## Controls
 
 | | |
@@ -71,7 +105,7 @@ night three, which is the main reason the game gets harder.
 | `X` | change what is in your hands |
 | `Mouse 1` | use it |
 | `1`–`9` | choose a dialogue option |
-| `Esc` | close a panel / free the cursor |
+| `Esc` | close a panel · pause and settings |
 
 ## Running it
 
@@ -192,13 +226,28 @@ scaled back up with nearest-neighbour filtering. **The interface is drawn
 afterwards at full resolution** — this game asks you to read registry files,
 and pixelating them would be style at the direct expense of playability.
 
+## A quirk worth knowing
+
+Exporting or importing headlessly prints:
+
+```
+SHADER ERROR: Global uniform 'ps1_snap' does not exist.
+ERROR: Shader compilation failed.
+```
+
+**This is harmless and the export still succeeds** (exit code 0, artefacts
+written). Godot's headless mode uses a dummy renderer that does not implement
+global shader parameters, and the retro sliders are driven by two of them.
+Under a real GL context there are no shader errors at all — verified by
+running the shipped binary and grepping for them. Don't chase it.
+
 ## Layout
 
 ```
 scenes/Boot.tscn            entry point; everything else is built in code
 scripts/
   Game.gd                   phase machine, panel routing, the SubViewport
-  autoload/                 GameState · Signals · Audio · InputSetup
+  autoload/                 GameState · Signals · Audio · InputSetup · Settings
   systems/
     Tells.gd                the evidence database — every tell, question, answer
     ProfileGenerator.gd     builds the people who walk in
@@ -207,7 +256,7 @@ scripts/
     RaidDirector.gd         the door team
   actors/                   Player · Customer · RaidUnit
   world/World.gd            kiosk and street geometry
-  ui/                       HUD · terminal · dialogue · notepad · supplier · reports
+  ui/                       HUD · terminal · dialogue · notepad · supplier · pause · reports
   util/                     ProcTex · ProcMesh
 shaders/                    ps1.gdshader · crt.gdshader
 tests/                      smoke · balance · screenshots
@@ -220,13 +269,12 @@ the raid, the economy and the detective system all live and tuned.
 
 Known gaps, in rough priority order:
 
-- **The raid is thin.** Units advance and shoot; there is no flanking, no
-  suppression, no stacking on the door. The three defences (barricade, bars,
-  trap) work but are blunt.
 - **No music, and audio is minimal.** Everything is synthesised, which sounds
   appropriately cheap but is not the same as sound design.
-- **No settings menu.** No key rebinding, no volume sliders, no resolution
-  options — all of which Steam players will expect.
+- **No key rebinding.** Bindings are built in code in `InputSetup.gd` and
+  there is no interface for changing them. Steam players will expect one.
+- **The raid still has no flanking or squad coordination.** It has pacing and
+  line-of-sight now, but they do not work as a team.
 - **The body-bag mechanic is vestigial.** Bags auto-consume to reduce heat
   rather than being something you actually do.
 - **Content depth.** Twenty-eight tells and five standing questions carries

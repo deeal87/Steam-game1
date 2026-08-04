@@ -8,9 +8,17 @@ extends Node
 
 signal raid_over(survived: bool)
 
-enum Phase { IDLE, FORMING, PRESSING, BREACHED, DONE }
+enum Phase { IDLE, FORMING, PRESSING, FLASH, BREACHED, DONE }
 
 const FORM_TIME := 5.5
+## The beat between the shutter failing and the first man through. Without it
+## the breach is a jump-scare rather than a fight you get to prepare for.
+const FLASH_TIME := 1.5
+## They come through in pairs, not as one crowd. Eight people arriving at once
+## in a room four metres wide is not a firefight, it is a cutscene where you
+## lose — this is what makes the room's geometry worth using.
+const WAVE_SIZE := 2
+const WAVE_GAP := 3.4
 
 var phase: Phase = Phase.IDLE
 var _world: World
@@ -20,6 +28,8 @@ var _timer: float = 0.0
 var _shutter_hp: float = 0.0
 var _trap_armed: bool = false
 var _entries: Array[Vector3] = []
+var _queue: Array[RaidUnit] = []
+var _wave_timer: float = 0.0
 
 
 func setup(world: World, player: Player) -> void:
@@ -35,6 +45,8 @@ func start(evidence: int, night: int) -> void:
 	phase = Phase.FORMING
 	_timer = FORM_TIME
 	_units.clear()
+	_queue.clear()
+	_wave_timer = 0.0
 
 	_world.set_shutter_closed(true)
 	_world.anchors["shutter_is_closed"] = true
@@ -85,6 +97,7 @@ func stop() -> void:
 		if is_instance_valid(u):
 			u.queue_free()
 	_units.clear()
+	_queue.clear()
 	phase = Phase.IDLE
 
 
@@ -105,35 +118,64 @@ func _process(delta: float) -> void:
 			if int(_shutter_hp) % 2 == 0:
 				Audio.play("impact", -22.0)
 			if _shutter_hp <= 0.0:
+				_open_up()
+		Phase.FLASH:
+			_timer -= delta
+			if _timer <= 0.0:
 				_breach()
 		Phase.BREACHED:
-			pass
+			_wave_timer -= delta
+			if _wave_timer <= 0.0 and not _queue.is_empty():
+				_send_wave()
 
-	if _live_count() <= 0 and phase != Phase.DONE:
+	if _live_count() <= 0 and _queue.is_empty() and phase != Phase.DONE:
 		_finish(true)
+
+
+## The shutter fails. They throw something in before they follow it.
+func _open_up() -> void:
+	phase = Phase.FLASH
+	_timer = FLASH_TIME
+	Audio.play("breach", -6.0)
+	_world.set_shutter_closed(false)
+	_world.anchors["shutter_is_closed"] = false
+	Signals.notice.emit("Shutter's gone. Something lands on the floor.", "bad")
+	Signals.flashbang.emit()
+
+	_queue.clear()
+	for u in _units:
+		if is_instance_valid(u) and u.state != RaidUnit.State.DEAD:
+			_queue.append(u)
+	_queue.shuffle()
 
 
 func _breach() -> void:
 	phase = Phase.BREACHED
-	Audio.play("breach", -6.0)
-	_world.set_shutter_closed(false)
-	_world.anchors["shutter_is_closed"] = false
-	Signals.notice.emit("Shutter's gone.", "bad")
+	Audio.play("breach", -10.0)
+	_send_wave()
 
-	var first := true
-	for u in _units:
+
+func _send_wave() -> void:
+	var sent := 0
+	while sent < WAVE_SIZE and not _queue.is_empty():
+		var u: RaidUnit = _queue.pop_front()
 		if not is_instance_valid(u) or u.state == RaidUnit.State.DEAD:
 			continue
 		var entry: Vector3 = _entries[randi() % _entries.size()]
 		entry += Vector3(randf_range(-0.6, 0.6), 0.0, randf_range(-0.2, 0.2))
 		u.breach(entry)
-		if first and _trap_armed:
-			first = false
+		sent += 1
+
+		if _trap_armed:
 			_trap_armed = false
 			GameState.defenses.erase("floor_trap")
 			u.take_damage(500.0)
 			Audio.play("impact", -8.0)
 			Signals.notice.emit("The trap takes the first one through.", "good")
+
+	_wave_timer = WAVE_GAP
+	if sent > 0 and not _queue.is_empty():
+		Signals.notice.emit("More coming.", "warn")
 
 
 func _live_count() -> int:
