@@ -23,6 +23,8 @@ var report: ReportUI
 var pause: PauseUI
 var night_director: NightDirector
 var raid_director: RaidDirector
+var sewer_director: SewerDirector
+var checkout: Checkout
 
 var _screen_effect: ColorRect
 var _flash_rect: ColorRect
@@ -215,6 +217,15 @@ func _build_directors() -> void:
 	raid_director.setup(world, player)
 	add_child(raid_director)
 
+	sewer_director = SewerDirector.new()
+	sewer_director.setup(world, player)
+	add_child(sewer_director)
+
+	checkout = Checkout.new()
+	checkout.setup(world)
+	add_child(checkout)
+	player.checkout = checkout
+
 
 func _wire() -> void:
 	player.wants_terminal.connect(_open_terminal)
@@ -227,6 +238,9 @@ func _wire() -> void:
 	shop.closed.connect(_on_panel_closed)
 
 	night_director.customer_ready.connect(_on_customer_ready)
+	Signals.customer_arrived.connect(_on_customer_arrived)
+	checkout.completed.connect(_on_checkout_completed)
+	checkout.changed.connect(_on_checkout_changed)
 	night_director.shift_finished.connect(_on_shift_finished)
 	raid_director.raid_over.connect(_on_raid_over)
 
@@ -279,6 +293,28 @@ func _on_customer_ready(customer: Customer) -> void:
 	customer.wants_conversation.connect(_open_dialogue)
 
 
+## They reach the counter and put their shopping down. If the shelves were bare
+## there is nothing to ring up and they say so.
+func _on_customer_arrived(customer: Customer) -> void:
+	var basket: Array[String] = customer.basket
+	var placed := checkout.begin(customer, basket)
+	if placed <= 0:
+		Signals.notice.emit("They came to the counter with nothing. Fill the shelves.", "warn")
+	else:
+		Signals.notice.emit("%d item%s on the counter. Scan them." %
+			[placed, "" if placed == 1 else "s"], "info")
+
+
+func _on_checkout_completed(total: int) -> void:
+	var customer := night_director.current_customer()
+	if customer != null:
+		customer.on_paid(total)
+
+
+func _on_checkout_changed() -> void:
+	Signals.checkout_changed.emit(checkout.scanned_count(), checkout.item_count(), checkout.total())
+
+
 func _open_dialogue(customer: Customer) -> void:
 	if _any_panel_open():
 		return
@@ -298,6 +334,7 @@ func _on_panel_closed() -> void:
 
 func _start_shift() -> void:
 	phase = Phase.SHIFT
+	checkout.clear()
 	player.ui_locked = false
 	player.health = player.max_health
 	player.dead = false
@@ -363,6 +400,8 @@ func _on_player_died(cause: String) -> void:
 	phase = Phase.OVER
 	night_director.stop()
 	raid_director.stop()
+	sewer_director.stop()
+	checkout.clear()
 	Audio.stop_ambience()
 	var text := "They came through the door and you were still holding a bag of crisps."
 	if cause != "shot":
@@ -391,6 +430,13 @@ func _on_travel_requested(destination: Vector3, label: String, is_escape: bool) 
 	player.velocity = Vector3.ZERO
 	player.global_position = destination
 	Signals.notice.emit(label, "info")
+
+	# Below ground or back above it. Going down counts as a trip and populates
+	# the tunnels; coming up clears them.
+	if destination.y < World.SEWER_Y + 2.0:
+		sewer_director.enter()
+	else:
+		sewer_director.leave()
 
 	# Climbing down out of the kiosk while they are coming through the door is
 	# the escape, and it is the only place the sewer changes the run.

@@ -16,6 +16,9 @@ var nights_survived: int = 0
 ## Persisted across runs — finding it once is finding it.
 var found_easter_egg: bool = false
 var fled_through_sewer: bool = false
+## Every trip down the ladder, counted for the whole run. The tunnels get worse
+## and they never get better.
+var sewer_trips: int = 0
 
 # --- Consumables ---
 var drug_stock: int = 6        ## Units under the counter.
@@ -63,8 +66,8 @@ const AMMO_PRICE := {"revolver": 12, "shotgun": 18, "rifle": 22}
 const AMMO_PER_BOX := {"revolver": 12, "shotgun": 10, "rifle": 30}
 
 const DEFENSES := {
-	"door_bar":   {"name": "Side Door Barricade", "price": 95,  "desc": "Shuts the pavement door. They all have to use the hatch."},
-	"window_bars":{"name": "Hatch Bars",          "price": 150, "desc": "Shuts the serving hatch. They all have to use the side door."},
+	"door_bar":   {"name": "Shop Door Barricade", "price": 95,  "desc": "Shuts the shop door. They all have to come through the hatch."},
+	"window_bars":{"name": "Hatch Bars",          "price": 150, "desc": "Shuts the serving hatch. They all have to come through the door."},
 	"floor_trap": {"name": "Bear Trap",           "price": 80,  "desc": "Takes the first one through, whichever way that is."},
 	"camera":     {"name": "Street Camera",       "price": 120, "desc": "Warns you a few seconds before the breach."},
 }
@@ -81,6 +84,7 @@ func reset_run() -> void:
 	alive = true
 	nights_survived = 0
 	fled_through_sewer = false
+	sewer_trips = 0
 	drug_stock = 6
 	weapons = ["bat"]
 	equipped_weapon = ""
@@ -199,6 +203,19 @@ func false_tells_for_civilian() -> int:
 	return 0
 
 
+## How dangerous the tunnels are, from how often you have used them. The first
+## trip is deliberately near-free: the sewer has to be safe enough once that
+## you are willing to try it again.
+func sewer_tier() -> int:
+	return maxi(0, sewer_trips - 1)
+
+
+func sewer_dweller_count() -> int:
+	if sewer_trips <= 1:
+		return 1
+	return clampi(1 + int(float(sewer_trips - 1) * 0.7), 1, 6)
+
+
 func raid_squad_size() -> int:
 	return clampi(3 + int(float(night) * 0.9) + int(heat / 28.0), 3, 12)
 
@@ -283,6 +300,7 @@ func save_run() -> void:
 	cfg.set_value("run", "heat", heat)
 	cfg.set_value("run", "nights_survived", nights_survived)
 	cfg.set_value("run", "found_easter_egg", found_easter_egg)
+	cfg.set_value("run", "sewer_trips", sewer_trips)
 	cfg.set_value("stock", "drugs", drug_stock)
 	cfg.set_value("stock", "shelf", shelf_stock)
 	cfg.set_value("stock", "crate", crate_stock)
@@ -302,6 +320,7 @@ func load_run() -> bool:
 	heat = cfg.get_value("run", "heat", 0.0)
 	nights_survived = cfg.get_value("run", "nights_survived", 0)
 	found_easter_egg = cfg.get_value("run", "found_easter_egg", false)
+	sewer_trips = cfg.get_value("run", "sewer_trips", 0)
 	drug_stock = cfg.get_value("stock", "drugs", 6)
 	shelf_stock = cfg.get_value("stock", "shelf", shelf_stock)
 	crate_stock = cfg.get_value("stock", "crate", crate_stock)

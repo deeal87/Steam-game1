@@ -69,14 +69,14 @@ func start(evidence: int, night: int) -> void:
 	# shutter and then come through the hatch anyway.
 	_entries = []
 	var hatch_barred := GameState.defenses.has("window_bars")
-	var side_barred := GameState.defenses.has("door_bar")
+	var door_barred := GameState.defenses.has("door_bar")
 	if not hatch_barred:
-		_entries.append(Vector3(0.0, 0.0, -World.SHOP_HALF_Z + 0.9))
-	if not side_barred:
-		_entries.append(Vector3(World.SHOP_HALF_X - 0.9, 0.0, World.SIDE_DOOR_Z))
+		_entries.append(Vector3(World.HATCH_X, 0.0, -World.SHOP_HALF_Z + 1.0))
+	if not door_barred:
+		_entries.append(Vector3(World.FRONT_DOOR_X, 0.0, -World.SHOP_HALF_Z + 1.0))
 	if _entries.is_empty():
 		_shutter_hp += 10.0
-		_entries.append(Vector3(0.0, 0.0, -World.SHOP_HALF_Z + 0.9))
+		_entries.append(Vector3(World.HATCH_X, 0.0, -World.SHOP_HALF_Z + 1.0))
 
 	var squad := clampi(GameState.raid_squad_size() + evidence - 1, 3, 14)
 	var tier := night + int(GameState.heat / 30.0)

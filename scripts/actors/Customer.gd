@@ -1,43 +1,57 @@
 class_name Customer
 extends CharacterBody3D
-## A person at the hatch.
+## A person in the shop.
 ##
-## They walk out of the fog, ask for a few things off the shelf, and — often
-## enough — ask for the thing that is not on the shelf. Everything you can
-## learn about them lives on their `profile`; this node is only the body that
-## carries it to the counter and takes it away again.
+## They come off the street, through the front door, round the aisle to whatever
+## they came for, take it off the shelf themselves, and bring it to the counter.
+## From there it is your problem: scan it, bag it, take the money — while
+## deciding whether the person on the other side of the till is police.
+##
+## Pathing is a short list of waypoints rather than a navigation mesh. The shop
+## is one room with three racks in known places, so corners are the only thing
+## that needs solving and a hand-written path solves them exactly.
 
 signal wants_conversation(customer: Customer)
 signal finished(customer: Customer, outcome: String)
 
 enum State { APPROACHING, AT_COUNTER, LEAVING, DEAD }
 
-const WALK_SPEED := 1.35
-const FLEE_SPEED := 3.4
+const WALK_SPEED := 1.45
+const FLEE_SPEED := 3.6
+const BROWSE_PAUSE := 1.1
+const ARRIVE_RADIUS := 0.38
 
 var profile: CustomerProfile
 var state: State = State.APPROACHING
 var health: float = 60.0
 var outcome: String = ""
+var world: World
+
+## What they actually managed to get off the shelves. Anything out of stock is
+## simply not in here, which is what makes restocking matter.
+var basket: Array[String] = []
 var served_items: Array[String] = []
 var paid: bool = false
 
-## Seconds they will stand there before giving up and walking off. Being slow
-## costs you the sale; being slow with an officer costs you nothing at all.
-var patience_seconds: float = 95.0
+var patience_seconds: float = 110.0
 var _time_at_counter: float = 0.0
 var _asked_for_illicit: bool = false
 var _body: Node3D
 var _hips: Array[Node3D] = []
 var _shoulders: Array[Node3D] = []
 var _walk_phase: float = 0.0
-var _target: Vector3
 var _spoke_greeting: bool = false
 var _observed_behaviour: bool = false
 
+## Waypoints, each {pos, take} where `take` is an item id to pick up there.
+var _path: Array[Dictionary] = []
+var _path_index: int = 0
+var _pause: float = 0.0
 
-func setup(p: CustomerProfile) -> void:
+
+func setup(p: CustomerProfile, w: World = null) -> void:
 	profile = p
+	world = w
 
 
 func _ready() -> void:
@@ -47,7 +61,7 @@ func _ready() -> void:
 	collision_mask = 1
 
 	var caps := CapsuleShape3D.new()
-	caps.radius = 0.32
+	caps.radius = 0.30
 	caps.height = 1.70
 	var cs := CollisionShape3D.new()
 	cs.shape = caps
@@ -62,8 +76,38 @@ func _ready() -> void:
 		elif child.name.begins_with("Shoulder"):
 			_shoulders.append(child)
 
-	_target = World.CUSTOMER_STAND
 	global_position = World.CUSTOMER_ENTRY
+	_build_inbound_path()
+
+
+## Street, front door, then one stop at each rack they need, then the counter.
+func _build_inbound_path() -> void:
+	_path.clear()
+	_path_index = 0
+	_path.append({"pos": World.DOOR_OUTSIDE, "take": ""})
+	_path.append({"pos": World.DOOR_INSIDE, "take": ""})
+
+	var last := Vector3.INF
+	for id: String in profile.order:
+		var point: Vector3 = world.browse_point(id) if world != null else World.CUSTOMER_STAND
+		# Two things off the same rack is one stop, not two.
+		if point.distance_to(last) < 0.6 and not _path.is_empty():
+			_path.append({"pos": point + Vector3(randf_range(-0.25, 0.25), 0, 0.2), "take": id})
+		else:
+			_path.append({"pos": point, "take": id})
+		last = point
+
+	_path.append({"pos": World.AISLE, "take": ""})
+	_path.append({"pos": World.CUSTOMER_STAND, "take": ""})
+
+
+func _build_outbound_path() -> void:
+	_path.clear()
+	_path_index = 0
+	_path.append({"pos": World.AISLE, "take": ""})
+	_path.append({"pos": World.DOOR_INSIDE, "take": ""})
+	_path.append({"pos": World.DOOR_OUTSIDE, "take": ""})
+	_path.append({"pos": World.CUSTOMER_EXIT, "take": ""})
 
 
 func interaction_prompt() -> String:
@@ -71,59 +115,82 @@ func interaction_prompt() -> String:
 		return ""
 	if state == State.LEAVING:
 		return "%s — leaving" % profile.full_name.split(" ")[0]
+	if state == State.APPROACHING:
+		return "%s — shopping" % profile.full_name.split(" ")[0]
 	return "[E] Talk"
 
 
 func _physics_process(delta: float) -> void:
 	match state:
 		State.APPROACHING:
-			_walk_toward(_target, WALK_SPEED, delta)
-			if global_position.distance_to(_target) < 0.25:
-				_arrive()
+			_follow_path(delta, WALK_SPEED)
 		State.AT_COUNTER:
-			_face(Vector3(0, 0, 1))
+			_face_toward(Vector3(0, 0, 1))
 			_time_at_counter += delta
 			_idle_animation(delta)
-			if _time_at_counter > patience_seconds and not profile.wants_illicit:
-				_leave("impatient")
-			elif _time_at_counter > patience_seconds * 1.6:
+			if _time_at_counter > patience_seconds:
+				Signals.notice.emit("%s got tired of waiting." % profile.full_name.split(" ")[0], "warn")
 				_leave("impatient")
 		State.LEAVING:
-			_walk_toward(_target, FLEE_SPEED if outcome == "fled" else WALK_SPEED, delta)
-			if global_position.distance_to(_target) < 1.0:
-				_depart()
+			_follow_path(delta, FLEE_SPEED if outcome == "fled" else WALK_SPEED)
 		State.DEAD:
 			pass
 
 
+func _follow_path(delta: float, speed: float) -> void:
+	if _pause > 0.0:
+		_pause -= delta
+		velocity.x = 0.0
+		velocity.z = 0.0
+		_idle_animation(delta)
+		move_and_slide()
+		return
+
+	if _path_index >= _path.size():
+		if state == State.APPROACHING:
+			_arrive()
+		else:
+			finished.emit(self, outcome)
+		return
+
+	var step: Dictionary = _path[_path_index]
+	var target: Vector3 = step["pos"]
+	_walk_toward(target, speed, delta)
+
+	var flat := Vector2(target.x - global_position.x, target.z - global_position.z)
+	if flat.length() < ARRIVE_RADIUS:
+		var take := str(step["take"])
+		if not take.is_empty():
+			_take_from_shelf(take)
+			_pause = BROWSE_PAUSE
+		_path_index += 1
+
+
+## They help themselves. An empty shelf is a lost sale and they say so.
+func _take_from_shelf(item_id: String) -> void:
+	if GameState.take_from_shelf(item_id):
+		basket.append(item_id)
+		Audio.play("click", -24.0)
+		if world != null:
+			world.refresh_shelves()
+	else:
+		Signals.customer_spoke.emit(profile.full_name,
+			"You're out of %s." % str(GameState.ITEMS[item_id]["name"]).to_lower())
+		Signals.notice.emit("Empty shelf cost you a sale.", "warn")
+
+
 func _arrive() -> void:
 	state = State.AT_COUNTER
-	global_position = _target
-	_face(Vector3(0, 0, 1))
-	if not _spoke_greeting:
-		_spoke_greeting = true
-		Audio.play("chime", -18.0)
-		Signals.customer_spoke.emit(profile.full_name, profile.greeting)
-		Signals.customer_arrived.emit(self)
-		# Give them a beat, then let them say what they came for.
-		get_tree().create_timer(1.6).timeout.connect(_state_order)
-
-
-func _state_order() -> void:
-	if state != State.AT_COUNTER:
+	global_position = World.CUSTOMER_STAND
+	_face_toward(Vector3(0, 0, 1))
+	if _spoke_greeting:
 		return
-	var names: Array[String] = []
-	for id: String in profile.order:
-		names.append(str(GameState.ITEMS[id]["name"]).to_lower())
-	var line := ""
-	match names.size():
-		1: line = "Just the %s." % names[0]
-		2: line = "%s and %s." % [names[0].capitalize(), names[1]]
-		_: line = "%s, %s, and %s." % [names[0].capitalize(), names[1], names[2]]
-	Signals.customer_spoke.emit(profile.full_name, line)
+	_spoke_greeting = true
+	Audio.play("chime", -18.0)
+	Signals.customer_spoke.emit(profile.full_name, profile.greeting)
+	# The director puts the basket on the counter in response to this.
+	Signals.customer_arrived.emit(self)
 
-	# Behavioural tells are the ones you get for free, just by watching. They
-	# surface a few seconds after they start talking.
 	if not _observed_behaviour:
 		_observed_behaviour = true
 		get_tree().create_timer(2.4).timeout.connect(_reveal_behaviour)
@@ -142,49 +209,25 @@ func _reveal_behaviour() -> void:
 			Signals.notice.emit(str(Tells.get_tell(id)["label"]), "watch")
 
 
-# --- The transaction ---------------------------------------------------------
-
-## The player has put a shelf item on the counter.
-func receive_item(item_id: String) -> bool:
-	if state != State.AT_COUNTER:
-		return false
-	if not profile.order.has(item_id) or served_items.has(item_id):
-		Signals.customer_spoke.emit(profile.full_name, "I didn't ask for that.")
-		return false
-	served_items.append(item_id)
-	Audio.play("click", -18.0)
-	if served_items.size() >= profile.order.size():
-		_settle_up()
-	else:
-		Signals.customer_spoke.emit(profile.full_name, "And the rest?")
-	return true
-
-
-func _settle_up() -> void:
-	if paid:
+## Called by the checkout once the till has been rung.
+func on_paid(total: int) -> void:
+	if paid or state != State.AT_COUNTER:
 		return
 	paid = true
-	var total := 0
-	for id: String in served_items:
-		total += int(GameState.ITEMS[id]["price"])
-	GameState.add_money(total, "takings")
-	GameState.customers_served += 1
-	Audio.play("register", -12.0)
+	served_items = basket.duplicate()
 
-	# Tips are genuinely random, and an officer paying from the department's
-	# float has no reason to be stingy, which is a tell in itself if you notice
-	# it — though never a reliable one.
-	var tip := 0
 	var rng := RandomNumberGenerator.new()
 	rng.seed = profile.seed_value + int(Time.get_ticks_msec())
+	var tip := 0
 	if rng.randf() < 0.45:
 		tip = rng.randi_range(1, 7)
+		# An officer paying out of the department's float has no reason to be
+		# careful with it. Suggestive, never conclusive.
 		if profile.kind == CustomerProfile.Kind.UNDERCOVER and rng.randf() < 0.5:
 			tip += rng.randi_range(3, 9)
 	if tip > 0:
 		GameState.add_money(tip, "tips")
 		Signals.notice.emit("Tip: %d" % tip, "good")
-
 	Signals.customer_spoke.emit(profile.full_name, "Keep it." if tip > 0 else "Ta.")
 
 	if profile.wants_illicit and not _asked_for_illicit:
@@ -201,7 +244,6 @@ func _ask_for_illicit() -> void:
 	Signals.notice.emit("They're asking. Decide.", "warn")
 
 
-## The player has handed over units from under the counter.
 func receive_illicit(units: int) -> void:
 	if state != State.AT_COUNTER:
 		return
@@ -221,7 +263,6 @@ func receive_illicit(units: int) -> void:
 	get_tree().create_timer(2.2).timeout.connect(func() -> void: _leave("sold"))
 
 
-## The player has said no.
 func refuse() -> void:
 	if state != State.AT_COUNTER:
 		return
@@ -232,7 +273,6 @@ func refuse() -> void:
 	get_tree().create_timer(1.6).timeout.connect(func() -> void: _leave("refused"))
 
 
-## The player has told them to leave.
 func dismiss() -> void:
 	if state != State.AT_COUNTER:
 		return
@@ -248,6 +288,9 @@ func on_interact(_player: Node) -> void:
 	if state == State.LEAVING:
 		Signals.notice.emit("They're already going.", "info")
 		return
+	if state == State.APPROACHING:
+		Signals.notice.emit("They're still shopping.", "info")
+		return
 	wants_conversation.emit(self)
 
 
@@ -258,23 +301,15 @@ func on_scan(_player: Node) -> void:
 	var findings: Array = []
 	for id: String in profile.tells_on_channel(Tells.CHANNEL_SCANNER):
 		var fresh := profile.discover(id)
-		findings.append({
-			"tell": id,
-			"label": Tells.get_tell(id)["label"],
-			"fresh": fresh,
-		})
+		findings.append({"tell": id, "label": Tells.get_tell(id)["label"], "fresh": fresh})
 		if fresh:
 			Signals.evidence_logged.emit({
-				"tell": id,
-				"label": Tells.get_tell(id)["label"],
-				"source": "scanner",
-			})
+				"tell": id, "label": Tells.get_tell(id)["label"], "source": "scanner"})
 	Signals.scan_completed.emit(findings)
 	if findings.is_empty():
 		Signals.notice.emit("Sweep clean. Nothing on them.", "info")
 	else:
 		Signals.notice.emit("%d reading%s." % [findings.size(), "" if findings.size() == 1 else "s"], "bad")
-		# Being swept is not normal, and they know it.
 		if profile.kind == CustomerProfile.Kind.UNDERCOVER:
 			Signals.customer_spoke.emit(profile.full_name, "Is that necessary?")
 		else:
@@ -285,7 +320,6 @@ func on_scan(_player: Node) -> void:
 			_leave("spooked")
 
 
-## The terminal has pulled their file. Terminal-channel tells become visible.
 func on_lookup() -> void:
 	if profile == null:
 		return
@@ -293,10 +327,7 @@ func on_lookup() -> void:
 	for id: String in profile.tells_on_channel(Tells.CHANNEL_TERMINAL):
 		if profile.discover(id):
 			Signals.evidence_logged.emit({
-				"tell": id,
-				"label": Tells.get_tell(id)["label"],
-				"source": "terminal",
-			})
+				"tell": id, "label": Tells.get_tell(id)["label"], "source": "terminal"})
 
 
 # --- Violence ----------------------------------------------------------------
@@ -306,8 +337,6 @@ func take_damage(amount: float, _source: Object = null) -> void:
 		return
 	health -= amount
 	if health > 0.0:
-		# Wounded and not dead is the worst outcome: they run, and whatever
-		# they know goes with them.
 		if state != State.LEAVING:
 			Signals.customer_spoke.emit(profile.full_name, "—!")
 			_leave("fled")
@@ -335,14 +364,13 @@ func _die() -> void:
 		GameState.evidence_against_you += 1
 		Signals.notice.emit("No badge. No wire. Nothing. You just shot a customer.", "bad")
 
-	# A body bag means it is off the street before anyone drives past.
 	if GameState.body_bags > 0:
 		GameState.body_bags -= 1
 		GameState.add_heat(-6.0)
 		Signals.notice.emit("You drag them in and bag them. (%d bags left)" % GameState.body_bags, "info")
 	else:
 		GameState.add_heat(8.0)
-		Signals.notice.emit("No bags left. They're lying in the road.", "bad")
+		Signals.notice.emit("No bags left. They're lying on the shop floor.", "bad")
 
 	get_tree().create_timer(3.5).timeout.connect(func() -> void: finished.emit(self, "killed"))
 
@@ -354,11 +382,10 @@ func _leave(why: String) -> void:
 		return
 	state = State.LEAVING
 	outcome = why
-	_target = World.CUSTOMER_EXIT
+	_pause = 0.0
+	_build_outbound_path()
 
 	if profile.kind == CustomerProfile.Kind.UNDERCOVER:
-		# The user's rule: an officer who walks away brings a door team back.
-		# How hard that team hits depends on whether they left with anything.
 		if profile.sold_illicit:
 			GameState.evidence_against_you += 2
 			GameState.raid_reason = "You sold to an officer."
@@ -368,21 +395,15 @@ func _leave(why: String) -> void:
 		GameState.add_heat(9.0)
 
 
-func _depart() -> void:
-	finished.emit(self, outcome)
-
-
 # --- Motion ------------------------------------------------------------------
 
 func _walk_toward(target: Vector3, speed: float, delta: float) -> void:
-	var flat := Vector3(target.x, global_position.y, target.z)
-	var dir := (flat - global_position)
-	dir.y = 0.0
+	var dir := Vector3(target.x - global_position.x, 0, target.z - global_position.z)
 	if dir.length() > 0.05:
 		dir = dir.normalized()
 		velocity.x = dir.x * speed
 		velocity.z = dir.z * speed
-		_face(dir)
+		_face_toward(dir)
 	else:
 		velocity.x = 0.0
 		velocity.z = 0.0
@@ -410,9 +431,8 @@ func _idle_animation(delta: float) -> void:
 		_hips[i].rotation.x = lerpf(_hips[i].rotation.x, 0.0, delta * 4.0)
 
 
-func _face(dir: Vector3) -> void:
+func _face_toward(dir: Vector3) -> void:
 	var flat := Vector3(dir.x, 0, dir.z)
 	if flat.length_squared() < 0.001:
 		return
-	var target_yaw := atan2(flat.x, flat.z)
-	rotation.y = lerp_angle(rotation.y, target_yaw, 0.16)
+	rotation.y = lerp_angle(rotation.y, atan2(flat.x, flat.z), 0.16)

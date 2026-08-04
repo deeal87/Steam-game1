@@ -23,6 +23,8 @@ func _ready() -> void:
 	test_identity_and_egg()
 	test_sewer_escape()
 	await test_transaction()
+	await test_shopping_trip()
+	test_sewer_threat()
 	await test_illicit_and_departure()
 	await test_violence()
 	test_raid()
@@ -132,6 +134,10 @@ func _point_is_clear(pos: Vector3, radius: float) -> bool:
 	q.shape = shape
 	q.transform = Transform3D(Basis(), pos)
 	q.collision_mask = 1
+	# The test's own player stands at the spawn point, so without this the
+	# query finds itself and reports the shop is full of furniture.
+	if _player != null and is_instance_valid(_player):
+		q.exclude = [_player.get_rid()]
 	return space.intersect_shape(q, 1).is_empty()
 
 
@@ -255,42 +261,148 @@ func _spawn_at_counter(seed_value: int, force_kind: int = -1) -> Customer:
 
 
 func test_transaction() -> void:
-	print("\nA transaction:")
+	print("\nShopping, scanning and the till:")
 	GameState.reset_run()
 	GameState.reset_night_tally()
+
+	var checkout := Checkout.new()
+	checkout.setup(_world)
+	add_child(checkout)
+
 	var c := _spawn_at_counter(555)
-	var before := GameState.money
+	# They walk the shop themselves, so the basket is what they managed to get.
+	var basket: Array[String] = []
+	for id: String in c.profile.order:
+		if GameState.take_from_shelf(id):
+			basket.append(id)
+	c.basket = basket
+	_check(not basket.is_empty(), "they got something off the shelves")
 
 	var expected := 0
-	for id: String in c.profile.order:
+	for id: String in basket:
 		expected += int(GameState.ITEMS[id]["price"])
 
-	for id: String in c.profile.order:
-		_check(c.receive_item(id), "customer accepts the %s they asked for" % id)
-	_check(GameState.money >= before + expected, "shelf goods are paid for")
+	var placed := checkout.begin(c, basket)
+	_check(placed == basket.size(), "everything they picked up lands on the counter")
+	_check(checkout.remaining() == placed, "and none of it is scanned yet")
+
+	# The till must refuse while anything is unrung. This is the whole mechanic.
+	var money_before := GameState.money
+	_check(not checkout.take_payment(), "the till refuses while items are unscanned")
+	_check(GameState.money == money_before, "and takes no money for them")
+
+	for i in placed:
+		_check(checkout.scan(i), "scans item %d" % i)
+	_check(not checkout.scan(0), "the same item cannot be scanned twice")
+	_check(checkout.all_scanned(), "everything is rung up")
+	_check(checkout.total() == expected, "the total matches the shelf prices (%d)" % expected)
+
+	_check(checkout.take_payment(), "the till takes the money once everything is scanned")
+	_check(GameState.money == money_before + expected, "and the takings go up by the total")
 	_check(GameState.customers_served == 1, "the sale is counted")
+	_check(not checkout.active, "the counter is clear afterwards")
 
-	# They should not accept something they never asked for.
-	var unwanted := ""
+	# An empty shelf means an empty basket means nothing to sell.
 	for id: String in GameState.ITEMS:
-		if not c.profile.order.has(id):
-			unwanted = id
-			break
-	if not unwanted.is_empty():
-		_check(not c.receive_item(unwanted), "customer refuses goods they didn't ask for")
+		GameState.shelf_stock[id] = 0
+	var c2 := _spawn_at_counter(909)
+	var empty: Array[String] = []
+	_check(checkout.begin(c2, empty) == 0, "a bare shelf leaves nothing to ring up")
 
-	# The scanner and the terminal each open up their own channel of evidence.
+	# Evidence channels still work from the counter.
 	c.on_scan(_player)
 	_check(c.profile.scanned, "sweep is recorded")
 	c.on_lookup()
 	_check(c.profile.looked_up, "file lookup is recorded")
-	for id: String in c.profile.tells_on_channel(Tells.CHANNEL_SCANNER):
-		_check(c.profile.tell_state(id)["discovered"], "sweeping reveals %s" % id)
-	for id: String in c.profile.tells_on_channel(Tells.CHANNEL_TERMINAL):
-		_check(c.profile.tell_state(id)["discovered"], "the file reveals %s" % id)
+
+	checkout.queue_free()
+	c.queue_free()
+	c2.queue_free()
+	await get_tree().process_frame
+
+
+func test_shopping_trip() -> void:
+	print("\nThe walk round the shop:")
+	GameState.reset_run()
+	var p := ProfileGenerator.generate(4242, 2, 0.0)
+	var c := Customer.new()
+	c.setup(p, _world)
+	_world.add_child(c)
+
+	_check(c._path.size() >= 4, "they have a route in (%d waypoints)" % c._path.size())
+	_check(c.global_position.distance_to(World.CUSTOMER_ENTRY) < 0.1,
+		"they start at the entry point")
+	var stops := 0
+	for step: Dictionary in c._path:
+		if not str(step["take"]).is_empty():
+			stops += 1
+	_check(stops == p.order.size(), "one stop per thing on their list")
+
+	# Every waypoint has to be somewhere a person could actually stand.
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	# The spawn point is not part of the path, which is exactly how a customer
+	# ended up spawned inside a parked car and never moving all night.
+	var blocked := 0
+	var names: Array[String] = []
+	var probes: Array[Vector3] = [World.CUSTOMER_ENTRY, World.CUSTOMER_EXIT]
+	for step: Dictionary in c._path:
+		probes.append(step["pos"])
+	for pos: Vector3 in probes:
+		if not _point_is_clear(pos + Vector3(0, 0.9, 0), 0.34):
+			blocked += 1
+			names.append(str(pos))
+	_check(blocked == 0, "spawn, exit and every waypoint are clear (%d blocked %s)"
+		% [blocked, ", ".join(names)])
+	_check(_point_is_clear(World.CUSTOMER_STAND + Vector3(0, 0.9, 0), 0.30),
+		"there is room to stand at the counter")
+	_check(_point_is_clear(_world.anchors["player_spawn"] + Vector3(0, 0.9, 0), 0.30),
+		"and room behind it for you")
 
 	c.queue_free()
 	await get_tree().process_frame
+
+
+func test_sewer_threat() -> void:
+	print("\nThe tunnels getting worse:")
+	GameState.reset_run()
+	var counts: Array[int] = []
+	var tiers: Array[int] = []
+	for trip in range(1, 9):
+		GameState.sewer_trips = trip
+		counts.append(GameState.sewer_dweller_count())
+		tiers.append(GameState.sewer_tier())
+	print("   trips 1-8 · dwellers %s" % str(counts))
+	print("   trips 1-8 · tier     %s" % str(tiers))
+
+	_check(counts[0] == 1, "the first trip is one of them")
+	_check(tiers[0] == 0, "and the weakest tier there is")
+	_check(counts[-1] > counts[0], "later trips send more")
+	var monotonic := true
+	for i in range(1, counts.size()):
+		if counts[i] < counts[i - 1] or tiers[i] < tiers[i - 1]:
+			monotonic = false
+	_check(monotonic, "it never gets easier again")
+	_check(counts[-1] <= 6, "but it stays finite (%d)" % counts[-1])
+
+	# A first-trip dweller must be killable with the starting bat.
+	var bat: Dictionary = GameState.WEAPONS["bat"]
+	GameState.sewer_trips = 1
+	var d := SewerDweller.new()
+	d.setup(_player, Vector3(0, World.SEWER_Y, 0), GameState.sewer_tier())
+	var swings := int(ceil(d.max_health / float(bat["damage"])))
+	print("   first-trip dweller: %d hp, %d swings of the bat" % [int(d.max_health), swings])
+	_check(swings <= 2, "the first one goes down in a swing or two")
+	d.free()
+
+	GameState.sewer_trips = 8
+	var tough := SewerDweller.new()
+	tough.setup(_player, Vector3(0, World.SEWER_Y, 0), GameState.sewer_tier())
+	_check(tough.max_health > d.max_health if is_instance_valid(d) else true,
+		"a late one takes considerably more")
+	_check(int(ceil(tough.max_health / float(bat["damage"]))) >= 3,
+		"the bat stops being enough")
+	tough.free()
 
 
 func test_illicit_and_departure() -> void:
@@ -374,19 +486,19 @@ func test_raid() -> void:
 	raid.start(1, 5)
 	var uses_hatch := false
 	for e: Vector3 in raid._entries:
-		if e.z < 0.0:
+		if absf(e.x - World.HATCH_X) < 1.0:
 			uses_hatch = true
-	_check(not uses_hatch, "hatch bars force them round to the side door")
+	_check(not uses_hatch, "hatch bars force them round to the shop door")
 
 	raid.stop()
 	GameState.defenses = ["door_bar"]
 	raid.phase = RaidDirector.Phase.IDLE
 	raid.start(1, 5)
-	var uses_side := false
+	var uses_door := false
 	for e: Vector3 in raid._entries:
-		if e.x > World.SHOP_HALF_X - 1.5:
-			uses_side = true
-	_check(not uses_side, "a barricaded side door forces them through the hatch")
+		if absf(e.x - World.FRONT_DOOR_X) < 1.0:
+			uses_door = true
+	_check(not uses_door, "a barricaded shop door forces them through the hatch")
 
 	# Barring both must not make you untouchable.
 	raid.stop()

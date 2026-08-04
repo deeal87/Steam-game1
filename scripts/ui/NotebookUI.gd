@@ -101,11 +101,12 @@ func _rebuild() -> void:
 	right.add_child(UIKit.spacer(8))
 	right.add_child(UIKit.label("HOW ANY OF THIS WORKS", UIKit.FONT_S, UIKit.GREEN_DIM))
 	for line: String in [
-		"E — use, take, hand over",
+		"E — scan an item, work the till, talk",
 		"Q — refill the shelf you're looking at",
 		"F — sweep them with the scanner",
 		"TAB — this pad",
 		"X — change what's in your hands",
+		"T — torch",
 		"MOUSE 1 — use it",
 	]:
 		right.add_child(UIKit.label(line, UIKit.FONT_S, UIKit.WHITE))

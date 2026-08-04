@@ -45,6 +45,7 @@ var torch_on: bool = false
 
 var _ray: RayCast3D
 var world: World
+var checkout: Checkout
 
 
 func _ready() -> void:
@@ -275,9 +276,16 @@ func _interact() -> void:
 				_show_in_hand("stash")
 				Audio.play("click", -18.0)
 				Signals.notice.emit("In your hand, out of sight.", "info")
+		"goods":
+			if checkout != null:
+				checkout.scan(int(hit.get_meta("index", -1)))
 		"till":
-			Audio.play("register", -12.0)
-			Signals.notice.emit("Takings tonight: %d. Rent: %d." % [GameState.takings + GameState.illicit_takings, GameState.rent_due()], "info")
+			if checkout != null and checkout.active:
+				checkout.take_payment()
+			else:
+				Audio.play("register", -12.0)
+				Signals.notice.emit("Takings tonight: %d. Rent: %d." %
+					[GameState.takings + GameState.illicit_takings, GameState.rent_due()], "info")
 		"crates":
 			_restock_all()
 		"shutter_control":

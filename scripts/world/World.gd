@@ -1,74 +1,98 @@
 class_name World
 extends Node3D
-## Builds the kiosk, the street it stands on, and the tunnels underneath it.
+## Builds the shop, the street it stands on, and the tunnels underneath it.
 ##
-## The kiosk is no longer a single sealed box. It is a shop floor with a hatch
-## onto the street, a stockroom behind it holding everything you have not put
-## out yet, a side door you can actually walk out of, and a manhole in the
-## stockroom floor that goes somewhere.
+## The kiosk grew into a small shop, because customers now walk in and do their
+## own shopping. That needs room: an aisle wide enough to get round a rack, a
+## checkout with a customer side and a staff side, and space behind the counter
+## to work without standing in the doorway.
 ##
-## Layout, looking down (-Z is the street side, where customers come from):
+## Layout, looking down (-Z is the street):
 ##
-##                        [ hatch ]
-##      +-------------------[==]-------------------+   z = -SHOP_HALF_Z
-##      |                SHOP FLOOR                |
-##      |  [racks]                       [racks]   |
-##      |                                  [door] -+-> street        x = +SHOP_HALF_X
-##      +--------[doorway]-------------------------+   z = +SHOP_HALF_Z
-##               |      |
-##      +--------+      +------------+
-##      |         STOCKROOM          |
-##      |  [pallet racks]   (O)      |   (O) = manhole to the sewer
-##      +----------------------------+       z = STOCK_MAX_Z
+##            [hatch]         [shop door]
+##      +--------[==]------------[  ]--------+   z = -SHOP_HALF_Z
+##      | [rack]                    [rack]   |
+##      |                                    |
+##      |           [island rack]            |    customers browse here
+##      |                                    |
+##      |   ==========CHECKOUT==========     |   z = CHECKOUT_Z
+##      |                                    |
+##      |            staff side              |
+##      +-----------[stockroom]--------------+   z = +SHOP_HALF_Z
+##                       |
+##             +---------+----------+
+##             |     STOCKROOM      |
+##             | [pallet racks] (O) |          (O) manhole to the sewer
+##             +--------------------+
 
 # --- Shop floor --------------------------------------------------------------
-const SHOP_HALF_X := 3.50
-const SHOP_HALF_Z := 2.50
-const CEILING := 2.80
+const SHOP_HALF_X := 5.00
+const SHOP_HALF_Z := 4.00
+const CEILING := 3.00
 
+## Serving hatch, kept for the shutter and for the raid to come through.
+const HATCH_X := -1.60
 const HATCH_WIDTH := 1.90
 const HATCH_BOTTOM := 1.00
 const HATCH_TOP := 1.95
 const COUNTER_Y := 1.00
 
+## The door customers actually use, in the front wall beside the hatch.
+const FRONT_DOOR_X := 3.20
+const FRONT_DOOR_W := 1.30
+const DOOR_H := 2.20
+
 ## Opening in the back wall through to the stockroom.
-const BACK_DOOR_X := -2.20
-const BACK_DOOR_W := 1.30
-## Opening in the right-hand wall, out onto the pavement.
-const SIDE_DOOR_Z := 1.55
-const SIDE_DOOR_W := 1.10
-const DOOR_H := 2.10
+const BACK_DOOR_X := -3.00
+const BACK_DOOR_W := 1.40
+
+# --- Checkout ----------------------------------------------------------------
+## An island counter. Customers queue on the -Z face; you work on the +Z face,
+## with the stockroom door behind you.
+const CHECKOUT_Z := 0.75
+const CHECKOUT_MIN_X := -2.80
+const CHECKOUT_MAX_X := 1.60
+const CHECKOUT_DEPTH := 0.75
+const CHECKOUT_Y := 1.00
+## How many things fit on the counter at once.
+const CHECKOUT_SLOTS := 4
 
 # --- Stockroom ---------------------------------------------------------------
-const STOCK_MIN_X := -4.80
-const STOCK_MAX_X := 1.40
+const STOCK_MIN_X := -6.20
+const STOCK_MAX_X := 0.20
 const STOCK_MIN_Z := SHOP_HALF_Z
-const STOCK_MAX_Z := 7.20
-const STOCK_CEILING := 2.60
+const STOCK_MAX_Z := 9.00
+const STOCK_CEILING := 2.70
 
 ## Manhole down to the sewer, in the stockroom floor.
-const MANHOLE := Vector3(-3.40, 0.0, 6.10)
+const MANHOLE := Vector3(-4.60, 0.0, 7.90)
 
 # --- Sewer -------------------------------------------------------------------
 const SEWER_Y := -4.50
 const SEWER_HALF_W := 1.30
-## Where the tunnel comes back up: a dark alley at the far west end of the
-## street, which is also roughly where the thing at the end of the road is.
 const SEWER_EXIT := Vector3(-55.0, 0.0, 1.60)
 
 # --- Street ------------------------------------------------------------------
 const STREET_WEST := -72.0
 const STREET_EAST := 30.0
-## The far end. Unlit, and far enough that the fog hides it from the kiosk.
 const STREET_END := -60.0
 
-## Where a customer stands to be served, and where they walk in from.
-const CUSTOMER_STAND := Vector3(0, 0, -SHOP_HALF_Z - 0.52)
-const CUSTOMER_ENTRY := Vector3(9.0, 0, -7.0)
-const CUSTOMER_EXIT := Vector3(-11.0, 0, -8.0)
+# --- Movement anchors --------------------------------------------------------
+## Customers come off the street, through the front door, round the aisle and
+## up to the counter. Walking those corners as waypoints keeps them off the
+## furniture without needing a navigation mesh.
+const CUSTOMER_STAND := Vector3(-0.60, 0, CHECKOUT_Z - 1.05)
+## Clear of the dead car parked at (10.5, -9). Customers spawn here, so
+## anything solid at this point leaves them wedged in it for the whole night.
+const CUSTOMER_ENTRY := Vector3(13.5, 0, -6.2)
+const CUSTOMER_EXIT := Vector3(-13.5, 0, -7.0)
+const DOOR_OUTSIDE := Vector3(FRONT_DOOR_X, 0, -SHOP_HALF_Z - 1.40)
+const DOOR_INSIDE := Vector3(FRONT_DOOR_X, 0, -SHOP_HALF_Z + 1.10)
+const AISLE := Vector3(3.10, 0, CHECKOUT_Z - 1.05)
 
 var anchors: Dictionary = {}
 var shelf_slots: Dictionary = {}      ## item_id -> Array[MeshInstance3D]
+var shelf_points: Dictionary = {}     ## item_id -> Vector3 a shopper can stand at
 var cash_pickups: Array[Node3D] = []
 var strip_light: OmniLight3D
 var stock_light: OmniLight3D
@@ -98,9 +122,9 @@ func _build_materials() -> void:
 	_mats["pavement"] = ProcMesh.mat(ProcTex.grime(Color(0.20, 0.20, 0.21), 0.5, 12), 10.0)
 	_mats["brick"] = ProcMesh.mat(ProcTex.brick(21), 3.0)
 	_mats["brick_far"] = ProcMesh.mat(ProcTex.brick(33), 6.0, Color.BLACK, 0.0, Color(0.55, 0.55, 0.6))
-	_mats["floor"] = ProcMesh.mat(ProcTex.tiles(41), 4.0)
-	_mats["wall"] = ProcMesh.mat(ProcTex.grime(Color(0.38, 0.37, 0.33), 0.45, 55), 3.0)
-	_mats["ceiling"] = ProcMesh.mat(ProcTex.grime(Color(0.26, 0.26, 0.25), 0.5, 61), 3.0)
+	_mats["floor"] = ProcMesh.mat(ProcTex.tiles(41), 6.0)
+	_mats["wall"] = ProcMesh.mat(ProcTex.grime(Color(0.38, 0.37, 0.33), 0.45, 55), 4.0)
+	_mats["ceiling"] = ProcMesh.mat(ProcTex.grime(Color(0.26, 0.26, 0.25), 0.5, 61), 4.0)
 	_mats["counter"] = ProcMesh.mat(ProcTex.grime(Color(0.30, 0.24, 0.18), 0.4, 71), 2.0)
 	_mats["steel"] = ProcMesh.mat(ProcTex.metal(Color(0.30, 0.31, 0.33), 81))
 	_mats["dark_steel"] = ProcMesh.mat(ProcTex.metal(Color(0.14, 0.14, 0.16), 83))
@@ -110,8 +134,7 @@ func _build_materials() -> void:
 	_mats["neon"] = ProcMesh.mat(ProcTex.neon_sign(Color(1.0, 0.25, 0.45), 5), 1.0, Color(1.0, 0.25, 0.45), 2.2)
 	_mats["lamp"] = ProcMesh.mat(ProcTex.flat(Color(1.0, 0.92, 0.72)), 1.0, Color(1.0, 0.90, 0.66), 2.0)
 	_mats["cash"] = ProcMesh.mat(ProcTex.flat(Color(0.55, 0.62, 0.42)), 1.0, Color(0.4, 0.5, 0.3), 0.25)
-	# Bare concrete for the stockroom, and wet brick below ground.
-	_mats["concrete"] = ProcMesh.mat(ProcTex.grime(Color(0.40, 0.40, 0.38), 0.45, 131), 3.0)
+	_mats["concrete"] = ProcMesh.mat(ProcTex.grime(Color(0.40, 0.40, 0.38), 0.45, 131), 4.0)
 	_mats["sewer_brick"] = ProcMesh.mat(ProcTex.brick(137), 5.0, Color.BLACK, 0.0, Color(0.72, 0.78, 0.74))
 	_mats["water"] = ProcMesh.mat(ProcTex.grime(Color(0.10, 0.13, 0.12), 0.4, 141), 8.0,
 		Color(0.06, 0.10, 0.09), 0.15)
@@ -132,9 +155,6 @@ func _build_environment() -> void:
 	env.ambient_light_color = Color(0.15, 0.16, 0.22)
 	env.ambient_light_energy = 0.55
 
-	# Thinner than before, because the street is now long enough that you need
-	# to see a little way down it — but still thick enough that the far end is
-	# a rumour rather than a destination.
 	env.fog_enabled = true
 	env.fog_light_color = Color(0.035, 0.038, 0.050)
 	env.fog_density = 0.018
@@ -148,98 +168,128 @@ func _build_environment() -> void:
 	add_child(world_env)
 
 
-# --- Shop floor --------------------------------------------------------------
+# --- Shop shell --------------------------------------------------------------
 
 func _build_shop_shell() -> void:
-	var kiosk := Node3D.new()
-	kiosk.name = "Kiosk"
-	add_child(kiosk)
+	var shop := Node3D.new()
+	shop.name = "Shop"
+	add_child(shop)
 
-	kiosk.add_child(ProcMesh.solid_box(Vector3(SHOP_HALF_X * 2, 0.2, SHOP_HALF_Z * 2),
+	shop.add_child(ProcMesh.solid_box(Vector3(SHOP_HALF_X * 2, 0.2, SHOP_HALF_Z * 2),
 		Vector3(0, -0.1, 0), mat("floor"), "Floor"))
-	kiosk.add_child(ProcMesh.solid_box(Vector3(SHOP_HALF_X * 2 + 0.4, 0.2, SHOP_HALF_Z * 2 + 0.4),
+	shop.add_child(ProcMesh.solid_box(Vector3(SHOP_HALF_X * 2 + 0.4, 0.2, SHOP_HALF_Z * 2 + 0.4),
 		Vector3(0, CEILING + 0.1, 0), mat("ceiling"), "Ceiling"))
 
-	# Left wall is solid.
-	kiosk.add_child(ProcMesh.solid_box(Vector3(0.2, CEILING, SHOP_HALF_Z * 2),
-		Vector3(-SHOP_HALF_X - 0.1, CEILING * 0.5, 0), mat("wall"), "WallL"))
+	# Side walls are solid; the racks stand against them.
+	for side: int in [-1, 1]:
+		shop.add_child(ProcMesh.solid_box(Vector3(0.2, CEILING, SHOP_HALF_Z * 2),
+			Vector3(side * (SHOP_HALF_X + 0.1), CEILING * 0.5, 0), mat("wall"), "SideWall%d" % side))
 
-	# Right wall, with a doorway out onto the pavement.
-	_wall_with_gap(kiosk, "WallR", Vector3(SHOP_HALF_X + 0.1, 0, 0), false,
-		SHOP_HALF_Z * 2, CEILING, SIDE_DOOR_Z, SIDE_DOOR_W, DOOR_H)
-
-	# Back wall, with a doorway through to the stockroom.
-	_wall_with_gap(kiosk, "BackWall", Vector3(0, 0, SHOP_HALF_Z + 0.1), true,
+	# Back wall, with the doorway through to the stockroom.
+	_wall_with_gap(shop, "BackWall", Vector3(0, 0, SHOP_HALF_Z + 0.1), true,
 		SHOP_HALF_X * 2 + 0.4, CEILING, BACK_DOOR_X, BACK_DOOR_W, DOOR_H)
 
-	# Front wall, built around the serving hatch. Pieces overlap slightly:
-	# vertex snapping can pull a shared edge apart by a pixel and open a seam.
-	const SEAM := 0.06
-	var side_w := (SHOP_HALF_X * 2 - HATCH_WIDTH) * 0.5 + SEAM
-	for side: int in [-1, 1]:
-		var cx := side * (HATCH_WIDTH * 0.5 + side_w * 0.5 - SEAM * 0.5)
-		kiosk.add_child(ProcMesh.solid_box(Vector3(side_w, CEILING, 0.2),
-			Vector3(cx, CEILING * 0.5, -SHOP_HALF_Z - 0.1), mat("wall"), "FrontWall%d" % side))
-	kiosk.add_child(ProcMesh.solid_box(Vector3(HATCH_WIDTH, HATCH_BOTTOM, 0.2),
-		Vector3(0, HATCH_BOTTOM * 0.5, -SHOP_HALF_Z - 0.1), mat("wall"), "HatchSill"))
-	kiosk.add_child(ProcMesh.solid_box(Vector3(HATCH_WIDTH, CEILING - HATCH_TOP, 0.2),
-		Vector3(0, (CEILING + HATCH_TOP) * 0.5, -SHOP_HALF_Z - 0.1), mat("wall"), "HatchHead"))
-
-	for side: int in [-1, 1]:
-		kiosk.add_child(ProcMesh.box(Vector3(0.28, HATCH_TOP - HATCH_BOTTOM, 0.04),
-			Vector3(side * (HATCH_WIDTH * 0.5 - 0.14), (HATCH_TOP + HATCH_BOTTOM) * 0.5, -SHOP_HALF_Z - 0.1),
-			mat("glass"), "Pane%d" % side))
+	# Front wall: two openings, the hatch and the shop door.
+	_front_wall(shop)
 
 	var shutter_h := HATCH_TOP - HATCH_BOTTOM
 	var shutter := ProcMesh.box(Vector3(HATCH_WIDTH + 0.2, shutter_h, 0.06),
-		Vector3(0, CEILING - shutter_h * 0.5 + 0.02, -SHOP_HALF_Z - 0.16), mat("shutter"), "Shutter")
-	kiosk.add_child(shutter)
+		Vector3(HATCH_X, CEILING - shutter_h * 0.5 + 0.02, -SHOP_HALF_Z - 0.16),
+		mat("shutter"), "Shutter")
+	shop.add_child(shutter)
 	anchors["shutter"] = shutter
 	anchors["shutter_open_y"] = shutter.position.y
 	anchors["shutter_closed_y"] = (HATCH_TOP + HATCH_BOTTOM) * 0.5 - 0.05
 
 	# Exterior dressing.
-	var sign := ProcMesh.box(Vector3(3.8, 0.55, 0.12), Vector3(0, 3.25, -SHOP_HALF_Z - 0.62),
-		mat("neon"), "Sign")
-	kiosk.add_child(sign)
+	shop.add_child(ProcMesh.box(Vector3(4.6, 0.55, 0.12), Vector3(0, 3.45, -SHOP_HALF_Z - 0.62),
+		mat("neon"), "Sign"))
 	sign_light = OmniLight3D.new()
-	sign_light.position = Vector3(0, 2.95, -SHOP_HALF_Z - 1.1)
+	sign_light.position = Vector3(0, 3.15, -SHOP_HALF_Z - 1.1)
 	sign_light.light_color = Color(1.0, 0.32, 0.50)
 	sign_light.light_energy = 2.6
 	sign_light.omni_range = 9.0
 	add_child(sign_light)
 
-	kiosk.add_child(ProcMesh.box(Vector3(SHOP_HALF_X * 2 + 1.2, 0.12, 1.1),
-		Vector3(0, 2.92, -SHOP_HALF_Z - 0.5), mat("dark_steel"), "Awning"))
-	kiosk.add_child(ProcMesh.box(Vector3(SHOP_HALF_X * 2 + 0.6, 0.3, SHOP_HALF_Z * 2 + 0.6),
+	shop.add_child(ProcMesh.box(Vector3(SHOP_HALF_X * 2 + 1.2, 0.12, 1.2),
+		Vector3(0, 3.12, -SHOP_HALF_Z - 0.55), mat("dark_steel"), "Awning"))
+	shop.add_child(ProcMesh.box(Vector3(SHOP_HALF_X * 2 + 0.6, 0.3, SHOP_HALF_Z * 2 + 0.6),
 		Vector3(0, CEILING + 0.30, 0), mat("shutter"), "Roof"))
 
 	var hatch_light := OmniLight3D.new()
-	hatch_light.position = Vector3(0, 2.20, -SHOP_HALF_Z - 0.75)
+	hatch_light.position = Vector3(HATCH_X, 2.30, -SHOP_HALF_Z - 0.75)
 	hatch_light.light_color = Color(1.0, 0.90, 0.74)
 	hatch_light.light_energy = 2.8
-	hatch_light.omni_range = 3.8
-	hatch_light.omni_attenuation = 1.5
+	hatch_light.omni_range = 4.0
 	add_child(hatch_light)
 
+	# Two strip lights, because one no longer reaches the corners.
 	strip_light = OmniLight3D.new()
-	strip_light.position = Vector3(0, CEILING - 0.35, 0.1)
+	strip_light.position = Vector3(0, CEILING - 0.35, -1.4)
 	strip_light.light_color = Color(0.85, 0.92, 1.0)
-	strip_light.light_energy = 2.3
-	strip_light.omni_range = 9.0
-	strip_light.omni_attenuation = 1.1
+	strip_light.light_energy = 2.6
+	strip_light.omni_range = 12.0
 	add_child(strip_light)
-	kiosk.add_child(ProcMesh.box(Vector3(2.2, 0.08, 0.22), Vector3(0, CEILING - 0.12, 0.1),
-		ProcMesh.mat(ProcTex.flat(Color(0.9, 0.95, 1.0)), 1.0, Color(0.85, 0.92, 1.0), 1.6), "StripTube"))
+	shop.add_child(ProcMesh.box(Vector3(3.0, 0.08, 0.22), Vector3(0, CEILING - 0.12, -1.4),
+		ProcMesh.mat(ProcTex.flat(Color(0.9, 0.95, 1.0)), 1.0, Color(0.85, 0.92, 1.0), 1.6), "Strip1"))
+
+	var strip2 := OmniLight3D.new()
+	strip2.position = Vector3(0, CEILING - 0.35, 2.0)
+	strip2.light_color = Color(0.85, 0.92, 1.0)
+	strip2.light_energy = 2.2
+	strip2.omni_range = 11.0
+	add_child(strip2)
+	shop.add_child(ProcMesh.box(Vector3(3.0, 0.08, 0.22), Vector3(0, CEILING - 0.12, 2.0),
+		ProcMesh.mat(ProcTex.flat(Color(0.9, 0.95, 1.0)), 1.0, Color(0.85, 0.92, 1.0), 1.6), "Strip2"))
 
 	anchors["customer_stand"] = CUSTOMER_STAND
 	anchors["customer_entry"] = CUSTOMER_ENTRY
 	anchors["customer_exit"] = CUSTOMER_EXIT
-	anchors["player_spawn"] = Vector3(0, 0.1, -1.35)
+	# Behind the counter, facing the customer side.
+	anchors["player_spawn"] = Vector3(-0.60, 0.1, CHECKOUT_Z + 1.05)
+
+
+## The front wall carries both the hatch and the shop door, so it is built as a
+## run of pillars between the openings rather than by the generic helper.
+func _front_wall(shop: Node3D) -> void:
+	var z := -SHOP_HALF_Z - 0.1
+	var openings := [
+		{"centre": HATCH_X, "half": HATCH_WIDTH * 0.5},
+		{"centre": FRONT_DOOR_X, "half": FRONT_DOOR_W * 0.5},
+	]
+	openings.sort_custom(func(a, b): return float(a["centre"]) < float(b["centre"]))
+
+	var cursor := -SHOP_HALF_X - 0.2
+	for o: Dictionary in openings:
+		var edge: float = float(o["centre"]) - float(o["half"])
+		if edge - cursor > 0.02:
+			shop.add_child(ProcMesh.solid_box(Vector3(edge - cursor, CEILING, 0.2),
+				Vector3((cursor + edge) * 0.5, CEILING * 0.5, z), mat("wall"), "FrontPier"))
+		cursor = float(o["centre"]) + float(o["half"])
+	if SHOP_HALF_X + 0.2 - cursor > 0.02:
+		shop.add_child(ProcMesh.solid_box(Vector3(SHOP_HALF_X + 0.2 - cursor, CEILING, 0.2),
+			Vector3((cursor + SHOP_HALF_X + 0.2) * 0.5, CEILING * 0.5, z), mat("wall"), "FrontPier"))
+
+	# Sill and head around the hatch, and a head over the door.
+	shop.add_child(ProcMesh.solid_box(Vector3(HATCH_WIDTH, HATCH_BOTTOM, 0.2),
+		Vector3(HATCH_X, HATCH_BOTTOM * 0.5, z), mat("wall"), "HatchSill"))
+	shop.add_child(ProcMesh.solid_box(Vector3(HATCH_WIDTH, CEILING - HATCH_TOP, 0.2),
+		Vector3(HATCH_X, (CEILING + HATCH_TOP) * 0.5, z), mat("wall"), "HatchHead"))
+	shop.add_child(ProcMesh.solid_box(Vector3(FRONT_DOOR_W, CEILING - DOOR_H, 0.2),
+		Vector3(FRONT_DOOR_X, (CEILING + DOOR_H) * 0.5, z), mat("wall"), "DoorHead"))
+
+	for side: int in [-1, 1]:
+		shop.add_child(ProcMesh.box(Vector3(0.28, HATCH_TOP - HATCH_BOTTOM, 0.04),
+			Vector3(HATCH_X + side * (HATCH_WIDTH * 0.5 - 0.14),
+				(HATCH_TOP + HATCH_BOTTOM) * 0.5, z), mat("glass"), "Pane%d" % side))
+
+	# A glass door leaf, propped open against the pier.
+	shop.add_child(ProcMesh.box(Vector3(0.06, DOOR_H - 0.1, 1.0),
+		Vector3(FRONT_DOOR_X - FRONT_DOOR_W * 0.5 - 0.1, DOOR_H * 0.5, z + 0.55),
+		mat("glass"), "DoorLeaf"))
 
 
 ## Builds a wall with a rectangular doorway cut into it, as three solid pieces.
-## `along_x` picks whether the wall runs across X or across Z.
 func _wall_with_gap(parent: Node3D, node_name: String, centre: Vector3, along_x: bool,
 		length: float, height: float, gap_centre: float, gap_width: float, gap_height: float) -> void:
 	var half := length * 0.5
@@ -255,7 +305,6 @@ func _wall_with_gap(parent: Node3D, node_name: String, centre: Vector3, along_x:
 		var pos := centre + (Vector3(offset, height * 0.5, 0) if along_x else Vector3(0, height * 0.5, offset))
 		parent.add_child(ProcMesh.solid_box(size, pos, mat("wall"), node_name + "Seg"))
 
-	# The lintel above the opening.
 	var head := height - gap_height
 	if head > 0.02:
 		var size := Vector3(gap_width, head, 0.2) if along_x else Vector3(0.2, head, gap_width)
@@ -264,44 +313,64 @@ func _wall_with_gap(parent: Node3D, node_name: String, centre: Vector3, along_x:
 		parent.add_child(ProcMesh.solid_box(size, pos, mat("wall"), node_name + "Head"))
 
 
-# --- Counter -----------------------------------------------------------------
+# --- Checkout ----------------------------------------------------------------
 
 func _build_counter() -> void:
 	var counter := Node3D.new()
 	counter.name = "Counter"
 	add_child(counter)
 
-	counter.add_child(ProcMesh.solid_box(Vector3(SHOP_HALF_X * 2, 0.10, 0.65),
-		Vector3(0, COUNTER_Y, -SHOP_HALF_Z + 0.33), mat("counter"), "Ledge"))
-	counter.add_child(ProcMesh.solid_box(Vector3(SHOP_HALF_X * 2, COUNTER_Y - 0.05, 0.52),
-		Vector3(0, (COUNTER_Y - 0.05) * 0.5, -SHOP_HALF_Z + 0.26), mat("counter"), "Kickboard"))
-	counter.add_child(ProcMesh.box(Vector3(SHOP_HALF_X * 2, 0.10, 0.06),
-		Vector3(0, COUNTER_Y + 0.10, -SHOP_HALF_Z + 0.02), mat("counter"), "Lip"))
+	# The old serving ledge under the hatch stays. It is no longer where you
+	# trade — it is the window the shutter covers and the raid comes through.
+	counter.add_child(ProcMesh.solid_box(Vector3(HATCH_WIDTH + 0.6, 0.10, 0.45),
+		Vector3(HATCH_X, COUNTER_Y, -SHOP_HALF_Z + 0.23), mat("counter"), "HatchLedge"))
+	counter.add_child(ProcMesh.solid_box(Vector3(HATCH_WIDTH + 0.6, COUNTER_Y - 0.05, 0.36),
+		Vector3(HATCH_X, (COUNTER_Y - 0.05) * 0.5, -SHOP_HALF_Z + 0.18), mat("counter"), "HatchKick"))
 
-	_interactable(counter, "till", "Till", Vector3(0.42, 0.34, 0.44),
-		Vector3(1.45, COUNTER_Y + 0.22, -SHOP_HALF_Z + 0.38), mat("steel"))
-	_interactable(counter, "terminal", "Terminal", Vector3(0.60, 0.50, 0.46),
-		Vector3(-1.52, COUNTER_Y + 0.30, -SHOP_HALF_Z + 0.40), mat("dark_steel"))
+	var width := CHECKOUT_MAX_X - CHECKOUT_MIN_X
+	var cx := (CHECKOUT_MIN_X + CHECKOUT_MAX_X) * 0.5
+	counter.add_child(ProcMesh.solid_box(Vector3(width, CHECKOUT_Y, CHECKOUT_DEPTH),
+		Vector3(cx, CHECKOUT_Y * 0.5, CHECKOUT_Z), mat("counter"), "Checkout"))
+	counter.add_child(ProcMesh.box(Vector3(width + 0.08, 0.06, CHECKOUT_DEPTH + 0.10),
+		Vector3(cx, CHECKOUT_Y + 0.03, CHECKOUT_Z), mat("dark_steel"), "CheckoutTop"))
 
-	var screen := ProcMesh.quad(Vector2(0.50, 0.38),
-		Vector3(-1.52, COUNTER_Y + 0.34, -SHOP_HALF_Z + 0.63), mat("screen"))
-	screen.rotation_degrees = Vector3(-8, 180, 0)
+	# Where the customer's shopping lands, spread along the customer side.
+	var slots: Array[Vector3] = []
+	for i in CHECKOUT_SLOTS:
+		var t := (float(i) + 0.5) / float(CHECKOUT_SLOTS)
+		slots.append(Vector3(lerpf(CHECKOUT_MIN_X + 0.45, CHECKOUT_MAX_X - 1.15, t),
+			CHECKOUT_Y + 0.15, CHECKOUT_Z - 0.16))
+	anchors["checkout_slots"] = slots
+
+	var bag_spot := Vector3(CHECKOUT_MAX_X - 0.45, CHECKOUT_Y + 0.12, CHECKOUT_Z + 0.12)
+	anchors["bag_spot"] = bag_spot
+	counter.add_child(ProcMesh.box(Vector3(0.30, 0.34, 0.22), bag_spot + Vector3(0, 0.10, 0),
+		mat("cardboard"), "Bag"))
+
+	_interactable(counter, "till", "Till", Vector3(0.44, 0.32, 0.42),
+		Vector3(CHECKOUT_MIN_X + 0.50, CHECKOUT_Y + 0.22, CHECKOUT_Z + 0.12), mat("steel"))
+	_interactable(counter, "terminal", "Terminal", Vector3(0.58, 0.48, 0.44),
+		Vector3(CHECKOUT_MIN_X + 1.45, CHECKOUT_Y + 0.30, CHECKOUT_Z + 0.16), mat("dark_steel"))
+
+	var screen := ProcMesh.quad(Vector2(0.48, 0.36),
+		Vector3(CHECKOUT_MIN_X + 1.45, CHECKOUT_Y + 0.33, CHECKOUT_Z + 0.39), mat("screen"))
+	screen.rotation_degrees = Vector3(-10, 180, 0)
 	counter.add_child(screen)
 	var glow := OmniLight3D.new()
-	glow.position = Vector3(-1.52, COUNTER_Y + 0.40, -SHOP_HALF_Z + 0.87)
+	glow.position = Vector3(CHECKOUT_MIN_X + 1.45, CHECKOUT_Y + 0.42, CHECKOUT_Z + 0.65)
 	glow.light_color = Color(0.35, 1.0, 0.45)
-	glow.light_energy = 0.85
-	glow.omni_range = 2.6
+	glow.light_energy = 0.9
+	glow.omni_range = 2.8
 	counter.add_child(glow)
 	anchors["terminal_glow"] = glow
 
-	_interactable(counter, "stash", "Stash", Vector3(0.50, 0.34, 0.42),
-		Vector3(0.60, 0.30, -SHOP_HALF_Z + 0.32), mat("dark_steel"))
-	_interactable(counter, "scanner", "Scanner", Vector3(0.16, 0.10, 0.30),
-		Vector3(0.85, COUNTER_Y + 0.10, -SHOP_HALF_Z + 0.42), mat("steel"))
+	_interactable(counter, "stash", "Stash", Vector3(0.46, 0.32, 0.38),
+		Vector3(cx + 0.7, 0.28, CHECKOUT_Z + 0.16), mat("dark_steel"))
+	_interactable(counter, "scanner", "Scanner", Vector3(0.15, 0.10, 0.28),
+		Vector3(CHECKOUT_MAX_X - 1.20, CHECKOUT_Y + 0.11, CHECKOUT_Z + 0.18), mat("steel"))
 
-	anchors["counter_y"] = COUNTER_Y
-	anchors["handover"] = Vector3(0, COUNTER_Y + 0.12, -SHOP_HALF_Z + 0.15)
+	anchors["counter_y"] = CHECKOUT_Y
+	anchors["handover"] = Vector3(cx, CHECKOUT_Y + 0.12, CHECKOUT_Z - 0.16)
 
 
 func _build_fittings() -> void:
@@ -310,19 +379,20 @@ func _build_fittings() -> void:
 	add_child(fit)
 
 	_interactable(fit, "shop", "Supplier Phone", Vector3(0.20, 0.34, 0.12),
-		Vector3(SHOP_HALF_X - 0.14, 1.45, -0.60), mat("dark_steel"))
+		Vector3(-SHOP_HALF_X + 0.16, 1.45, CHECKOUT_Z + 1.6), mat("dark_steel"))
 	_interactable(fit, "shutter_control", "Shutter Control", Vector3(0.16, 0.24, 0.10),
-		Vector3(-SHOP_HALF_X + 0.14, 1.40, -SHOP_HALF_Z + 0.60), mat("steel"))
+		Vector3(-SHOP_HALF_X + 0.16, 1.40, -SHOP_HALF_Z + 0.70), mat("steel"))
 
 	fit.add_child(ProcMesh.box(Vector3(0.16, 0.12, 0.26),
 		Vector3(SHOP_HALF_X - 0.30, CEILING - 0.30, -SHOP_HALF_Z + 0.40), mat("dark_steel"), "Camera"))
 
-	fit.add_child(ProcMesh.cylinder(0.16, 0.62, Vector3(0.2, 0.31, -1.6), mat("dark_steel"), 6))
-	fit.add_child(ProcMesh.box(Vector3(0.16, 0.22, 0.16), Vector3(-3.1, 0.85, -0.4), mat("steel"), "Kettle"))
-	fit.add_child(ProcMesh.box(Vector3(0.34, 0.16, 0.16),
-		Vector3(-3.0, 1.62, SHOP_HALF_Z - 0.25), mat("dark_steel"), "Radio"))
+	fit.add_child(ProcMesh.cylinder(0.16, 0.62, Vector3(1.9, 0.31, CHECKOUT_Z + 0.9),
+		mat("dark_steel"), 6))
+	fit.add_child(ProcMesh.box(Vector3(0.16, 0.22, 0.16), Vector3(-4.4, 0.85, 3.2),
+		mat("steel"), "Kettle"))
+	fit.add_child(ProcMesh.box(Vector3(0.34, 0.16, 0.16), Vector3(-4.3, 1.62, SHOP_HALF_Z - 0.25),
+		mat("dark_steel"), "Radio"))
 
-	# The raid still forces the shop's two openings, so it needs the old anchor.
 	anchors["back_door"] = Vector3(BACK_DOOR_X, 0, SHOP_HALF_Z)
 
 
@@ -339,18 +409,21 @@ const SHELF_TINTS := {
 	"coffee": Color(0.36, 0.24, 0.16),
 }
 
-## Three racks around the shop floor, each carrying a few products on separate
-## levels. Stock level just shows or hides boxes, so the shelves visibly empty
-## out over the night.
+## Three racks in the shopping half of the floor: one against each side wall and
+## a free-standing island between them, so there is an aisle to walk down on
+## both sides of it.
 func _build_shelving() -> void:
 	var racks := Node3D.new()
 	racks.name = "Shelving"
 	add_child(racks)
 
 	var layout := {
-		0: {"origin": Vector3(-SHOP_HALF_X + 0.24, 0, -1.1), "dir": Vector3(0, 0, 1), "rot": 90.0, "span": 3.0},
-		1: {"origin": Vector3(SHOP_HALF_X - 0.24, 0, -1.3), "dir": Vector3(0, 0, 1), "rot": -90.0, "span": 2.2},
-		2: {"origin": Vector3(-0.9, 0, SHOP_HALF_Z - 0.24), "dir": Vector3(1, 0, 0), "rot": 0.0, "span": 3.4},
+		0: {"origin": Vector3(-SHOP_HALF_X + 0.28, 0, -3.30), "dir": Vector3(0, 0, 1),
+			"rot": 90.0, "span": 3.1, "browse": Vector3(-SHOP_HALF_X + 1.30, 0, -1.80)},
+		1: {"origin": Vector3(SHOP_HALF_X - 0.28, 0, -3.30), "dir": Vector3(0, 0, 1),
+			"rot": -90.0, "span": 2.4, "browse": Vector3(SHOP_HALF_X - 1.30, 0, -2.10)},
+		2: {"origin": Vector3(-1.80, 0, -1.90), "dir": Vector3(1, 0, 0),
+			"rot": 0.0, "span": 3.6, "browse": Vector3(0.0, 0, -1.00)},
 	}
 
 	var by_rack := {0: [], 1: [], 2: []}
@@ -365,28 +438,29 @@ func _build_shelving() -> void:
 		var items: Array = by_rack[rack_id]
 
 		var centre: Vector3 = origin + dir * (span * 0.5)
-		var carcass: Vector3 = Vector3(0.36, 1.75, span) if dir.z > 0.5 else Vector3(span, 1.75, 0.36)
-		racks.add_child(ProcMesh.solid_box(carcass, centre + Vector3(0, 0.875, 0),
+		var carcass: Vector3 = Vector3(0.40, 1.80, span) if dir.z > 0.5 else Vector3(span, 1.80, 0.40)
+		racks.add_child(ProcMesh.solid_box(carcass, centre + Vector3(0, 0.90, 0),
 			mat("dark_steel"), "Rack%d" % rack_id))
 
 		for i in items.size():
 			var item_id: String = items[i]
-			var level_y := 0.95 + float(i) * 0.46
+			var level_y := 0.98 + float(i) * 0.48
 			var slots: Array[MeshInstance3D] = []
-			var box_mat := ProcMesh.mat(ProcTex.product(SHELF_TINTS.get(item_id, Color(0.5, 0.5, 0.5)),
-				hash(item_id)))
+			var box_mat := ProcMesh.mat(ProcTex.product(
+				SHELF_TINTS.get(item_id, Color(0.5, 0.5, 0.5)), hash(item_id)))
 			var count := 10
 			for s in count:
-				var along := 0.18 + float(s) * ((span - 0.36) / float(count - 1))
+				var along := 0.20 + float(s) * ((span - 0.40) / float(count - 1))
 				var pos: Vector3 = origin + dir * along + Vector3(0, level_y, 0)
 				var box := ProcMesh.box(Vector3(0.18, 0.24, 0.18), pos, box_mat, "%s_%d" % [item_id, s])
 				box.rotation_degrees = Vector3(0, conf["rot"], 0)
 				racks.add_child(box)
 				slots.append(box)
 			shelf_slots[item_id] = slots
+			shelf_points[item_id] = conf["browse"]
 
 			var mid: Vector3 = origin + dir * (span * 0.5) + Vector3(0, level_y, 0)
-			var zone: Vector3 = Vector3(0.32, 0.40, span) if dir.z > 0.5 else Vector3(span, 0.40, 0.32)
+			var zone: Vector3 = Vector3(0.36, 0.42, span) if dir.z > 0.5 else Vector3(span, 0.42, 0.36)
 			_interact_zone(racks, "shelf:" + item_id, mid, zone)
 
 
@@ -398,10 +472,13 @@ func refresh_shelves() -> void:
 			(slots[i] as MeshInstance3D).visible = i < units
 
 
+## Where a shopper stands to take something off a given rack.
+func browse_point(item_id: String) -> Vector3:
+	return shelf_points.get(item_id, CUSTOMER_STAND)
+
+
 # --- Stockroom ---------------------------------------------------------------
 
-## Everything you have not put out yet lives back here, on pallet racking, in
-## the dark, behind a door. Restocking is now a walk rather than a keypress.
 func _build_stockroom() -> void:
 	var room := Node3D.new()
 	room.name = "Stockroom"
@@ -418,12 +495,11 @@ func _build_stockroom() -> void:
 		Vector3(cx, STOCK_CEILING + 0.1, cz), mat("ceiling"), "StockCeiling"))
 	room.add_child(ProcMesh.solid_box(Vector3(w + 0.4, STOCK_CEILING, 0.2),
 		Vector3(cx, STOCK_CEILING * 0.5, STOCK_MAX_Z + 0.1), mat("concrete"), "StockBack"))
-	room.add_child(ProcMesh.solid_box(Vector3(0.2, STOCK_CEILING, d),
-		Vector3(STOCK_MIN_X - 0.1, STOCK_CEILING * 0.5, cz), mat("concrete"), "StockLeft"))
-	room.add_child(ProcMesh.solid_box(Vector3(0.2, STOCK_CEILING, d),
-		Vector3(STOCK_MAX_X + 0.1, STOCK_CEILING * 0.5, cz), mat("concrete"), "StockRight"))
+	for side: int in [-1, 1]:
+		var x := STOCK_MIN_X - 0.1 if side < 0 else STOCK_MAX_X + 0.1
+		room.add_child(ProcMesh.solid_box(Vector3(0.2, STOCK_CEILING, d),
+			Vector3(x, STOCK_CEILING * 0.5, cz), mat("concrete"), "StockSide%d" % side))
 
-	# The near wall, either side of the doorway back into the shop.
 	for piece: Array in [[STOCK_MIN_X, BACK_DOOR_X - BACK_DOOR_W * 0.5],
 			[BACK_DOOR_X + BACK_DOOR_W * 0.5, STOCK_MAX_X]]:
 		var seg: float = piece[1] - piece[0]
@@ -434,52 +510,47 @@ func _build_stockroom() -> void:
 			mat("concrete"), "StockFront"))
 
 	stock_light = OmniLight3D.new()
-	stock_light.position = Vector3(cx, STOCK_CEILING - 0.30, cz - 0.4)
+	stock_light.position = Vector3(cx, STOCK_CEILING - 0.30, cz - 0.8)
 	stock_light.light_color = Color(1.0, 0.88, 0.66)
 	stock_light.light_energy = 3.4
-	stock_light.omni_range = 12.0
+	stock_light.omni_range = 13.0
 	add_child(stock_light)
-	room.add_child(ProcMesh.box(Vector3(0.30, 0.10, 0.30), Vector3(cx, STOCK_CEILING - 0.10, cz - 0.4),
+	room.add_child(ProcMesh.box(Vector3(0.30, 0.10, 0.30), Vector3(cx, STOCK_CEILING - 0.10, cz - 0.8),
 		ProcMesh.mat(ProcTex.flat(Color(1.0, 0.92, 0.74)), 1.0, Color(1.0, 0.88, 0.66), 1.4), "StockBulb"))
 
-	# A second bulb over the far end, or the racking is a black hole.
 	var back_light := OmniLight3D.new()
-	back_light.position = Vector3(cx - 0.6, STOCK_CEILING - 0.30, STOCK_MAX_Z - 1.2)
+	back_light.position = Vector3(cx - 0.6, STOCK_CEILING - 0.30, STOCK_MAX_Z - 1.4)
 	back_light.light_color = Color(1.0, 0.90, 0.70)
-	back_light.light_energy = 2.6
-	back_light.omni_range = 10.0
+	back_light.light_energy = 2.8
+	back_light.omni_range = 11.0
 	add_child(back_light)
 
-	# Pallet racking down the left-hand wall, loaded with cases.
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 5150
-	for bay in 3:
-		var bz := STOCK_MIN_Z + 1.1 + float(bay) * 1.75
-		room.add_child(ProcMesh.solid_box(Vector3(0.9, 2.2, 1.5),
-			Vector3(STOCK_MIN_X + 0.55, 1.1, bz), mat("dark_steel"), "Bay%d" % bay))
+	for bay in 4:
+		var bz := STOCK_MIN_Z + 1.2 + float(bay) * 1.85
+		room.add_child(ProcMesh.solid_box(Vector3(0.9, 2.3, 1.6),
+			Vector3(STOCK_MIN_X + 0.55, 1.15, bz), mat("dark_steel"), "Bay%d" % bay))
 		for level in 3:
 			for c in 2:
 				var case_mat := ProcMesh.mat(ProcTex.product(
 					SHELF_TINTS.values()[rng.randi() % SHELF_TINTS.size()], rng.randi()))
 				room.add_child(ProcMesh.box(Vector3(0.42, 0.34, 0.42),
-					Vector3(STOCK_MIN_X + 0.55, 0.42 + float(level) * 0.72, bz - 0.35 + float(c) * 0.70),
+					Vector3(STOCK_MIN_X + 0.55, 0.44 + float(level) * 0.74, bz - 0.38 + float(c) * 0.76),
 					case_mat, "Case"))
 
-	# Loose cardboard, a stack of pallets, a mop. Somebody works back here.
-	for i in 7:
+	for i in 9:
 		room.add_child(ProcMesh.box(Vector3(rng.randf_range(0.4, 0.7), rng.randf_range(0.3, 0.5),
 			rng.randf_range(0.4, 0.7)),
-			Vector3(rng.randf_range(STOCK_MIN_X + 1.6, STOCK_MAX_X - 0.6), 0.25,
-				rng.randf_range(STOCK_MIN_Z + 0.9, STOCK_MAX_Z - 1.4)),
+			Vector3(rng.randf_range(STOCK_MIN_X + 1.8, STOCK_MAX_X - 0.7), 0.25,
+				rng.randf_range(STOCK_MIN_Z + 1.0, STOCK_MAX_Z - 1.6)),
 			mat("cardboard"), "Box%d" % i))
-	room.add_child(ProcMesh.box(Vector3(1.1, 0.34, 0.9),
-		Vector3(STOCK_MAX_X - 0.9, 0.17, STOCK_MIN_Z + 0.9), mat("cardboard"), "Pallets"))
+	room.add_child(ProcMesh.box(Vector3(1.2, 0.34, 1.0),
+		Vector3(STOCK_MAX_X - 1.0, 0.17, STOCK_MIN_Z + 1.0), mat("cardboard"), "Pallets"))
 
-	# The crates you actually draw from when restocking.
-	_interactable(room, "crates", "Crates", Vector3(1.40, 0.85, 0.70),
-		Vector3(STOCK_MIN_X + 2.3, 0.42, STOCK_MAX_Z - 0.7), mat("counter"))
+	_interactable(room, "crates", "Crates", Vector3(1.60, 0.90, 0.80),
+		Vector3(STOCK_MIN_X + 2.6, 0.45, STOCK_MAX_Z - 0.9), mat("counter"))
 
-	# The manhole. A rim, a lifted cover leaning against it, and a dark hole.
 	room.add_child(ProcMesh.cylinder(0.52, 0.06, MANHOLE + Vector3(0, 0.03, 0), mat("dark_steel"), 12))
 	room.add_child(ProcMesh.cylinder(0.44, 0.10, MANHOLE + Vector3(0, -0.06, 0),
 		ProcMesh.mat(ProcTex.flat(Color(0.02, 0.02, 0.03))), 12))
@@ -489,7 +560,6 @@ func _build_stockroom() -> void:
 	_interact_zone(room, "manhole", MANHOLE + Vector3(0, 0.5, 0), Vector3(1.1, 1.0, 1.1))
 
 	anchors["manhole"] = MANHOLE
-	anchors["sewer_shaft_bottom"] = Vector3(MANHOLE.x, SEWER_Y + 0.15, MANHOLE.z)
 	anchors["stock_centre"] = Vector3(cx, 0, cz)
 
 
@@ -501,17 +571,16 @@ func scatter_cash(rng: RandomNumberGenerator) -> void:
 			node.queue_free()
 	cash_pickups.clear()
 
-	# Now spread across the shop floor, the stockroom and the pavement outside,
-	# so looking around the whole place is worth something.
 	var spots := [
-		Vector3(-3.0, 0.06, 1.9), Vector3(3.0, 0.06, 1.6), Vector3(-0.8, 0.06, 2.1),
-		Vector3(3.1, 0.06, -1.6), Vector3(-3.1, 0.06, -1.5), Vector3(1.4, 0.06, 2.0),
-		Vector3(-1.9, 1.16, -SHOP_HALF_Z + 0.44), Vector3(2.6, 0.06, 0.4),
-		Vector3(STOCK_MIN_X + 2.6, 0.06, STOCK_MIN_Z + 1.4),
-		Vector3(STOCK_MAX_X - 1.1, 0.06, STOCK_MAX_Z - 1.9),
-		Vector3(-1.5, 0.06, STOCK_MAX_Z - 0.9),
-		Vector3(SHOP_HALF_X + 1.4, 0.20, 1.5),
-		Vector3(-2.2, 0.20, -SHOP_HALF_Z - 1.9),
+		Vector3(-4.2, 0.06, 2.9), Vector3(4.3, 0.06, 2.4), Vector3(-1.2, 0.06, 3.2),
+		Vector3(4.4, 0.06, -3.4), Vector3(-4.4, 0.06, -3.2), Vector3(2.2, 0.06, 3.1),
+		Vector3(CHECKOUT_MIN_X + 0.9, CHECKOUT_Y + 0.16, CHECKOUT_Z + 0.28),
+		Vector3(3.6, 0.06, 0.4), Vector3(-2.6, 0.06, -3.6),
+		Vector3(STOCK_MIN_X + 2.8, 0.06, STOCK_MIN_Z + 1.6),
+		Vector3(STOCK_MAX_X - 1.2, 0.06, STOCK_MAX_Z - 2.1),
+		Vector3(-3.0, 0.06, STOCK_MAX_Z - 1.0),
+		Vector3(FRONT_DOOR_X + 1.6, 0.20, -SHOP_HALF_Z - 1.9),
+		Vector3(-7.0, 0.20, -5.4),
 	]
 	spots.shuffle()
 	var count := rng.randi_range(3, 6)
@@ -528,8 +597,6 @@ func scatter_cash(rng: RandomNumberGenerator) -> void:
 
 # --- Helpers -----------------------------------------------------------------
 
-## Interaction targets live on physics layer 2 so the player's look-ray can
-## pick them out without also hitting walls.
 func _interactable(parent: Node3D, id: String, node_name: String, size: Vector3,
 		pos: Vector3, material: Material) -> StaticBody3D:
 	var body := ProcMesh.solid_box(size, pos, material, node_name)
@@ -540,7 +607,6 @@ func _interactable(parent: Node3D, id: String, node_name: String, size: Vector3,
 	return body
 
 
-## A trigger volume with no visible body and no collision against the player.
 func _interact_zone(parent: Node3D, id: String, pos: Vector3, size: Vector3) -> StaticBody3D:
 	var body := StaticBody3D.new()
 	body.name = "Zone_" + id

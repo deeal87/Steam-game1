@@ -32,7 +32,7 @@ func _ready() -> void:
 	await _settle(40)
 	await _shot("02_counter_empty")
 
-	# Wait for the first customer to walk out of the fog and reach the hatch.
+	# Wait for the first customer to walk in, shop, and reach the counter.
 	var director: NightDirector = game.night_director
 	var waited := 0
 	while waited < 900:
@@ -46,6 +46,13 @@ func _ready() -> void:
 
 	var customer: Customer = director.current_customer()
 	if customer != null:
+		print("  [diag] customer at %s  state=%d  visible=%s  basket=%s" % [
+			str(customer.global_position), customer.state,
+			str(customer.visible), str(customer.basket)])
+		print("  [diag] player at %s  stand anchor %s" % [
+			str(game.player.global_position), str(World.CUSTOMER_STAND)])
+		# Side-on, where a person is unmistakable.
+		await _look_from(Vector3(2.6, 0.1, World.CUSTOMER_STAND.z), 1.57, "03b_customer_side")
 		# Sweep them, pull the file, then look at the terminal.
 		customer.on_scan(game.player)
 		await _settle(10)
@@ -105,19 +112,31 @@ func _ready() -> void:
 	await _settle(15)
 
 	# --- A tour of the places that did not exist before ---------------------
-	await _look_from(Vector3(-1.2, 0.1, 1.4), 0.0, "13_shop_floor")
-	await _look_from(Vector3(-2.2, 0.1, 3.4), 0.0, "14_through_to_stockroom")
-	await _look_from(Vector3(-1.4, 0.1, 3.3), 2.36, "15_stockroom")
-	await _look_from(Vector3(-3.4, 0.1, 4.5), 3.14, "16_manhole", -0.5)
+	await _look_from(Vector3(-0.6, 0.1, 3.4), 0.0, "13_shop_floor")
+	await _look_from(Vector3(-3.0, 0.1, 3.2), 0.0, "14_through_to_stockroom")
+	await _look_from(Vector3(-2.6, 0.1, 5.4), 3.6, "15_stockroom")
+	await _look_from(World.MANHOLE + Vector3(0, 0.1, -1.5), 3.14, "16_manhole", -0.55)
 
 	# Outside, through the side door, then a long look west down the street.
-	await _look_from(Vector3(World.SHOP_HALF_X + 1.6, 0.3, 1.5), 1.57, "17_outside_side_door")
+	await _look_from(Vector3(World.FRONT_DOOR_X, 0.3, -World.SHOP_HALF_Z - 2.6), PI, "17_outside_shop_door")
 	await _look_from(Vector3(-8.0, 0.3, -2.0), 1.57, "18_street_looking_west")
 
 	# Down the ladder.
 	game.player.toggle_torch()
 	await _look_from(Vector3(World.MANHOLE.x - 1.0, World.SEWER_Y + 0.2, World.MANHOLE.z), 1.57, "19_sewer")
-	await _look_from(Vector3(-30.0, World.SEWER_Y + 0.2, World.MANHOLE.z), 1.57, "20_sewer_tunnel")
+
+	# Populate the tunnel the way going down the ladder would, so the shots
+	# show what is actually waiting rather than an empty corridor.
+	GameState.sewer_trips = 4
+	game.sewer_director.active = false
+	game.sewer_director.enter()
+	await _settle(40)
+	var lurker := _nearest_dweller(game)
+	if lurker != null:
+		await _look_from(lurker.global_position + Vector3(7.0, 0.2, 0.0), 1.57, "20_sewer_tunnel")
+	else:
+		await _look_from(Vector3(-30.0, World.SEWER_Y + 0.2, World.MANHOLE.z), 1.57, "20_sewer_tunnel")
+	game.sewer_director.leave()
 
 	# The far end. Approach it the way a player would, from down the street.
 	await _look_from(Vector3(World.STREET_END + 7.0, 0.3, 0.5), 2.2, "21_far_end_approach")
@@ -154,6 +173,13 @@ func _tap(action: String) -> void:
 ## Puts the player somewhere, points them, waits for the world to catch up and
 ## takes the picture. Physics needs a couple of frames after a teleport before
 ## lights and triggers have settled.
+func _nearest_dweller(g: Node) -> SewerDweller:
+	for child in g.world.get_children():
+		if child is SewerDweller:
+			return child
+	return null
+
+
 func _look_from(pos: Vector3, yaw: float, name: String, pitch: float = 0.0) -> void:
 	game.player.velocity = Vector3.ZERO
 	game.player.global_position = pos

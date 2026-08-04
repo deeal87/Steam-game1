@@ -108,12 +108,6 @@ func _rebuild() -> void:
 	_body.add_child(UIKit.rule())
 	_body.add_child(UIKit.label("DO", UIKit.FONT_S, UIKit.GREEN_DIM))
 
-	if not _player.held_item.is_empty():
-		var item_name := str(GameState.ITEMS[_player.held_item]["name"])
-		var wanted: bool = p.order.has(_player.held_item) and not _customer.served_items.has(_player.held_item)
-		_add_option({"type": "give"}, "Hand over the %s" % item_name.to_lower(), wanted,
-			"" if wanted else "· they didn't ask for it")
-
 	if _player.held_illicit > 0:
 		_add_option({"type": "sell"}, "Sell them what's in your hand (%d)" % _player.held_illicit,
 			_customer._asked_for_illicit, "" if _customer._asked_for_illicit else "· they haven't asked")
@@ -172,11 +166,6 @@ func _choose(option: Dictionary) -> void:
 				_customer._leave("spooked")
 				close()
 				return
-			_rebuild()
-		"give":
-			var item := _player.held_item
-			if _customer.receive_item(item):
-				_player.clear_hands()
 			_rebuild()
 		"sell":
 			var units := _player.held_illicit

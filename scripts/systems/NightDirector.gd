@@ -86,7 +86,7 @@ func _spawn_next() -> void:
 
 	var profile := ProfileGenerator.generate(_seed_counter, GameState.night, GameState.undercover_ratio())
 	var c := Customer.new()
-	c.setup(profile)
+	c.setup(profile, _world)
 	c.finished.connect(_on_customer_finished)
 	_world.add_child(c)
 	_current = c

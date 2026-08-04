@@ -21,6 +21,7 @@ var _subtitle: Label
 var _subtitle_timer: float = 0.0
 var _crosshair: Control
 var _hands: Label
+var _checkout: Label
 var _notices: Array[Dictionary] = []
 var _player: Player
 
@@ -35,6 +36,7 @@ func _ready() -> void:
 	Signals.heat_changed.connect(func(_h: float) -> void: _refresh_stats())
 	Signals.shift_clock.connect(_on_clock)
 	Signals.quota_changed.connect(func(_c: int, _t: int) -> void: _refresh_stats())
+	Signals.checkout_changed.connect(_on_checkout)
 	_refresh_stats()
 
 
@@ -86,6 +88,11 @@ func _build() -> void:
 	_hands = UIKit.label("", UIKit.FONT_S, UIKit.GREEN_DIM)
 	_hands.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	tr.add_child(_hands)
+
+	# The till display. Blank unless there is shopping on the counter.
+	_checkout = UIKit.label("", UIKit.FONT_M, UIKit.GREEN)
+	_checkout.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	tr.add_child(_checkout)
 
 	# --- Notices, bottom left ---
 	_notice_col = VBoxContainer.new()
@@ -187,6 +194,17 @@ func _replace_meter(box: HBoxContainer, old: Control, value: float, maximum: flo
 		_heat_bar = fresh
 	else:
 		_health_bar = fresh
+
+
+## Scanned count and running total, exactly like the display a customer can
+## see. Hidden entirely when the counter is empty.
+func _on_checkout(scanned: int, total_items: int, price: int) -> void:
+	if total_items <= 0:
+		_checkout.text = ""
+		return
+	var done := scanned >= total_items
+	_checkout.text = "%d/%d   %d" % [scanned, total_items, price]
+	_checkout.add_theme_color_override("font_color", UIKit.GREEN if done else UIKit.AMBER)
 
 
 func _on_prompt(text: String) -> void:

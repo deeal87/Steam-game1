@@ -16,10 +16,10 @@ in Godot 4.3 for Windows, Linux and macOS.
 
 ## The place
 
-You are not sealed in one room. The kiosk is a **shop floor** with the serving
-hatch, racks along the walls and the counter; a **stockroom** behind it holding
-every case you have not put out yet; a **side door** you can walk out of onto
-the pavement; and a **manhole** in the stockroom floor.
+You are not sealed in one room. It is a **shop**: ten metres by eight, with a
+front door customers walk in through, three racks with aisles round them, a
+checkout island with a customer side and a staff side, a **stockroom** behind
+holding every case you have not put out yet, and a **manhole** in its floor.
 
 Outside is about a hundred metres of street you can walk all of. The working
 lamps thin out as you go west until there are none. Underneath it all is a run
@@ -27,21 +27,23 @@ of brick sewer from the stockroom to a ladder that comes up in the dark corner
 at the far end.
 
 ```
-                       [ hatch ]
-     +-------------------[==]-------------------+
-     |                SHOP FLOOR                |
-     |  [racks]                       [racks]   |
-     |                                  [door] -+--> street
-     +--------[doorway]-------------------------+
-              |      |
-     +--------+      +------------+
-     |         STOCKROOM          |
-     |  [pallet racks]   (O)      |   (O) manhole
-     +----------------------------+        |
-                                           v
-     ===========================================  sewer, 55 m west
-                                           |
-                                    ladder up, far end of the street
+           [hatch]         [shop door]
+     +--------[==]------------[  ]--------+
+     | [rack]                    [rack]   |
+     |           [island rack]            |   customers browse here
+     |                                    |
+     |   ==========CHECKOUT==========     |
+     |            staff side              |
+     +-----------[stockroom]--------------+
+                      |
+            +---------+----------+
+            |     STOCKROOM      |
+            | [pallet racks] (O) |   (O) manhole
+            +--------------------+        |
+                                          v
+     ==========================================  sewer, 55 m west
+                                          |
+                                   ladder up, far end of the street
 ```
 
 Carry the **torch** (`T`). The kiosk is the only lit room in the game, and once
@@ -51,9 +53,12 @@ you can leave it the street and the sewer are genuinely dark.
 
 One night is one shift, 23:00 to 05:00.
 
-1. **Trade.** People come to the hatch and ask for things off the shelf. Fetch
-   them, hand them over, take the money. Restock when a run empties. Shelf
-   trade alone never quite covers the rent.
+1. **Trade.** People walk in, take what they want off the racks themselves and
+   put it on the counter. **Scan each item** (`E`), which rings up the price and
+   drops it in the bag, then **work the till** — which refuses while anything is
+   still unscanned. Restock from the stockroom when a run empties: an empty
+   shelf is a customer who arrives at the counter with nothing. Shelf trade
+   alone never quite covers the rent.
 2. **The ask.** Roughly a third of customers — and *every* undercover officer —
    will also ask for what is under the counter. This is where the money is.
 3. **Decide.** Sweep them with the scanner. Pull their file on the terminal.
@@ -112,6 +117,36 @@ Three fittings from the supplier change the shape of the fight:
 | **Window bars** | Closes the hatch as an entrance, so the whole team has to funnel through the back door — much easier to point a shotgun at |
 | **Bear trap** | Takes the first one through, whichever door that is |
 
+## The checkout
+
+The reason this is worth doing by hand rather than by pressing "sell": you have
+to keep your eye on the counter while you are also deciding whether the person
+across it is police. The till display shows `scanned / total` and the running
+price, and the till will not open until those match.
+
+Nothing stops you skipping an item. It just means you handed it over for free.
+
+## What is in the tunnels
+
+Something lives down there. The **first trip is nearly free** — one slow thing
+a bat puts down in a swing — and that is deliberate: the sewer has to be safe
+enough once that you are willing to try it again.
+
+Every trip after that is worse, and nothing resets:
+
+| Trips | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| **How many** | 1 | 1 | 2 | 3 | 3 | 4 | 5 | 5 |
+| **Tier** | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+
+By the late tiers the bat is not enough and they are faster than you. They also
+notice you from nearly twice as far when the torch is on, which is the one real
+decision down there: see where you are going, or not be seen.
+
+This is what stops the sewer being a free shortcut. Every time you use it —
+to reach the far end quietly, or to escape a raid — you are raising the price
+of using it again.
+
 ## Running for it
 
 The manhole in the stockroom is a way out. Go down it while the door team is
@@ -160,7 +195,7 @@ nothing but the look.
 | | |
 |---|---|
 | `WASD` | move · `Shift` run · `Ctrl` crouch behind the counter |
-| `E` | use, take, hand over, talk |
+| `E` | scan an item, work the till, take stock, talk |
 | `Q` | refill the shelf you are looking at |
 | `F` | sweep them with the scanner (pick it up off the counter first) |
 | `TAB` | notepad — what you have on the person at the window |
@@ -317,11 +352,13 @@ scripts/
   autoload/                 GameState · Signals · Audio · InputSetup · Settings
   systems/
     Tells.gd                the evidence database — every tell, question, answer
+    Checkout.gd             scanning, bagging, the till
+    SewerDirector.gd        what is waiting down there, and how much of it
     ProfileGenerator.gd     builds the people who walk in
     CustomerProfile.gd      one person and everything knowable about them
     NightDirector.gd        the clock and the queue
     RaidDirector.gd         the door team
-  actors/                   Player · Customer · RaidUnit
+  actors/                   Player · Customer · RaidUnit · SewerDweller
   world/
     World.gd                shop floor, stockroom, materials, anchors
     StreetBuilder.gd        the road, the far end, the thing in the alcove
@@ -342,11 +379,10 @@ Known gaps, in rough priority order:
 
 - **No music, and audio is minimal.** Everything is synthesised, which sounds
   appropriately cheap but is not the same as sound design.
-- **Customers still only use the hatch.** The shop floor, the stockroom and
-  the street are all walkable, but nobody comes inside — the queue is still one
-  person at the window.
-- **The sewer has one route.** It is a corridor between two ladders, not a
-  network, and nothing lives down there.
+- **One customer at a time.** They come in, shop, pay and leave before the next
+  one arrives. A real queue would be better and is the obvious next step.
+- **The sewer has one route.** It is a corridor between two ladders rather than
+  a network.
 - **No key rebinding.** Bindings are built in code in `InputSetup.gd` and
   there is no interface for changing them. Steam players will expect one.
 - **The raid still has no flanking or squad coordination.** It has pacing and
