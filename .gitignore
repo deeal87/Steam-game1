@@ -1,0 +1,14 @@
+# Godot's import cache and generated metadata.
+.godot/
+*.import
+
+# Build output.
+build/
+export/
+
+# Screenshot harness output.
+.shots/
+
+# Editor and OS noise.
+.DS_Store
+*.swp

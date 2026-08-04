@@ -1,0 +1,45 @@
+; Engine configuration file.
+; Kiosk At Midnight — a lonely kiosk on a dark street.
+; Everything in this project is generated at runtime: geometry, textures,
+; faces and audio. There are no imported binary assets, by design.
+
+config_version=5
+
+[application]
+
+config/name="Kiosk At Midnight"
+config/description="A lonely kiosk. A dark street. Some customers are not customers."
+run/main_scene="res://scenes/Boot.tscn"
+config/features=PackedStringArray("4.3", "GL Compatibility")
+boot_splash/show_image=false
+
+[autoload]
+
+Signals="*res://scripts/autoload/Signals.gd"
+GameState="*res://scripts/autoload/GameState.gd"
+InputSetup="*res://scripts/autoload/InputSetup.gd"
+Audio="*res://scripts/autoload/Audio.gd"
+
+[display]
+
+; The window is a normal 720p design space. The low internal resolution that
+; sells the PS1 look is applied only to the 3D view, which renders into a
+; shrunken SubViewport (see Game.gd). Interface text stays crisp — this game
+; asks you to read a lot of registry files, and pixelating them would be
+; style at the direct expense of playability.
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[physics]
+
+3d/default_gravity=18.0
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/canvas_textures/default_texture_filter=0
+anti_aliasing/quality/msaa_3d=0
+environment/defaults/default_clear_color=Color(0.02, 0.02, 0.03, 1)

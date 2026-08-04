@@ -1,0 +1,35 @@
+extends Node
+## Global event bus.
+##
+## Systems talk through here rather than holding references to each other, so
+## the night director, the UI and the world can be built and torn down
+## independently between nights.
+
+# --- Shift flow ---
+signal night_started(night: int)
+signal night_ended(summary: Dictionary)
+signal quota_changed(current: int, target: int)
+signal shift_clock(minutes_left: float)
+
+# --- Customers ---
+signal customer_arrived(customer: Node)
+signal customer_departed(customer: Node, outcome: String)
+signal customer_spoke(speaker: String, line: String)
+
+# --- Player-facing state ---
+signal money_changed(amount: int)
+signal heat_changed(amount: float)
+signal notice(text: String, tone: String)
+
+# --- Devices ---
+signal scan_completed(findings: Array)
+signal terminal_lookup(profile: Resource)
+signal evidence_logged(entry: Dictionary)
+
+# --- Danger ---
+signal raid_incoming(reason: String)
+signal raid_resolved(survived: bool)
+signal player_died(cause: String)
+
+# --- Interaction prompts ---
+signal prompt_changed(text: String)
