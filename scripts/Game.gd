@@ -429,6 +429,7 @@ func _on_shift_finished(summary: Dictionary) -> void:
 	player.ui_locked = true
 	GameState.nights_survived += 1
 	GameState.save_run()
+	Achievements.check_night_end(summary)
 	report.show_report(summary)
 
 
@@ -465,6 +466,8 @@ func _on_raid_over(survived: bool) -> void:
 	raid_director.phase = RaidDirector.Phase.IDLE
 	Music.stop_all()
 	if survived:
+		# Standing there when it went quiet, rather than going down the ladder.
+		Achievements.check_raid_survived(false)
 		_advance_night()
 
 
@@ -555,6 +558,7 @@ func _flee_raid() -> void:
 ## The whole point of it is having proof you got there, and asking the player to
 ## remember to press a screenshot key at that moment would defeat it.
 func _on_easter_egg_found(_unused: String) -> void:
+	Achievements.unlock("MASTER")
 	var path := await _capture_screenshot("kiosk_master")
 	Signals.notice.emit("YOU ARE THE MASTER OF MASTER %s" % PlayerIdentity.display_name().to_upper(), "good")
 	if path.is_empty():

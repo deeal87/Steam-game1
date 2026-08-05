@@ -121,6 +121,9 @@ func put_down(at: Vector3) -> void:
 func dispose() -> void:
 	Signals.notice.emit("Gone. You hear it land.", "good")
 	Audio.play("impact", -20.0)
+	# Whether anybody saw them before they went is the difference between having
+	# handled it and having been caught handling it.
+	Achievements.check_body_disposed(not _seen_by.is_empty())
 	disposed.emit(self)
 	queue_free()
 

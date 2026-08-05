@@ -365,6 +365,7 @@ func _open_cache(hit: Node) -> void:
 		return
 	Audio.play("register", -14.0)
 	Signals.notice.emit("Somebody's stash, under a board. %d." % amount, "good")
+	Achievements.unlock("TUNNEL_RAT")
 	if hit is Node3D:
 		(hit as Node3D).queue_free()
 

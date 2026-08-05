@@ -16,6 +16,7 @@ func _ready() -> void:
 	print("\n=== KIOSK AT MIDNIGHT · smoke ===\n")
 	GameState.reset_run()
 	test_classes_resolve()
+	test_achievements()
 	test_audio()
 	test_textures()
 	test_icon()
@@ -113,6 +114,117 @@ func _collect_class_names(dir_path: String, into: Array[String]) -> void:
 				f.close()
 		entry = dir.get_next()
 	dir.list_dir_end()
+
+
+## Achievements have to work with no Steam at all, because that is every build
+## this repository produces. The Steam calls are a mirror, never the source.
+func test_achievements() -> void:
+	print("\nAchievements:")
+	Achievements.reset_all()
+	var ids: Array = Achievements.CATALOGUE.keys()
+	print("   %d in the catalogue · Steam connected: %s"
+		% [ids.size(), "yes" if Achievements.steam_connected() else "no"])
+
+	# API ids are what you type into Steamworks and are permanent once shipped.
+	var bad_ids: Array[String] = []
+	for id: String in ids:
+		if id != id.to_upper() or id.contains(" "):
+			bad_ids.append(id)
+		var entry: Dictionary = Achievements.CATALOGUE[id]
+		for key: String in ["name", "desc", "hidden"]:
+			if not entry.has(key):
+				bad_ids.append("%s.%s" % [id, key])
+	_check(bad_ids.is_empty(), "every id is a valid Steamworks API name%s" %
+		("" if bad_ids.is_empty() else " — %s" % ", ".join(bad_ids)))
+
+	# Nothing rewards shooting people. The game charges for that everywhere else
+	# and a trophy for it would undercut the lot.
+	var rewards_violence := false
+	for id: String in ids:
+		var text := str(Achievements.CATALOGUE[id]["desc"]).to_lower()
+		if text.contains("kill") or text.contains("shoot"):
+			rewards_violence = true
+	_check(not rewards_violence, "nothing pays you for shooting somebody")
+
+	# Unlocking works, is idempotent, and survives a reload.
+	_check(not Achievements.has("FIRST_NIGHT"), "starts locked")
+	_check(Achievements.unlock("FIRST_NIGHT"), "unlocks once")
+	_check(not Achievements.unlock("FIRST_NIGHT"), "and not twice")
+	_check(Achievements.has("FIRST_NIGHT"), "and stays unlocked")
+	_check(not Achievements.unlock("NOT_A_REAL_ID"), "an unknown id does nothing")
+
+	Achievements._earned.clear()
+	Achievements.load_progress()
+	_check(Achievements.has("FIRST_NIGHT"), "and it survives a reload")
+
+	# Hidden ones keep their description back until earned, or the list is a
+	# walkthrough for the one thing in the game worth finding yourself.
+	var hidden_before := ""
+	for a: Dictionary in Achievements.listing():
+		if str(a["id"]) == "MASTER":
+			hidden_before = str(a["name"])
+	_check(hidden_before == "???", "a hidden one does not name itself first")
+	Achievements.unlock("MASTER")
+	var hidden_after := ""
+	for a: Dictionary in Achievements.listing():
+		if str(a["id"]) == "MASTER":
+			hidden_after = str(a["name"])
+	_check(hidden_after != "???", "and does once you have found it")
+
+	# The conditions, driven the way the game drives them.
+	Achievements.reset_all()
+	GameState.reset_run()
+	Achievements.check_night_end({
+		"rent_paid": true, "illicit": 0, "served": 6,
+		"bill": {"dismissed_count": 0, "killed_count": 0},
+		"bodies": {}, "reputation": 100.0,
+	})
+	_check(Achievements.has("FIRST_NIGHT"), "surviving a shift pays out")
+	_check(Achievements.has("MADE_THE_RENT"), "so does making rent on shelf trade alone")
+	_check(Achievements.has("CLEAN_READ"), "and a night with nobody wronged")
+	_check(Achievements.has("SPOTLESS"), "and one with your name untouched")
+
+	Achievements.reset_all()
+	Achievements.check_night_end({
+		"rent_paid": true, "illicit": 220, "served": 6,
+		"bill": {"dismissed_count": 1, "killed_count": 0},
+		"bodies": {}, "reputation": 93.0,
+	})
+	_check(not Achievements.has("MADE_THE_RENT"), "selling under the counter does not count")
+	_check(not Achievements.has("CLEAN_READ"), "and throwing somebody out is not clean")
+	_check(not Achievements.has("SPOTLESS"), "and a dented name is not spotless")
+
+	# A body left on the floor is not a clean night either.
+	Achievements.reset_all()
+	Achievements.check_night_end({
+		"rent_paid": true, "illicit": 0, "served": 6,
+		"bill": {"dismissed_count": 0, "killed_count": 0},
+		"bodies": {"civilians": 1, "officers": 0}, "reputation": 100.0,
+	})
+	_check(not Achievements.has("CLEAN_READ"),
+		"leaving one on the floor is not a clean night")
+
+	# Running for it is not surviving it.
+	Achievements.reset_all()
+	Achievements.check_raid_survived(true)
+	_check(not Achievements.has("SURVIVED_RAID"), "going down the ladder is not surviving")
+	Achievements.check_raid_survived(false)
+	_check(Achievements.has("SURVIVED_RAID"), "standing there is")
+
+	Achievements.reset_all()
+	Achievements.check_body_disposed(true)
+	_check(not Achievements.has("NO_WITNESSES"), "somebody saw it, so it does not count")
+	Achievements.check_body_disposed(false)
+	_check(Achievements.has("NO_WITNESSES"), "nobody saw it, so it does")
+
+	# With no Steam the push is a no-op that reports honestly rather than
+	# throwing. This is the normal case, not the edge case.
+	_check(not Achievements._push_to_steam("FIRST_NIGHT"),
+		"pushing to a Steam that is not there fails quietly")
+	_check(not Achievements.steam_connected(), "and the interface can say so")
+
+	Achievements.reset_all()
+	GameState.reset_run()
 
 
 # --- Assets that are generated rather than loaded -----------------------------

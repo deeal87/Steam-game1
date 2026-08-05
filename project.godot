@@ -28,6 +28,7 @@ InputSetup="*res://scripts/autoload/InputSetup.gd"
 Audio="*res://scripts/autoload/Audio.gd"
 Music="*res://scripts/autoload/Music.gd"
 Settings="*res://scripts/autoload/Settings.gd"
+Achievements="*res://scripts/autoload/Achievements.gd"
 
 [display]
 

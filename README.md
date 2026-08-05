@@ -369,9 +369,67 @@ no argument that could distinguish an officer from a civilian, and the smoke
 suite asserts that two identical situations score identically. The night number
 and the clock *are* fair game — both are on screen already.
 
+## Achievements
+
+Ten of them, listed under `Esc` → ACHIEVEMENTS. They work with **no Steam at
+all** — the game keeps its own record in `user://achievements.cfg` and the page
+says which it is rather than implying a connection the build does not have.
+
+| API name | What it wants |
+|---|---|
+| `FIRST_NIGHT` | Survive your first shift and make the rent |
+| `FIVE_NIGHTS` / `TEN_NIGHTS` | Last that long |
+| `CLEAN_READ` | A whole night without being wrong about anybody |
+| `SPOTLESS` | Finish a night with your name still at 100% |
+| `MADE_THE_RENT` | Pay the rent on shelf trade alone, nothing under the counter |
+| `SURVIVED_RAID` | Survive a raid *without* going down the manhole |
+| `NO_WITNESSES` | Deal with a body before anybody sees it |
+| `TUNNEL_RAT` | Find what is at the end of the spur |
+| `MASTER` | Hidden |
+
+**Nothing unlocks for shooting people.** The rest of the game goes to
+considerable trouble to charge you for that, and a trophy would undercut all of
+it. The smoke suite asserts it, so it stays true.
+
+The API names are what you type into the Steamworks partner site and are
+permanent once shipped — changing one orphans everybody's unlock — so they are
+deliberately dull while the display names stay free to rewrite.
+
+## Steam
+
+Nothing in this repository is a Steam build, and the plugin is deliberately not
+bundled: GodotSteam is a per-platform binary and this project ships no binaries
+it did not generate. What *is* here is every hook, written so that dropping the
+plugin in and initialising it is the whole job.
+
+| Feature | State |
+|---|---|
+| **Persona name** on the board at the end of the road | `PlayerIdentity.steam_name()` — falls back to the OS account name, then `STRANGER` |
+| **Achievements** | `Achievements._push_to_steam()` mirrors every unlock with `setAchievement` + `storeStats` |
+| **Overlay, cloud, rich presence** | Needs the SDK; nothing to do in-game |
+
+Every call is guarded the same way: the singleton may be absent, present but
+uninitialised, or present with the client not running. None of those are errors
+— they are the normal case for a build running outside Steam, which is every
+build this repository produces today. The suite tests the *absent* path, since
+that is the one that actually runs.
+
+What has to happen outside the code, when there is an app ID:
+
+1. Add GodotSteam and call `Steam.steamInit()` at boot.
+2. Create each achievement in **Steamworks → Stats & Achievements** using the
+   exact API names above.
+3. Drop `steam_appid.txt` next to the binary for local testing.
+4. Point **Steam Auto-Cloud** at the save directory — no code needed. The game
+   writes `kiosk_save.cfg`, `achievements.cfg` and `keybinds.cfg` to Godot's
+   `user://`, which is `%APPDATA%\Godot\app_userdata\Kiosk At Midnight` on
+   Windows, `~/.local/share/godot/app_userdata/Kiosk At Midnight` on Linux and
+   `~/Library/Application Support/Godot/app_userdata/Kiosk At Midnight` on
+   macOS.
+
 ## Settings
 
-`Esc` opens a pause menu that actually freezes the game, on two pages.
+`Esc` opens a pause menu that actually freezes the game, on three pages.
 
 **Controls** rebinds every key. Bindings are stored by *physical* key, so a
 QWERTZ or AZERTY keyboard already works without touching anything — rebinding
@@ -592,7 +650,8 @@ running the shipped binary and grepping for them. Don't chase it.
 scenes/Boot.tscn            entry point; everything else is built in code
 scripts/
   Game.gd                   phase machine, panel routing, the SubViewport
-  autoload/                 GameState · Signals · Audio · Music · InputSetup · Settings
+  autoload/                 GameState · Signals · Audio · Music · InputSetup ·
+                            Settings · Achievements
   systems/
     Tells.gd                the evidence database — every tell, question, answer
     Checkout.gd             scanning, bagging, the till
@@ -600,8 +659,9 @@ scripts/
     ProfileGenerator.gd     builds the people who walk in
     CustomerProfile.gd      one person and everything knowable about them
     NightDirector.gd        the clock and the queue
-    RaidDirector.gd         the door team
-  actors/                   Player · Customer · RaidUnit · SewerDweller
+    RaidDirector.gd         the door team, and how the pairs work
+    BodyDirector.gd         what is on the floor, and who has seen it
+  actors/                   Player · Customer · RaidUnit · SewerDweller · Body
   world/
     World.gd                shop floor, stockroom, materials, anchors
     StreetBuilder.gd        the road, the far end, the thing in the alcove
@@ -624,8 +684,8 @@ Known gaps, in rough priority order:
 - **Content depth.** Forty-three tells and nine standing questions carries a
   long way, but a determined player will eventually start recognising them.
   This is still the main thing between the slice and a release.
-- **No Steam integration.** The name on the board at the end of the road comes
-  from a hook with a local fallback, but there are no achievements, no cloud
-  saves and no overlay.
+- **Steam is hooks, not a build.** Achievements and the persona name are wired
+  and tested against the no-Steam path, but nothing here has been run against a
+  real app ID, and there is no overlay or cloud configuration.
 - **The Windows `.exe` has no embedded icon.** The file is generated and the
   preset points at it, but stamping it into the header needs `rcedit`.

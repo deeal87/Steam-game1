@@ -85,7 +85,8 @@ func _rebuild() -> void:
 
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 8)
-	for conf: Array in [["settings", "SETTINGS"], ["keys", "CONTROLS"]]:
+	for conf: Array in [["settings", "SETTINGS"], ["keys", "CONTROLS"],
+			["awards", "ACHIEVEMENTS"]]:
 		var b := Button.new()
 		b.text = conf[1]
 		b.flat = true
@@ -103,6 +104,11 @@ func _rebuild() -> void:
 
 	if _page == "keys":
 		_build_keys()
+		_build_footer()
+		return
+
+	if _page == "awards":
+		_build_awards()
 		_build_footer()
 		return
 
@@ -156,6 +162,37 @@ func _rebuild() -> void:
 	_body.add_child(subs)
 
 	_build_footer()
+
+
+## Achievements. They work with no Steam at all — the list is the game's own
+## record — and the header says which it is rather than implying a connection
+## the build does not have.
+func _build_awards() -> void:
+	var listing := Achievements.listing()
+	var got := Achievements.earned_count()
+	_body.add_child(UIKit.label("%d of %d" % [got, listing.size()], UIKit.FONT_M, UIKit.GREEN))
+	_body.add_child(UIKit.label(
+		"Synced with Steam." if Achievements.steam_connected()
+			else "Stored on this machine. No Steam client running.",
+		UIKit.FONT_S, UIKit.GREEN_DIM))
+	_body.add_child(UIKit.spacer(6))
+
+	for a: Dictionary in listing:
+		var earned := bool(a["earned"])
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		row.add_child(UIKit.label("[x]" if earned else "[ ]", UIKit.FONT_S,
+			UIKit.GREEN if earned else UIKit.GREEN_DIM))
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 0)
+		col.add_child(UIKit.label(str(a["name"]), UIKit.FONT_S,
+			UIKit.WHITE if earned else UIKit.GREEN_DIM))
+		var desc := UIKit.label(str(a["desc"]), UIKit.FONT_S, UIKit.GREEN_DIM)
+		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		desc.custom_minimum_size = Vector2(520, 0)
+		col.add_child(desc)
+		row.add_child(col)
+		_body.add_child(row)
 
 
 func _build_keys() -> void:
