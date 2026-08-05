@@ -70,6 +70,9 @@ var patience_max: int = 5
 var aborted: bool = false          ## Walked out because you pushed too hard.
 var base_answers: Dictionary = {}  ## qid -> {text, matches_file}
 var asked_base: Dictionary = {}    ## qid -> true
+## Which of the standing questions this person invites. A subset, so the menu
+## stays readable and no two people offer quite the same conversation.
+var standing_questions: Array[String] = []
 
 # --- Session state ---
 var scanned: bool = false
@@ -119,12 +122,19 @@ func tells_on_channel(channel: String) -> Array[String]:
 
 # --- Interrogation -----------------------------------------------------------
 
-## Questions currently on the menu: the four standing ones, plus one unlocked
-## by each tell the player has actually found.
+## Questions currently on the menu: the standing ones *this person* invites,
+## plus one unlocked by each tell the player has actually found.
+##
+## Not every standing question is offered to everybody. There are nine in the
+## pool and each person invites a few of them, which keeps the menu short enough
+## to read at a glance and makes two customers in a row feel like two different
+## conversations. Since patience caps out at seven questions, offering all nine
+## was never a real choice anyway — it was a longer list of things you cannot
+## afford to do.
 func available_questions() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
-	for qid: String in Tells.BASE_QUESTIONS:
-		if asked_base.has(qid):
+	for qid: String in standing_questions:
+		if asked_base.has(qid) or not Tells.BASE_QUESTIONS.has(qid):
 			continue
 		out.append({
 			"id": qid,

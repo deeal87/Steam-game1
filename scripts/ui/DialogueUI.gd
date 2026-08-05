@@ -8,6 +8,13 @@ extends CanvasLayer
 
 signal closed
 
+## There are nine choice keys, so nine is every option that can exist on screen.
+## The actions are laid out first and always fit; questions take what is left and
+## page if there are more of them. Nothing the player needs to reach — refusing,
+## selling, telling somebody to move on — can ever be pushed off the list by a
+## long enough list of questions.
+const MAX_OPTIONS := 9
+
 var open: bool = false
 var _customer: Customer
 var _player: Player
@@ -17,6 +24,7 @@ var _options: Array[Dictionary] = []
 var _last_answer: String = ""
 var _last_note: String = ""
 var _last_tone: String = ""
+var _question_page: int = 0
 
 
 func _ready() -> void:
@@ -29,6 +37,7 @@ func show_for(customer: Customer, player: Player) -> void:
 	_player = player
 	_last_answer = ""
 	_last_note = ""
+	_question_page = 0
 	open = true
 	visible = true
 	_rebuild()
@@ -92,16 +101,33 @@ func _rebuild() -> void:
 	_body.add_child(UIKit.spacer(4))
 
 	# --- Questions ---
+	#
+	# The actions are counted before a single question is laid out, because the
+	# actions are the decisions and they must always be reachable. Questions get
+	# whatever room is left and page if they overflow.
 	var questions := p.available_questions()
+	var room := MAX_OPTIONS - _action_count()
+	var paged := questions.size() > room
+	if paged:
+		room -= 1   # the last slot becomes "more questions"
+
 	if questions.is_empty():
 		_body.add_child(UIKit.label("Nothing left to ask.", UIKit.FONT_S, UIKit.GREEN_DIM))
+	elif p.patience <= 0:
+		_body.add_child(UIKit.label("They are done answering questions.",
+			UIKit.FONT_S, UIKit.GREEN_DIM))
 	else:
 		_body.add_child(UIKit.label("ASK", UIKit.FONT_S, UIKit.GREEN_DIM))
-		for q in questions:
-			if p.patience <= 0:
-				break
+		var pages: int = maxi(1, int(ceil(float(questions.size()) / float(maxi(1, room)))))
+		_question_page = _question_page % pages
+		var start: int = _question_page * room
+		for i in range(start, mini(start + room, questions.size())):
+			var q: Dictionary = questions[i]
 			var note: String = "" if q["kind"] == "base" else "· on the evidence"
 			_add_option({"type": "ask", "entry": q}, str(q["prompt"]), true, note)
+		if paged:
+			_add_option({"type": "page"}, "More questions", true,
+				"· page %d of %d" % [_question_page + 1, pages])
 
 	# --- Actions ---
 	_body.add_child(UIKit.spacer(6))
@@ -142,6 +168,18 @@ func _read_colour(p: CustomerProfile) -> Color:
 	return UIKit.RED
 
 
+## How many action rows this rebuild will produce. Worked out before the
+## questions are laid out so they can be given the space that is genuinely left,
+## and kept next to `_rebuild` because the two have to agree exactly.
+func _action_count() -> int:
+	var n := 2   # move on, step back — always there
+	if _player != null and _player.held_illicit > 0:
+		n += 1
+	if _customer != null and _customer._asked_for_illicit and not _customer.profile.sold_illicit:
+		n += 1
+	return n
+
+
 func _add_option(data: Dictionary, text: String, enabled: bool, note: String = "") -> void:
 	_options.append({"data": data, "enabled": enabled})
 	_body.add_child(UIKit.option_row(_options.size(), text, enabled, note))
@@ -166,6 +204,11 @@ func _choose(option: Dictionary) -> void:
 				_customer._leave("spooked")
 				close()
 				return
+			_rebuild()
+		"page":
+			# Turning the page is not talking to them, so it costs nothing.
+			_question_page += 1
+			Audio.play("click", -24.0)
 			_rebuild()
 		"sell":
 			var units := _player.held_illicit

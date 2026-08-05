@@ -92,6 +92,12 @@ Evidence arrives on four channels:
 | **Behaviour** | just watch them | Keeps finding the camera in the corner |
 | **Their answers** | ask, and check against the file | Says bakery, file says city services |
 
+There are **43 tells** — fourteen on the scanner, fifteen on the terminal,
+fourteen in how somebody behaves — and **nine standing questions**, of which any
+one person invites four. That subset is why two customers in a row do not feel
+like the same conversation, and it keeps the menu short enough to read while
+somebody is waiting.
+
 Finding a tell unlocks a question about it. Asking costs patience, and patience
 runs out — you cannot ask everything, so you have to choose which contradiction
 is worth spending a question on. An answer comes back **confirmed** (they
@@ -534,10 +540,9 @@ Known gaps, in rough priority order:
   line-of-sight now, but they do not work as a team.
 - **The body-bag mechanic is vestigial.** Bags auto-consume to reduce heat
   rather than being something you actually do.
-- **Content depth.** Twenty-eight tells and five standing questions carries
-  noticeably longer than the first pass did, but a determined player will still
-  start recognising them. This is the main thing between the slice and a
-  release.
+- **Content depth.** Forty-three tells and nine standing questions carries a
+  long way, but a determined player will eventually start recognising them.
+  This is still the main thing between the slice and a release.
 - **No Steam integration.** The name on the board at the end of the road comes
   from a hook with a local fallback, but there are no achievements, no cloud
   saves and no overlay.

@@ -18,6 +18,7 @@ func _ready() -> void:
 	test_audio()
 	test_textures()
 	test_icon()
+	test_evidence()
 	test_world()
 	test_customer_construction()
 	await test_sewer_is_traversable()
@@ -100,6 +101,192 @@ func test_icon() -> void:
 			"and is the size the generator makes (%v)" % on_disk.get_size())
 		_check(_images_match(on_disk, fresh),
 			"and is up to date — rerun tools/MakeIcon.tscn if this fails")
+
+
+## There are nine keys. If the menu ever lists more than nine things, the ones
+## past the ninth cannot be chosen at all — and because the actions are laid out
+## last, the option that silently disappears is "tell them to move on". Which is
+## a decision the whole game is about.
+##
+## This is checked against the worst person the generator can produce, not
+## against a typical one: every tell discovered, everything on offer at once.
+func _test_dialogue_fits() -> void:
+	var dialogue := DialogueUI.new()
+	add_child(dialogue)
+
+	var worst := 0
+	var worst_actions := 0
+	var missing_action := 0
+	for i in 400:
+		var p := ProfileGenerator.generate(i * 7 + 3, 9, 0.5)
+		for id: String in p.tells:
+			p.discover(id)
+		var c := Customer.new()
+		c.setup(p, _world)
+		add_child(c)
+		# The state that puts the most on screen at once: they have asked, you
+		# are holding stock, so both the sell and the refuse rows are live.
+		c._asked_for_illicit = true
+		_player.held_illicit = 2
+
+		dialogue.show_for(c, _player)
+		worst = maxi(worst, dialogue._options.size())
+		var actions := 0
+		var can_dismiss := false
+		for o: Dictionary in dialogue._options:
+			var t := str(o["data"]["type"])
+			if t != "ask" and t != "page":
+				actions += 1
+			if t == "dismiss":
+				can_dismiss = true
+		worst_actions = maxi(worst_actions, actions)
+		if not can_dismiss:
+			missing_action += 1
+		dialogue.close()
+		c.queue_free()
+
+	_player.held_illicit = 0
+	print("   worst case: %d rows, %d of them actions, on %d keys" %
+		[worst, worst_actions, DialogueUI.MAX_OPTIONS])
+	_check(worst <= DialogueUI.MAX_OPTIONS,
+		"the menu never lists more options than there are keys (%d)" % worst)
+	_check(missing_action == 0,
+		"and telling somebody to move on is always reachable (%d without it)" % missing_action)
+
+	# Paging has to actually reach the questions it hid, or it is just a
+	# prettier way of losing them.
+	var busy := ProfileGenerator.generate(31337, 9, 1.0)
+	for id: String in busy.tells:
+		busy.discover(id)
+	var cust := Customer.new()
+	cust.setup(busy, _world)
+	add_child(cust)
+	cust._asked_for_illicit = true
+	_player.held_illicit = 2
+	dialogue.show_for(cust, _player)
+
+	var wanted := busy.available_questions().size()
+	var seen := {}
+	for turn in 12:
+		for o: Dictionary in dialogue._options:
+			if str(o["data"]["type"]) == "ask":
+				seen[str(o["data"]["entry"]["id"])] = true
+		var pager: Dictionary = {}
+		for o: Dictionary in dialogue._options:
+			if str(o["data"]["type"]) == "page":
+				pager = o
+		if pager.is_empty():
+			break
+		dialogue._choose(pager)
+	print("   a full menu offers %d questions; paging reached %d" % [wanted, seen.size()])
+	_check(seen.size() == wanted, "every question is reachable by paging (%d of %d)"
+		% [seen.size(), wanted])
+
+	_player.held_illicit = 0
+	dialogue.close()
+	cust.queue_free()
+	dialogue.queue_free()
+
+
+## The evidence database is the content of the game, and almost all of it is
+## text that nothing else would ever notice was wrong. A tell missing a field,
+## two tells sharing a question id, or a standing question with no answer
+## written for it would all show up in play as a blank line and nowhere else.
+func test_evidence() -> void:
+	print("\nThe evidence:")
+	var ids := Tells.all_ids()
+	print("   %d tells · %d standing questions" % [ids.size(), Tells.BASE_QUESTIONS.size()])
+
+	var required := ["channel", "label", "weight", "question", "prompt",
+		"innocent", "guilty", "cleared_note", "confirmed_note"]
+	var incomplete: Array[String] = []
+	for id: String in ids:
+		var t := Tells.get_tell(id)
+		for key: String in required:
+			if not t.has(key) or str(t[key]).is_empty():
+				incomplete.append("%s.%s" % [id, key])
+	_check(incomplete.is_empty(), "every tell is complete%s" %
+		("" if incomplete.is_empty() else " — missing %s" % ", ".join(incomplete)))
+
+	# A shared question id would make one tell's question resolve the other.
+	var seen := {}
+	var clashes: Array[String] = []
+	for id: String in ids:
+		var q: String = Tells.get_tell(id)["question"]
+		if seen.has(q):
+			clashes.append("%s and %s both use %s" % [seen[q], id, q])
+		seen[q] = id
+		if Tells.BASE_QUESTIONS.has(q):
+			clashes.append("%s collides with a standing question (%s)" % [id, q])
+	_check(clashes.is_empty(), "no two questions share an id%s" %
+		("" if clashes.is_empty() else " — %s" % "; ".join(clashes)))
+
+	# Weights have to mean something. A tell at 3 is close to conclusive, so
+	# nothing may sit above that, and nothing may be worth nothing.
+	var bad_weight: Array[String] = []
+	for id: String in ids:
+		var w := int(Tells.get_tell(id)["weight"])
+		if w < 1 or w > 3:
+			bad_weight.append("%s (%d)" % [id, w])
+	_check(bad_weight.is_empty(), "every weight is in range%s" %
+		("" if bad_weight.is_empty() else " — %s" % ", ".join(bad_weight)))
+
+	# Every channel has to carry enough that a player who works one of them
+	# still meets people they have not read before.
+	for channel: String in [Tells.CHANNEL_SCANNER, Tells.CHANNEL_TERMINAL,
+			Tells.CHANNEL_BEHAVIOUR]:
+		var n := Tells.ids_for_channel(channel).size()
+		_check(n >= 10, "%s carries %d tells" % [channel, n])
+
+	# Standing questions need an answer written for them. A question id with no
+	# arm in _write_base_answers stores an empty string and says nothing at all.
+	var silent: Array[String] = []
+	var mismatched: Array[String] = []
+	for i in 300:
+		var p := ProfileGenerator.generate(i * 41 + 11, 3, 0.5)
+		for qid: String in Tells.BASE_QUESTIONS:
+			var ans: Dictionary = p.base_answers.get(qid, {})
+			if ans.is_empty() or str(ans.get("text", "")).is_empty():
+				if not silent.has(qid):
+					silent.append(qid)
+			# The field named by the question has to exist on the profile, or
+			# the answer is being checked against nothing.
+			var field: String = Tells.BASE_QUESTIONS[qid]["field"]
+			if p.get(field) == null and not mismatched.has(qid):
+				mismatched.append(qid)
+	_check(silent.is_empty(), "every standing question gets an answer%s" %
+		("" if silent.is_empty() else " — silent: %s" % ", ".join(silent)))
+	_check(mismatched.is_empty(), "and reads a field that exists%s" %
+		("" if mismatched.is_empty() else " — missing: %s" % ", ".join(mismatched)))
+
+	_test_file_consistency()
+
+
+## The terminal must never claim something the file does not show. If a tell's
+## innocent explanation cites a line in the record, and the record has been
+## emptied by another tell, the honest answer reads as a lie and the player is
+## being punished for checking.
+func _test_file_consistency() -> void:
+	var coexisting: Array[String] = []
+	var scrubbed_with_record := 0
+	var scrubbed := 0
+	for i in 4000:
+		var p := ProfileGenerator.generate(i * 13 + 7, 5, 0.5)
+		for pair: Array in ProfileGenerator.CONFLICTING_TELLS:
+			if p.has_tell(pair[0]) and p.has_tell(pair[1]):
+				var label := "%s + %s" % [pair[0], pair[1]]
+				if not coexisting.has(label):
+					coexisting.append(label)
+		if p.has_tell("record_scrubbed"):
+			scrubbed += 1
+			if not p.record.is_empty():
+				scrubbed_with_record += 1
+	_check(coexisting.is_empty(), "tells that contradict each other never coexist%s" %
+		("" if coexisting.is_empty() else " — %s" % ", ".join(coexisting)))
+	_check(scrubbed > 0, "the sample contained scrubbed records to check (%d)" % scrubbed)
+	_check(scrubbed_with_record == 0,
+		"a scrubbed record really is empty (%d of %d had entries)"
+			% [scrubbed_with_record, scrubbed])
 
 
 ## Compares two images on a coarse grid rather than pixel by pixel: PNG round
@@ -1064,6 +1251,8 @@ func test_panels() -> void:
 		guard += 1
 	dialogue._rebuild()
 	_check(dialogue._options.size() > 0, "dialogue still offers actions once questions run out")
+	dialogue.close()
+	_test_dialogue_fits()
 	dialogue.close()
 
 	var notebook := NotebookUI.new()

@@ -102,14 +102,59 @@ const STALE_SLANG_LINES := [
 const MONTHS := ["January", "February", "March", "April", "May", "June",
 	"July", "August", "September", "October", "November", "December"]
 
+## How many of the nine standing questions any one person invites. Four leaves
+## room on a single page of the dialogue for every tell question a person can
+## carry plus every action, so nothing the player needs is ever pushed out of
+## reach — and it is already more standing questions than their patience will
+## pay for.
+const STANDING_QUESTIONS_OFFERED := 4
+
 ## Tells that cannot coexist on one person. The second of each pair is dropped.
+##
+## Two kinds of conflict live here. The first is a contradiction in the fiction:
+## `record_scrubbed` means an empty record, so it cannot sit beside any tell
+## whose innocent explanation is a line *in* that record — the terminal would
+## cite a conviction that is not there, and the honest answer would read as a
+## lie.
+##
+## The second is duller and just as important: two tells that write the same
+## field of the file. Whichever ran last would win and the other would leave the
+## player looking for something the terminal never printed.
 const CONFLICTING_TELLS := [
+	# Nothing that writes to the record can survive alongside an empty one.
 	["record_scrubbed", "employment_gap"],
+	["record_scrubbed", "licence_endorsed"],
+	["record_scrubbed", "photo_mismatch"],
+	["record_scrubbed", "reads_the_room"],
+	# Three tells, one next-of-kin line.
+	["kin_switchboard", "kin_shares_address"],
+	["kin_switchboard", "wrong_hours"],
+	["kin_shares_address", "wrong_hours"],
+	# Two tells, one utilities line.
+	["no_utilities", "bank_new"],
+	# Two tells, one employment note.
+	["employment_gap", "no_school"],
 ]
 
 
 static func _pick(arr: Array, rng: RandomNumberGenerator) -> Variant:
 	return arr[rng.randi() % arr.size()]
+
+
+## Both of these are used twice: once to write the file, and once to write the
+## answer of somebody whose story does not match it. They live here so a wrong
+## answer can never be spotted by its *shape* rather than by its contents.
+static func _plate(rng: RandomNumberGenerator) -> String:
+	return "%s%s %d%d%d" % [
+		String.chr(65 + rng.randi() % 26), String.chr(65 + rng.randi() % 26),
+		rng.randi() % 10, rng.randi() % 10, rng.randi() % 10,
+	]
+
+
+static func _phone(rng: RandomNumberGenerator) -> String:
+	return "07%d%d %d%d%d %d%d%d" % [rng.randi() % 10, rng.randi() % 10,
+		rng.randi() % 10, rng.randi() % 10, rng.randi() % 10,
+		rng.randi() % 10, rng.randi() % 10, rng.randi() % 10]
 
 
 static func _date(rng: RandomNumberGenerator, year_lo: int, year_hi: int) -> String:
@@ -149,18 +194,13 @@ static func generate(seed_value: int, night: int, undercover_chance: float) -> C
 	p.employer = job["employer"]
 
 	if rng.randf() < 0.45:
-		p.plate = "%s%s %d%d%d" % [
-			String.chr(65 + rng.randi() % 26), String.chr(65 + rng.randi() % 26),
-			rng.randi() % 10, rng.randi() % 10, rng.randi() % 10,
-		]
+		p.plate = _plate(rng)
 		p.vehicle_desc = "%s %s (%s)" % [_pick(CAR_COLOURS, rng), _pick(CAR_MAKES, rng), p.plate]
 	else:
 		p.vehicle_desc = "None registered"
 		p.plate = "—"
 
-	p.phone = "07%d%d %d%d%d %d%d%d" % [rng.randi() % 10, rng.randi() % 10,
-		rng.randi() % 10, rng.randi() % 10, rng.randi() % 10,
-		rng.randi() % 10, rng.randi() % 10, rng.randi() % 10]
+	p.phone = _phone(rng)
 	p.phone_registered = _date(rng, 2018, 2025)
 	p.next_of_kin = "%s %s (%s)" % [_pick(FIRST_NAMES, rng), _pick(SURNAMES, rng),
 		_pick(["sister", "brother", "mother", "father", "partner", "daughter", "son"], rng)]
@@ -194,6 +234,20 @@ static func generate(seed_value: int, night: int, undercover_chance: float) -> C
 	p.height_scale = visible.randf_range(0.90, 1.10)
 	p.bulk_scale = visible.randf_range(0.88, 1.18)
 	p.pushiness = visible.randf()
+
+	# Which standing questions this person invites. On the same stream for the
+	# same reason: the menu is the first thing the player looks at, so if the
+	# questions on offer drifted with `kind` the game would be answering itself
+	# before a word was said.
+	var standing: Array[String] = []
+	for qid: String in Tells.BASE_QUESTIONS:
+		standing.append(qid)
+	for i in range(standing.size() - 1, 0, -1):
+		var j := visible.randi() % (i + 1)
+		var tmp := standing[i]
+		standing[i] = standing[j]
+		standing[j] = tmp
+	p.standing_questions = standing.slice(0, STANDING_QUESTIONS_OFFERED)
 
 	p.greeting = _pick(GREETINGS, rng)
 
@@ -265,13 +319,18 @@ static func _assign_tells(p: CustomerProfile, rng: RandomNumberGenerator, night:
 		if not chosen.has(id):
 			chosen.append(id)
 
-	# Some pairs cannot both be true of one person. `record_scrubbed` means an
-	# empty record, but the innocent explanation for `employment_gap` is a
-	# custodial sentence that would have to appear in it. Keeping both would
-	# make the terminal cite a conviction that is not there.
+	# Some pairs cannot both be true of one person — see CONFLICTING_TELLS.
+	#
+	# Whichever was picked *later* is the one that goes, rather than always the
+	# second of the pair. That matters: an officer's guaranteed non-scanner tell
+	# is chosen first and sits at the front of this list, and dropping by pair
+	# order could delete exactly that one and leave an officer who gives nothing
+	# away except on the scanner.
 	for pair: Array in CONFLICTING_TELLS:
-		if chosen.has(pair[0]) and chosen.has(pair[1]):
-			chosen.erase(pair[1])
+		var a := chosen.find(pair[0])
+		var b := chosen.find(pair[1])
+		if a >= 0 and b >= 0:
+			chosen.remove_at(maxi(a, b))
 
 	for id: String in chosen:
 		p.tells[id] = {"discovered": false, "asked": false, "outcome": ""}
@@ -307,6 +366,29 @@ static func _apply_tell_consequences(p: CustomerProfile, rng: RandomNumberGenera
 	# it, otherwise the honest explanation would contradict their own file.
 	if p.has_tell("employment_gap") and p.kind == CustomerProfile.Kind.CIVILIAN:
 		p.record.append("Custodial sentence, 8 months (2025)")
+
+	# The second pass of terminal tells, same rule: if the terminal says it, the
+	# file has to show it, or the player is reading a claim rather than a record.
+	if p.has_tell("licence_endorsed"):
+		p.record.append("Driving licence reissued ×4 (2020-2026)")
+	if p.has_tell("no_school"):
+		p.employment_note = "No education or training record before age 26."
+	if p.has_tell("kin_shares_address"):
+		p.next_of_kin = "%s %s — same address, not named on any account there" % [
+			_pick(FIRST_NAMES, rng), p.full_name.split(" ")[-1]]
+	if p.has_tell("bank_new"):
+		p.utilities = "Single account, opened %s 2026. Salary credits only." % MONTHS[0]
+	if p.has_tell("photo_mismatch"):
+		p.record.append("Photograph on file dated 2022, not retaken")
+
+	# The behavioural tells that assert something checkable. Without these the
+	# innocent explanation cites a record that is not there, which reads as a lie
+	# when the player goes to verify it.
+	if p.has_tell("reads_the_room") and p.kind == CustomerProfile.Kind.CIVILIAN:
+		p.record.append("Victim of assault, licensed premises (2025)")
+	if p.has_tell("wrong_hours") and p.kind == CustomerProfile.Kind.CIVILIAN:
+		p.next_of_kin = "%s %s — admitted, St Cuthbert's Ward 9" % [
+			_pick(FIRST_NAMES, rng), p.full_name.split(" ")[-1]]
 
 
 ## Answers to the four standing questions.
@@ -375,6 +457,49 @@ static func _write_base_answers(p: CustomerProfile, rng: RandomNumberGenerator, 
 					matches = false
 				else:
 					text = "%d. It's on the card as well, you know." % year
+			"q_ask_employer":
+				if p.employer == "—":
+					if slipped:
+						text = "%s. Been there years." % _pick(JOBS, rng)["employer"]
+						matches = false
+					else:
+						text = "Nobody, at the minute. I'm looking."
+				elif slipped:
+					var other_e: String = _pick(JOBS, rng)["employer"]
+					while other_e == p.employer:
+						other_e = _pick(JOBS, rng)["employer"]
+					text = "%s. Why, do you know it?" % other_e
+					matches = false
+				else:
+					text = "%s. Same crowd eleven years." % p.employer
+			"q_street":
+				if slipped:
+					# Close enough to sound right, wrong enough to check.
+					text = "%d %s." % [rng.randi_range(1, 90), _pick(STREETS, rng)]
+					matches = false
+				else:
+					text = "%s. Two minutes that way." % p.street
+			"q_ask_plate":
+				if p.vehicle_desc == "None registered":
+					if slipped:
+						text = "%s. It's round the corner." % _plate(rng)
+						matches = false
+					else:
+						text = "Haven't got one. I don't drive."
+				elif slipped:
+					# A registration is six characters somebody else chose for
+					# you. Nobody rehearsing a cover gets it wrong by a mile —
+					# they get it wrong by a digit.
+					text = "%s, I think. I never look at it." % _plate(rng)
+					matches = false
+				else:
+					text = "%s. Why?" % p.plate
+			"q_ask_number":
+				if slipped:
+					text = "%s. Ring it if you like." % _phone(rng)
+					matches = false
+				else:
+					text = "%s. Not that you'll ever ring it." % p.phone
 
 		p.base_answers[qid] = {"text": text, "matches_file": matches, "truth": truth}
 
