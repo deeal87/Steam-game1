@@ -88,6 +88,12 @@ static func build(world: World) -> void:
 
 	_dead_end(world, sewer, y)
 
+	# Everything down here renders on the underground layer, and the lamps down
+	# here light only that layer. Without this the tunnel lamps shine up through
+	# the stockroom floor and push the shop over the eight-lights-per-object
+	# limit that GL Compatibility enforces silently.
+	World.assign_layer(sewer, World.LAYER_UNDERGROUND)
+
 	world.anchors["sewer_y"] = y
 	world.anchors["sewer_junctions"] = [
 		Vector3(street.x, y + 0.2, stock.y),

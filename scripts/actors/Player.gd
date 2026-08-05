@@ -108,6 +108,13 @@ func _ready() -> void:
 	_torch.spot_attenuation = 1.2
 	camera.add_child(_torch)
 
+	# The player carries their light between the two render layers, so unlike
+	# every fixed lamp in the game these two have to reach both. A torch culled
+	# to the surface layer lights nothing at all once you are down the ladder.
+	var both := (1 << (World.LAYER_SURFACE - 1)) | (1 << (World.LAYER_UNDERGROUND - 1))
+	_torch.light_cull_mask = both
+	_muzzle_flash.light_cull_mask = both
+
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 

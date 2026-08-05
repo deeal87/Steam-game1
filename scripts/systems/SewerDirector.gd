@@ -100,6 +100,10 @@ func _spawn(count: int, tier: int) -> void:
 		d.setup(_player, pos, tier)
 		d.died.connect(_on_died)
 		_world.add_child(d)
+		# They live on the underground layer, so the tunnel lamps light them and
+		# the street lamps do not. Assigned after the node is in the tree, since
+		# the body only builds itself in _ready.
+		World.assign_layer(d, World.LAYER_UNDERGROUND)
 		_dwellers.append(d)
 
 

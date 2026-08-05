@@ -334,6 +334,39 @@ It knows your name. In order of preference:
 3. Your operating system account name.
 4. `STRANGER`.
 
+## Lighting
+
+Two render layers, four metres apart. The world is a shop on a street with
+tunnels underneath, and light does not care about the floor between them: with
+shadows off — which they are everywhere, because this is a GL Compatibility
+build aimed at low-end hardware — a sewer lamp was lighting the stockroom floor
+above it, through solid brick.
+
+So the tunnels render on their own layer and their lamps light only that layer.
+The player's torch and muzzle flash reach both, because the player is the one
+thing that crosses between them.
+
+The street lamps were the other half. They ran at an eighteen-metre range,
+reaching fourteen metres *through the shop's front wall* to light the floor
+behind the counter — wrong on its own terms, and enough to put nine simultaneous
+lights on the counter against the **eight-per-object limit** that GL
+Compatibility enforces silently. The renderer was dropping one, and which one it
+dropped could change as the camera turned, which is how you get light popping.
+
+Lamps are now a nine-metre pool, which is about what a sodium lamp five metres
+up actually throws, and suits the street better — the lamps are meant to thin
+out into darkness as you walk west, and a tighter circle does more of that. The
+shop's own strip lights were raised to carry the room, since they had been
+quietly relying on light coming through their own walls.
+
+| Where you stand | Lights reaching it |
+|---|---|
+| Behind the counter | 9 → **6** |
+| At the hatch | 9 → **6** |
+| The aisle | 8 → **6** |
+| Stockroom | 9 → **4** |
+| Far end of the road | 4 → **0** |
+
 ## Sound
 
 There is no music file. The score is eight layers synthesised at boot — two

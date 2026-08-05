@@ -68,6 +68,37 @@ const STOCK_CEILING := 2.70
 const MANHOLE := Vector3(-4.60, 0.0, 7.90)
 
 # --- Sewer -------------------------------------------------------------------
+# --- Render layers -------------------------------------------------------------
+#
+# The world is two spaces stacked four metres apart, and light does not care
+# about the floor between them: with shadows off — which they are, everywhere,
+# because this is a GL Compatibility build aimed at low-end hardware — a sewer
+# lamp at y=-2.3 happily lights the stockroom floor above it.
+#
+# That was costing twice over. Visually the stockroom was being lit from below by
+# lamps nobody can see. And on GL Compatibility every light is forward-rendered
+# with a hard limit of eight per object, so with ten lights reaching the spot
+# behind the counter the renderer was silently dropping two of them — and *which*
+# two could change as the camera moved, which is how you get light popping.
+#
+# So the tunnels render on their own layer and their lamps only light that layer.
+# Nothing above ground can see them and they cannot see anything above ground.
+const LAYER_SURFACE := 1
+const LAYER_UNDERGROUND := 2
+
+
+## Puts a whole subtree on one visual layer, and points every light in it at the
+## same layer only.
+static func assign_layer(root: Node, layer: int) -> void:
+	var bit := 1 << (layer - 1)
+	if root is VisualInstance3D:
+		(root as VisualInstance3D).layers = bit
+	if root is Light3D:
+		(root as Light3D).light_cull_mask = bit
+	for child in root.get_children():
+		assign_layer(child, layer)
+
+
 const SEWER_Y := -4.50
 const SEWER_HALF_W := 1.30
 const SEWER_EXIT := Vector3(-55.0, 0.0, 1.60)
@@ -245,8 +276,15 @@ func _build_shop_shell() -> void:
 	strip_light = OmniLight3D.new()
 	strip_light.position = Vector3(0, CEILING - 0.35, -1.4)
 	strip_light.light_color = Color(0.85, 0.92, 1.0)
-	strip_light.light_energy = 2.6
-	strip_light.omni_range = 12.0
+	# The strip lights carry the room on their own now.
+	#
+	# They used to be topped up by four street lamps reaching eighteen metres
+	# through the front wall — which was wrong, and was also what pushed the
+	# counter over the eight-lights-per-object limit. Pulling the lamps back to a
+	# realistic pool took that accidental fill away with it, so the fittings that
+	# are actually *in* the room do the work they were always supposed to.
+	strip_light.light_energy = 3.6
+	strip_light.omni_range = 13.0
 	add_child(strip_light)
 	shop.add_child(ProcMesh.box(Vector3(3.0, 0.08, 0.22), Vector3(0, CEILING - 0.12, -1.4),
 		ProcMesh.mat(ProcTex.flat(Color(0.9, 0.95, 1.0)), 1.0, Color(0.85, 0.92, 1.0), 1.6), "Strip1"))
@@ -254,8 +292,8 @@ func _build_shop_shell() -> void:
 	var strip2 := OmniLight3D.new()
 	strip2.position = Vector3(0, CEILING - 0.35, 2.0)
 	strip2.light_color = Color(0.85, 0.92, 1.0)
-	strip2.light_energy = 2.2
-	strip2.omni_range = 11.0
+	strip2.light_energy = 3.1
+	strip2.omni_range = 12.0
 	add_child(strip2)
 	shop.add_child(ProcMesh.box(Vector3(3.0, 0.08, 0.22), Vector3(0, CEILING - 0.12, 2.0),
 		ProcMesh.mat(ProcTex.flat(Color(0.9, 0.95, 1.0)), 1.0, Color(0.85, 0.92, 1.0), 1.6), "Strip2"))
