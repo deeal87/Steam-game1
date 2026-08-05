@@ -112,6 +112,48 @@ func _rebuild() -> void:
 		_build_footer()
 		return
 
+	# --- Display ---
+	#
+	# Players run 1440p, ultrawides, 144Hz panels and handhelds. A game that
+	# offers none of this reads as unfinished before anybody has played a minute.
+	_body.add_child(UIKit.label("DISPLAY", UIKit.FONT_S, UIKit.GREEN_DIM))
+	_cycler("Window", ["Windowed", "Borderless", "Fullscreen"], Settings.window_mode,
+		func(i: int) -> void:
+			Settings.window_mode = i
+			Settings.apply()
+			Settings.save_settings()
+			_rebuild())
+
+	if Settings.window_mode == Settings.WindowMode.WINDOWED:
+		var sizes: Array[String] = []
+		for r: Vector2i in Settings.RESOLUTIONS:
+			sizes.append("%d x %d" % [r.x, r.y])
+		_cycler("Size", sizes, Settings.resolution_index,
+			func(i: int) -> void:
+				Settings.resolution_index = i
+				Settings.apply()
+				Settings.save_settings()
+				_rebuild())
+
+	_cycler("Vertical sync", ["Off", "On"], 1 if Settings.vsync else 0,
+		func(i: int) -> void:
+			Settings.vsync = i == 1
+			Settings.apply()
+			Settings.save_settings()
+			_rebuild())
+
+	var caps: Array[String] = []
+	for c: int in Settings.FPS_CAPS:
+		caps.append("Unlimited" if c == 0 else "%d fps" % c)
+	var cap_index: int = maxi(0, Settings.FPS_CAPS.find(Settings.fps_cap))
+	_cycler("Frame limit", caps, cap_index,
+		func(i: int) -> void:
+			Settings.fps_cap = Settings.FPS_CAPS[i]
+			Settings.apply()
+			Settings.save_settings()
+			_rebuild())
+
+	_body.add_child(UIKit.spacer(8))
 	_body.add_child(UIKit.label("PRESENTATION", UIKit.FONT_S, UIKit.GREEN_DIM))
 	_slider("Screen effect", Settings.crt_intensity, 0.0, 1.0,
 		"Scanlines, grain and colour fringing. Set to zero for a clean image.",
@@ -217,6 +259,44 @@ func _build_awards() -> void:
 		col.add_child(desc)
 		row.add_child(col)
 		_body.add_child(row)
+
+
+## A left/right chooser for settings that are a short list rather than a range.
+## Buttons rather than a slider, because "Borderless" is not a number and
+## pretending it is makes a menu you have to squint at.
+func _cycler(label: String, options: Array, index: int, on_change: Callable) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+
+	var name_label := UIKit.label(label, UIKit.FONT_S, UIKit.WHITE)
+	name_label.custom_minimum_size = Vector2(190, 0)
+	row.add_child(name_label)
+
+	var safe := clampi(index, 0, maxi(0, options.size() - 1))
+
+	var back := Button.new()
+	back.text = "<"
+	back.add_theme_font_size_override("font_size", UIKit.FONT_S)
+	back.pressed.connect(func() -> void:
+		Audio.play("click", -22.0)
+		on_change.call(wrapi(safe - 1, 0, options.size())))
+	row.add_child(back)
+
+	var value := UIKit.label(str(options[safe]) if not options.is_empty() else "—",
+		UIKit.FONT_S, UIKit.GREEN)
+	value.custom_minimum_size = Vector2(150, 0)
+	value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	row.add_child(value)
+
+	var forward := Button.new()
+	forward.text = ">"
+	forward.add_theme_font_size_override("font_size", UIKit.FONT_S)
+	forward.pressed.connect(func() -> void:
+		Audio.play("click", -22.0)
+		on_change.call(wrapi(safe + 1, 0, options.size())))
+	row.add_child(forward)
+
+	_body.add_child(row)
 
 
 func _build_keys() -> void:

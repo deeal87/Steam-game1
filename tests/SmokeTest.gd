@@ -265,6 +265,39 @@ func test_saves() -> void:
 	_check(title.open and title.get_child_count() > 0, "and builds without one")
 	title.queue_free()
 
+	# --- Display settings ---
+	#
+	# Every one of these has to survive a relaunch, or a player sets fullscreen
+	# once and finds a small window in the corner every time afterwards.
+	Settings.window_mode = Settings.WindowMode.BORDERLESS
+	Settings.resolution_index = 2
+	Settings.vsync = false
+	Settings.fps_cap = 144
+	Settings.save_settings()
+
+	Settings.window_mode = Settings.WindowMode.WINDOWED
+	Settings.resolution_index = 0
+	Settings.vsync = true
+	Settings.fps_cap = 0
+	Settings.load_settings()
+	_check(Settings.window_mode == Settings.WindowMode.BORDERLESS
+		and Settings.resolution_index == 2 and not Settings.vsync and Settings.fps_cap == 144,
+		"display settings survive a relaunch")
+
+	# Every listed frame cap has to be one the menu can actually show, or the
+	# cycler lands on an index that is not in the list.
+	_check(Settings.FPS_CAPS.has(0), "there is an unlimited option")
+	_check(Settings.FPS_CAPS.find(Settings.fps_cap) >= 0,
+		"a saved frame cap is one the menu offers")
+	_check(Settings.RESOLUTIONS.size() > 0, "there are window sizes to choose from")
+	# A handheld reporting a small screen must never be handed a 4K window.
+	_check(Settings.default_resolution_index() >= 0
+		and Settings.default_resolution_index() < Settings.RESOLUTIONS.size(),
+		"the default size is one that fits this screen")
+	Settings.reset()
+	_check(Settings.window_mode == Settings.WindowMode.WINDOWED and Settings.vsync,
+		"and resetting puts them back")
+
 	# Dying ends the run, so there must be nothing to resume.
 	GameState.clear_save()
 	_check(not GameState.has_save(), "and a finished run leaves nothing behind")

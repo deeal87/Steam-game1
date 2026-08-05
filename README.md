@@ -497,7 +497,14 @@ is there for people playing one-handed or left-handed, which layout does not
 help with. A key already doing another job is refused rather than silently
 accepted, `Esc` cannot be taken, and overrides persist to `user://keybinds.cfg`.
 
-**Settings** has volume, music, mouse sensitivity, field of view, subtitles,
+**Settings** opens with **display**: windowed, borderless or exclusive
+fullscreen; five window sizes; vertical sync; and a frame limit from 30 up to
+240 or unlimited. All of it persists, and the first launch picks the largest
+listed size that actually fits the screen rather than a hardcoded 720p — so a
+1440p monitor does not get a small window in the corner, and a handheld is never
+handed a window it cannot fit.
+
+Then volume, music, mouse sensitivity, field of view, subtitles, hints,
 your name for the board at the end of the road, plus the two that matter:
 
 - **Screen effect** — scanlines, grain, vignette and colour fringing.
