@@ -31,6 +31,11 @@ const PATTERNS := [
 	# Explicitly marked, anywhere in the game.
 	'Loc\\.t\\(\\s*"((?:[^"\\\\]|\\\\.)*)"',
 	'Loc\\.f\\(\\s*"((?:[^"\\\\]|\\\\.)*)"',
+	# Both arms of a plural. `Loc.f("%d reading." if n == 1 else "%d readings.")`
+	# is two strings a translator has to write, and the patterns above only see
+	# the first — which made the coverage test pass or fail depending on whether
+	# anybody happened to sweep two things that run.
+	'Loc\\.[tf]\\(\\s*"(?:[^"\\\\]|\\\\.)*"\\s+if\\b[\\s\\S]*?\\belse\\s+"((?:[^"\\\\]|\\\\.)*)"',
 	# The panel builders translate what they are given, so a literal argument
 	# here is a translatable string that needs no call of its own.
 	'UIKit\\.label\\(\\s*"((?:[^"\\\\]|\\\\.)*)"',

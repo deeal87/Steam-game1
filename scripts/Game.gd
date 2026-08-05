@@ -704,3 +704,31 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("cancel") and not _any_panel_open():
 		pause.show_pause()
 		get_viewport().set_input_as_handled()
+
+
+## Alt-tab pauses the game.
+##
+## Nothing here used to notice the window losing focus, which for a first-person
+## game holding the mouse pointer is not a small omission. Somebody answers a
+## message during a raid and comes back to a dead shopkeeper, or tabs away with
+## four people at the counter and loses the night — and the pointer stays
+## captured while they are trying to click on something else.
+##
+## The pause menu already does exactly the right thing: it freezes the tree and
+## gives the mouse back. So this is only a matter of opening it. It does not
+## close itself again when focus returns, because deciding when to be back in
+## the room is the player's to make and a game that un-pauses itself the instant
+## the window lights up drops you straight into whatever you tabbed away from.
+##
+## Nothing happens on the title screen, on the shift report, or with any other
+## panel open: those are all already paused or already still, and pushing a
+## second panel over the top of one would only give the player two things to
+## dismiss.
+func _notification(what: int) -> void:
+	if what != NOTIFICATION_APPLICATION_FOCUS_OUT and what != NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+		return
+	if not is_inside_tree() or _any_panel_open():
+		return
+	if phase != Phase.SHIFT and phase != Phase.RAID:
+		return
+	pause.show_pause()

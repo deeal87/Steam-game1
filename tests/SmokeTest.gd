@@ -24,33 +24,40 @@ func _ready() -> void:
 	Loc.forget()
 	Loc.recording = true
 	GameState.reset_run()
-	test_classes_resolve()
-	test_persistence_errors()
-	test_saves()
-	test_achievements()
-	test_hints()
-	test_audio()
-	test_textures()
-	test_icon()
-	test_evidence()
-	test_world()
-	test_resource_sharing()
-	test_customer_construction()
+	# Every one of these is awaited, whether or not it is a coroutine — `await`
+	# on a plain return value simply hands it back. That is not tidiness: a test
+	# that grows an `await` inside it becomes a coroutine, and an un-awaited
+	# coroutine returns at its first yield and lets the suite run on to _report()
+	# and quit with half of it never executed. Silently, with everything it had
+	# printed so far passing. That happened once, to the alt-tab checks below,
+	# and awaiting all of them is what stops it happening again.
+	await test_classes_resolve()
+	await test_persistence_errors()
+	await test_saves()
+	await test_achievements()
+	await test_hints()
+	await test_audio()
+	await test_textures()
+	await test_icon()
+	await test_evidence()
+	await test_world()
+	await test_resource_sharing()
+	await test_customer_construction()
 	await test_sewer_is_traversable()
-	test_identity_and_egg()
-	test_sewer_escape()
+	await test_identity_and_egg()
+	await test_sewer_escape()
 	await test_transaction()
 	await test_shopping_trip()
-	test_rebinding()
-	test_score()
+	await test_rebinding()
+	await test_score()
 	await test_queue()
-	test_sewer_threat()
+	await test_sewer_threat()
 	await test_being_wrong()
 	await test_illicit_and_departure()
 	await test_violence()
-	test_raid()
-	test_panels()
-	test_translation()
+	await test_raid()
+	await test_panels()
+	await test_translation()
 	_report()
 	get_tree().quit(1 if not failures.is_empty() else 0)
 
@@ -309,6 +316,68 @@ func test_saves() -> void:
 		wrong.append("the hatch bars are missing")
 	_check(wrong.is_empty(), "and everything comes back with it%s" %
 		("" if wrong.is_empty() else " — %s" % "; ".join(wrong)))
+
+	# --- A save this build does not fully understand ---
+	#
+	# The only input to this game that comes from outside it. It can be older
+	# than the build reading it, newer than it, or opened in a text editor by
+	# somebody who fancied a hundred body bags — none of which is exotic once a
+	# game is on a store and getting patches.
+	#
+	# The one that bites is `weapons`. It goes straight into `equipped`, and
+	# `equipped` is used as a bare key into WEAPONS, so a save naming a weapon
+	# this build no longer has used to take the game down the first time the
+	# player pressed the change-weapon key. Written by hand rather than through
+	# save_run(), because save_run() cannot produce it — that is the point.
+	var poisoned := ConfigFile.new()
+	poisoned.set_value("run", "night", -4)
+	poisoned.set_value("run", "money", -100)
+	poisoned.set_value("run", "heat", 480.0)
+	poisoned.set_value("run", "reputation", -20.0)
+	poisoned.set_value("run", "nights_survived", -3)
+	poisoned.set_value("stock", "drugs", -8)
+	poisoned.set_value("stock", "shelf", {"crisps": 3, "plasma_rifle": 9, "bread": -2})
+	poisoned.set_value("stock", "crate", {"crisps": 2, "moon_dust": 40})
+	poisoned.set_value("gear", "weapons", ["bat", "railgun", "bat"])
+	poisoned.set_value("gear", "defenses", ["window_bars", "moat"])
+	poisoned.set_value("gear", "ammo", {"revolver": 6, "railgun": 999})
+	poisoned.set_value("gear", "body_bags", -1)
+	poisoned.save(GameState.SAVE_PATH)
+
+	GameState.reset_run()
+	_check(GameState.load_run(), "a save full of things this build never heard of still loads")
+	_check(not GameState.weapons.has("railgun"), "the weapon that does not exist is dropped")
+	_check(GameState.weapons.size() == 1 and GameState.weapons[0] == "bat",
+		"and the ones that do survive, once each (%s)" % ", ".join(GameState.weapons))
+	_check(not GameState.defenses.has("moat"), "the fitting that does not exist is dropped")
+	_check(GameState.defenses.has("window_bars"), "and the one that does survives")
+	_check(not GameState.shelf_stock.has("plasma_rifle") \
+		and not GameState.crate_stock.has("moon_dust"),
+		"stock for items that do not exist is dropped")
+	_check(GameState.shelf_units("crisps") == 3, "and real stock is kept")
+	_check(GameState.shelf_units("bread") == 0, "a negative shelf reads as an empty one")
+	_check(not GameState.ammo.has("railgun"), "ammunition for a weapon that does not exist is dropped")
+	_check(GameState.night >= 1 and GameState.money >= 0 and GameState.nights_survived >= 0,
+		"night, money and nights survived are pulled back into range (%d, %d, %d)"
+			% [GameState.night, GameState.money, GameState.nights_survived])
+	_check(GameState.heat <= 100.0 and GameState.reputation >= 0.0,
+		"heat and reputation are percentages again (%.0f, %.0f)"
+			% [GameState.heat, GameState.reputation])
+	_check(GameState.drug_stock >= 0 and GameState.body_bags >= 0,
+		"and nothing is owed a negative number of things")
+
+	# The part that used to crash: hold the bad weapon and swing it.
+	GameState.weapons = ["bat", "railgun"]
+	var survivor := Player.new()
+	add_child(survivor)
+	survivor.equipped = "railgun"
+	survivor._cycle_weapon()
+	_check(survivor.equipped != "railgun" or GameState.WEAPONS.has(survivor.equipped),
+		"and cycling off a weapon the build does not have does not take the game with it")
+	survivor.queue_free()
+
+	GameState.clear_save()
+	GameState.reset_run()
 
 	# The title screen grows a second option when there is a run to resume, and
 	# a branch that only appears on a second launch is a branch nobody sees fail.
@@ -2306,6 +2375,39 @@ func test_panels() -> void:
 		"They came through the door and you were still holding a bag of crisps.")
 	_check(report.open, "every interstitial builds")
 	report.close()
+
+	# --- Alt-tab ---
+	#
+	# A first-person game holding the mouse pointer has to give it back when the
+	# window loses focus, and has to stop the night running while nobody is
+	# looking at it. Driven through the real Boot scene rather than through a
+	# bare Game, because what is being checked is the wiring between the notice,
+	# the phase and the pause menu.
+	var boot: Node = preload("res://scenes/Boot.tscn").instantiate()
+	add_child(boot)
+	await get_tree().process_frame
+
+	boot.notification(NOTIFICATION_APPLICATION_FOCUS_OUT)
+	_check(not boot.pause.open, "losing focus on the title screen changes nothing")
+
+	boot.report._continue()
+	await get_tree().process_frame
+	boot.notification(NOTIFICATION_APPLICATION_FOCUS_OUT)
+	_check(boot.pause.open, "losing focus during a shift opens the pause menu")
+	_check(get_tree().paused, "and the night actually stops")
+	_check(Input.mouse_mode != Input.MOUSE_MODE_CAPTURED, "and the mouse is given back")
+
+	# It must not stack a second panel over the first, and it must not un-pause
+	# by itself — when to be back in the room is the player's call.
+	boot.notification(NOTIFICATION_APPLICATION_FOCUS_OUT)
+	_check(boot.pause.open and get_tree().paused, "losing focus twice is still one pause")
+	boot.notification(NOTIFICATION_APPLICATION_FOCUS_IN)
+	_check(boot.pause.open, "and coming back does not drop you straight into it")
+
+	boot.pause.close()
+	_check(not get_tree().paused, "closing it starts the night again")
+	boot.queue_free()
+	await get_tree().process_frame
 
 	var hud := HUD.new()
 	add_child(hud)

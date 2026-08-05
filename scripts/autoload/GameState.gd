@@ -412,33 +412,89 @@ func save_run() -> void:
 	Persist.write(cfg, SAVE_PATH, "run", true)
 
 
+## Reads a saved run, and does not trust a word of it.
+##
+## A save file is the one input to this game that comes from outside it. It can
+## be older than the build reading it, newer than the build reading it, or
+## opened in a text editor by somebody who fancied a hundred body bags — and
+## none of those are exotic once a game is on a store and getting patches.
+##
+## The sharp edge is the id lists. `weapons` goes straight into `equipped`, and
+## `equipped` is used as a bare key into `WEAPONS`, so a save naming a weapon
+## this build no longer has takes the game down the first time the player
+## presses the change-weapon key. Same shape for fittings, shelves and ammunition.
+## So every id is checked against the table it will be looked up in, and anything
+## that is not there is dropped and logged rather than carried into the run.
+##
+## Numbers are clamped for the same reason. Nothing here is a cheat check —
+## somebody editing their own save is welcome to it — it is only that the rest of
+## the game is written assuming a night is at least one and a reputation is a
+## percentage, and it should keep being true.
 func load_run() -> bool:
 	var cfg := ConfigFile.new()
 	if not Persist.read(cfg, SAVE_PATH, "saved run"):
 		return false
-	night = cfg.get_value("run", "night", 1)
-	money = cfg.get_value("run", "money", 85)
-	heat = cfg.get_value("run", "heat", 0.0)
-	nights_survived = cfg.get_value("run", "nights_survived", 0)
-	found_easter_egg = cfg.get_value("run", "found_easter_egg", false)
-	sewer_trips = cfg.get_value("run", "sewer_trips", 0)
-	sewer_cache_taken = cfg.get_value("run", "sewer_cache_taken", false)
-	reputation = cfg.get_value("run", "reputation", 100.0)
-	drug_stock = cfg.get_value("stock", "drugs", 6)
-	shelf_stock = cfg.get_value("stock", "shelf", shelf_stock)
-	crate_stock = cfg.get_value("stock", "crate", crate_stock)
-	var w: Array = cfg.get_value("gear", "weapons", ["bat"])
-	weapons.clear()
-	for id: Variant in w:
-		weapons.append(str(id))
-	ammo = cfg.get_value("gear", "ammo", {})
-	var d: Array = cfg.get_value("gear", "defenses", [])
-	defenses.clear()
-	for id: Variant in d:
-		defenses.append(str(id))
-	body_bags = cfg.get_value("gear", "body_bags", 1)
+
+	night = maxi(1, int(cfg.get_value("run", "night", 1)))
+	money = maxi(0, int(cfg.get_value("run", "money", 85)))
+	heat = clampf(float(cfg.get_value("run", "heat", 0.0)), 0.0, 100.0)
+	nights_survived = maxi(0, int(cfg.get_value("run", "nights_survived", 0)))
+	found_easter_egg = bool(cfg.get_value("run", "found_easter_egg", false))
+	sewer_trips = maxi(0, int(cfg.get_value("run", "sewer_trips", 0)))
+	sewer_cache_taken = bool(cfg.get_value("run", "sewer_cache_taken", false))
+	reputation = clampf(float(cfg.get_value("run", "reputation", 100.0)), 0.0, 100.0)
+	drug_stock = maxi(0, int(cfg.get_value("stock", "drugs", 6)))
+	body_bags = maxi(0, int(cfg.get_value("gear", "body_bags", 1)))
+
+	var dropped: Array[String] = []
+	shelf_stock = _known_counts(cfg.get_value("stock", "shelf", {}), ITEMS, dropped)
+	crate_stock = _known_counts(cfg.get_value("stock", "crate", {}), ITEMS, dropped)
+	ammo = _known_counts(cfg.get_value("gear", "ammo", {}), WEAPONS, dropped)
+	weapons = _known_ids(cfg.get_value("gear", "weapons", ["bat"]), WEAPONS, dropped)
+	defenses = _known_ids(cfg.get_value("gear", "defenses", []), DEFENSES, dropped)
+
+	if not dropped.is_empty():
+		# Worth a line. This is what a save written by a different build looks
+		# like from in here, and it is the first thing to look at if somebody
+		# reports their shotgun going missing after an update.
+		Log.warn("save: dropped %d unknown entr%s — %s" % [
+			dropped.size(), "y" if dropped.size() == 1 else "ies",
+			", ".join(dropped.slice(0, 12))])
+
 	alive = true
 	return true
+
+
+## Keeps the ids that exist in `table`, in the order they were saved, without
+## duplicates. Anything else is named in `dropped` and left behind.
+static func _known_ids(raw: Variant, table: Dictionary, dropped: Array[String]) -> Array[String]:
+	var out: Array[String] = []
+	if not (raw is Array):
+		return out
+	for entry: Variant in raw as Array:
+		var id := str(entry)
+		if not table.has(id):
+			dropped.append(id)
+			continue
+		if not out.has(id):
+			out.append(id)
+	return out
+
+
+## Same for the id -> count dictionaries. Counts are forced to whole numbers at
+## or above zero, because a negative shelf reads as an empty one everywhere it is
+## used and a fractional one reads as neither.
+static func _known_counts(raw: Variant, table: Dictionary, dropped: Array[String]) -> Dictionary:
+	var out: Dictionary = {}
+	if not (raw is Dictionary):
+		return out
+	for key: Variant in raw as Dictionary:
+		var id := str(key)
+		if not table.has(id):
+			dropped.append(id)
+			continue
+		out[id] = maxi(0, int((raw as Dictionary)[key]))
+	return out
 
 
 ## Whether there is a run to go back to, and which night it stopped on.

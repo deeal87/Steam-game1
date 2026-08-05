@@ -11,10 +11,12 @@ Stand at the hatch with someone in front of you and try again."
 "%d a unit · they go for %d–%d, depending who's asking","%d a unit · they go for %d–%d, depending who's asking"
 %d fps,%d fps
 %d item on the counter. Scan it.,%d item on the counter. Scan it.
+%d items on the counter. Scan them.,%d items on the counter. Scan them.
 %d left.,%d left.
 %d of %d,%d of %d
 %d of them. Shutter's down.,%d of them. Shutter's down.
 %d reading.,%d reading.
+%d readings.,%d readings.
 %d still moving.,%d still moving.
 %d still to scan.,%d still to scan.
 %d under the counter,%d under the counter
@@ -156,6 +158,7 @@ Crates are empty.,Crates are empty.
 Criminal damage,Criminal damage
 Crisps,Crisps
 Cross-reference with sweep: %d item on their person unaccounted for by the file.,Cross-reference with sweep: %d item on their person unaccounted for by the file.
+Cross-reference with sweep: %d items on their person unaccounted for by the file.,Cross-reference with sweep: %d items on their person unaccounted for by the file.
 Crouch,Crouch
 Custodial sentence on the record covering exactly that window.,Custodial sentence on the record covering exactly that window.
 "Custodial sentence, 8 months (2025)","Custodial sentence, 8 months (2025)"
@@ -763,6 +766,7 @@ Your name on the street,Your name on the street
 [TAB] or [ESC] put it down,[TAB] or [ESC] put it down
 [color=#41854f]No documentary anomalies.[/color],[color=#41854f]No documentary anomalies.[/color]
 [color=#f55c57]Note: a file with this many discrepancies is more often a constructed identity than a badly kept one.[/color],[color=#f55c57]Note: a file with this many discrepancies is more often a constructed identity than a badly kept one.[/color]
+[color=#f5c252]%d anomalies in the record:[/color],[color=#f5c252]%d anomalies in the record:[/color]
 [color=#f5c252]%d anomaly in the record:[/color],[color=#f5c252]%d anomaly in the record:[/color]
 "[i]""%s""[/i]","[i]""%s""[/i]"
 [x],[x]

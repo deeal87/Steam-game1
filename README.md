@@ -439,6 +439,21 @@ and every discovery, and never once read back. The loading code was complete and
 correct. It simply had no caller, so every launch began at night one however far
 the last run got.
 
+The loader does not trust the file. A save is the one input to this game that
+comes from outside it: it can be older than the build reading it, newer than the
+build reading it, or opened in a text editor by somebody who fancied a hundred
+body bags — none of which is exotic once a game is on a store and taking patches.
+
+The sharp edge was the id lists. `weapons` goes straight into what you are
+holding, and what you are holding is used as a bare key into the weapons table,
+so a save naming a weapon this build no longer has took the game down the first
+time you pressed the change-weapon key. That is the shape of "won't start after
+the update" in a review. Every id is now checked against the table it will be
+looked up in, anything unrecognised is dropped and logged, and every number is
+pulled back into the range the rest of the game is written to expect. Nothing
+here is a cheat check — somebody editing their own save is welcome to it — it is
+only that a night should be at least one and a reputation should be a percentage.
+
 ## Learning it
 
 There is a lot to know here, and for a game that asks you to make judgement
@@ -826,6 +841,18 @@ up here — `application/modify_resources` is off in the preset. Turn it back on
 once you have rcedit configured; the `.ico` is already generated and the preset
 already points at it. Until then the Windows *window* has the icon but the file
 in Explorer does not.
+
+### Alt-tab
+
+Losing window focus during a shift or a raid opens the pause menu, which stops
+the tree and gives the mouse pointer back. This is not a nicety for a
+first-person game that captures the cursor: without it somebody answers a
+message mid-raid and comes back to a dead shopkeeper, with the pointer still
+grabbed while they are trying to click on something else.
+
+It does not un-pause itself when focus returns. Deciding when you are back in
+the room is yours to make, and a game that resumes the instant its window lights
+up drops you straight into whatever you tabbed away from.
 
 ### Verifying a build you can't watch
 
