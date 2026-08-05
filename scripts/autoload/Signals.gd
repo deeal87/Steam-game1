@@ -28,6 +28,10 @@ signal terminal_lookup(profile: Resource)
 signal evidence_logged(entry: Dictionary)
 
 # --- Danger ---
+## Emitted by a customer as they hit the floor. Game.gd owns the body from
+## there — the customer that raised it is about to free itself.
+signal body_dropped(body: Node3D)
+
 signal raid_incoming(reason: String)
 signal flashbang()
 signal raid_resolved(survived: bool)

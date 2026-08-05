@@ -15,6 +15,7 @@ var _player: Player
 func _ready() -> void:
 	print("\n=== KIOSK AT MIDNIGHT · smoke ===\n")
 	GameState.reset_run()
+	test_classes_resolve()
 	test_audio()
 	test_textures()
 	test_icon()
@@ -51,6 +52,67 @@ func _check_quiet(ok: bool, label: String) -> void:
 	if not ok:
 		print("  FAIL  %s" % label)
 		failures.append(label)
+
+
+## Every `class_name` in the project has to be in Godot's global class list.
+##
+## This exists because the failure it catches has now happened twice and is
+## invisible both times. A script whose class is missing from the cache makes
+## every file that names it fail to *parse* — so the node built from it comes
+## out as a bare Node with none of its behaviour, no assertion necessarily
+## fails, and the suite reports success. It cost a whole debugging session the
+## first time (PauseUI) and would have shipped a game with no bodies in it the
+## second (Body).
+##
+## Walking the source rather than listing names by hand means a new script is
+## covered the moment it is written, which is exactly when this goes wrong.
+func test_classes_resolve() -> void:
+	print("Every class resolves:")
+	var declared: Array[String] = []
+	_collect_class_names("res://scripts", declared)
+	declared.sort()
+
+	var known := {}
+	for entry: Dictionary in ProjectSettings.get_global_class_list():
+		known[str(entry["class"])] = true
+
+	var missing: Array[String] = []
+	for name: String in declared:
+		if not known.has(name):
+			missing.append(name)
+
+	print("   %d classes declared under scripts/" % declared.size())
+	_check(declared.size() > 20, "found the source tree (%d classes)" % declared.size())
+	_check(missing.is_empty(),
+		"every one is in the global class list%s" %
+			("" if missing.is_empty() else " — missing: %s (reimport the project)" % ", ".join(missing)))
+
+
+func _collect_class_names(dir_path: String, into: Array[String]) -> void:
+	var dir := DirAccess.open(dir_path)
+	if dir == null:
+		return
+	dir.list_dir_begin()
+	var entry := dir.get_next()
+	while entry != "":
+		var full := dir_path.path_join(entry)
+		if dir.current_is_dir():
+			_collect_class_names(full, into)
+		elif entry.ends_with(".gd"):
+			var f := FileAccess.open(full, FileAccess.READ)
+			if f != null:
+				# Only the declaration, which is always the first non-comment
+				# statement in the file when it is present at all.
+				while not f.eof_reached():
+					var line := f.get_line().strip_edges()
+					if line.begins_with("class_name "):
+						into.append(line.substr(11).split(" ")[0].strip_edges())
+						break
+					if line.begins_with("func ") or line.begins_with("var "):
+						break
+				f.close()
+		entry = dir.get_next()
+	dir.list_dir_end()
 
 
 # --- Assets that are generated rather than loaded -----------------------------
@@ -1228,6 +1290,112 @@ func test_violence() -> void:
 	cop.queue_free()
 	civ.queue_free()
 	runner.queue_free()
+	await get_tree().process_frame
+	await test_bodies()
+
+
+## Shooting somebody used to cost a mouse click and an automatic bag. The whole
+## point of this system is that it now costs work, done under time pressure,
+## with the queue still coming in.
+func test_bodies() -> void:
+	print("\nWhat you do with the body:")
+	GameState.reset_run()
+	var director := BodyDirector.new()
+	director.setup(_world)
+	add_child(director)
+
+	# Shooting somebody leaves them there. No automatic bag, no vanishing.
+	var victim := _spawn_at_counter(90210, int(CustomerProfile.Kind.CIVILIAN))
+	var bags_before := GameState.body_bags
+	victim.take_damage(500.0, _player)
+	await get_tree().process_frame
+	_check(director.count() == 1, "shooting somebody leaves a body on the floor")
+	_check(GameState.body_bags == bags_before, "and does not silently spend a bag")
+
+	var corpse := director.nearest_to(victim.global_position, 3.0)
+	_check(corpse != null, "and it is there to be picked up")
+	if corpse == null:
+		director.queue_free()
+		return
+	_check(not corpse.bagged, "it starts unbagged, which is the problem")
+
+	# An unbagged body empties your shop.
+	var witness := _spawn_at_counter(5150)
+	witness.global_position = corpse.global_position + Vector3(1.0, 0, 0)
+	var heat_before := GameState.heat
+	var rep_before := GameState.reputation
+	director._check_timer = 0.0
+	director._process(1.0)
+	_check(witness.state == Customer.State.LEAVING, "anyone who walks in on one leaves")
+	_check(GameState.heat > heat_before, "it raises heat")
+	_check(GameState.reputation < rep_before, "and takes your name down")
+
+	# Only once each, or standing next to one would drain you at the frame rate.
+	var heat_after := GameState.heat
+	director._check_timer = 0.0
+	director._process(1.0)
+	_check(is_equal_approx(GameState.heat, heat_after),
+		"but each of them only reacts once")
+
+	# Bagging costs a bag, and you cannot do it without one.
+	GameState.body_bags = 0
+	_check(not corpse.bag(), "with no bags left you cannot bag them")
+	GameState.body_bags = 2
+	_check(corpse.bag(), "with a bag you can")
+	_check(GameState.body_bags == 1, "and it costs one (%d left)" % GameState.body_bags)
+
+	# A bagged one is no longer the thing people scream at.
+	var calm := _spawn_at_counter(6006)
+	calm.global_position = corpse.global_position + Vector3(0.8, 0, 0)
+	director._check_timer = 0.0
+	director._process(1.0)
+	_check(calm.state != Customer.State.LEAVING, "nobody panics at a bagged one")
+
+	# Carrying fills your hands and slows you down.
+	_player.held_illicit = 2
+	_player.equipped = "bat"
+	_check(corpse.take_up(), "a bagged body can be picked up")
+	_player.carried_body = corpse
+	_player.clear_hands()
+	_player.equipped = ""
+	_check(_player.held_illicit == 0 and _player.equipped.is_empty(),
+		"which empties your hands — no serving, no shooting")
+	_check(Player.CARRY_SPEED < Player.SPEED, "and slows you to a walk (%.1f vs %.1f)"
+		% [Player.CARRY_SPEED, Player.SPEED])
+
+	# The manhole is the only way one leaves the building.
+	var heat_at_disposal := GameState.heat
+	corpse.dispose()
+	await get_tree().process_frame
+	_check(director.count() == 0, "the manhole is where they go")
+	_check(GameState.heat < heat_at_disposal, "and getting rid of one takes the edge off")
+	_player.carried_body = null
+
+	# Anything still there at five is evidence, and a dead customer is worse
+	# than a dead officer because there is nobody to explain it.
+	GameState.reset_run()
+	var left := Body.new()
+	left.setup(Vector3.ZERO, true, "Someone", 1)
+	director.adopt(left)
+	var officer := Body.new()
+	officer.setup(Vector3(2, 0, 0), false, "Someone", 2)
+	director.adopt(officer)
+	var settled := director.settle_night()
+	print("   closing up with 2 on the floor: +%d heat" % int(settled["heat"]))
+	_check(int(settled["civilians"]) == 1 and int(settled["officers"]) == 1,
+		"the reckoning counts both kinds")
+	_check(GameState.evidence_against_you >= 2, "and every one of them is evidence")
+	_check(BodyDirector.LEFTOVER_HEAT_CIVILIAN > BodyDirector.LEFTOVER_HEAT_OFFICER,
+		"a dead customer costs more than a dead officer (%d vs %d)"
+			% [BodyDirector.LEFTOVER_HEAT_CIVILIAN, BodyDirector.LEFTOVER_HEAT_OFFICER])
+	_check(not GameState.raid_reason.is_empty(), "and it gives them a reason to come")
+
+	director.clear()
+	director.queue_free()
+	victim.queue_free()
+	witness.queue_free()
+	calm.queue_free()
+	GameState.reset_run()
 	await get_tree().process_frame
 
 

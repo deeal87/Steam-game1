@@ -525,15 +525,15 @@ func _die() -> void:
 		GameState.note_wrong_killing()
 		Signals.notice.emit("No badge. No wire. Nothing. You just shot a customer.", "bad")
 
-	if GameState.body_bags > 0:
-		GameState.body_bags -= 1
-		GameState.add_heat(-6.0)
-		Signals.notice.emit("You drag them in and bag them. (%d bags left)" % GameState.body_bags, "info")
-	else:
-		GameState.add_heat(8.0)
-		Signals.notice.emit("No bags left. They're lying on the shop floor.", "bad")
+	# They stay where they fell. Bagging and getting rid of them is a job you
+	# have to do, with the queue still coming in — see Body.gd.
+	Signals.notice.emit("They're on the floor. Anyone who walks in will see that.", "bad")
+	var corpse := Body.new()
+	corpse.setup(global_position, profile.kind == CustomerProfile.Kind.CIVILIAN,
+		profile.full_name.split(" ")[0], profile.seed_value)
+	Signals.body_dropped.emit(corpse)
 
-	get_tree().create_timer(3.5).timeout.connect(func() -> void: finished.emit(self, "killed"))
+	get_tree().create_timer(1.2).timeout.connect(func() -> void: finished.emit(self, "killed"))
 
 
 # --- Leaving -----------------------------------------------------------------

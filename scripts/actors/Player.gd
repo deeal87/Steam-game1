@@ -12,6 +12,8 @@ signal wants_notebook
 signal interacted_with_customer
 
 const SPEED := 2.6
+## Walking pace, and no faster, while carrying somebody.
+const CARRY_SPEED := 1.5
 const SPRINT := 4.0
 const CROUCH_SPEED := 1.4
 const ACCEL := 14.0
@@ -33,6 +35,10 @@ var holding_scanner: bool = false
 var held_item: String = ""            ## Shelf item currently in hand.
 var held_illicit: int = 0             ## Units from the stash currently in hand.
 var equipped: String = ""             ## Weapon id, "" when hands are free.
+## A bagged body over the shoulder. It fills both hands and slows you to a walk,
+## which is the whole cost of having shot somebody: you cannot serve, you cannot
+## shoot, and you are very obviously carrying a person.
+var carried_body: Node3D = null
 var _fire_cooldown: float = 0.0
 var _bob: float = 0.0
 var _target_height: float = STAND_HEIGHT
@@ -147,6 +153,9 @@ func _move(delta: float) -> void:
 		speed = CROUCH_SPEED
 	elif Input.is_action_pressed("sprint"):
 		speed = SPRINT
+	# Nobody sprints with a body on their shoulder.
+	if carried_body != null and is_instance_valid(carried_body):
+		speed = minf(speed, CARRY_SPEED)
 
 	var target := dir * speed
 	velocity.x = move_toward(velocity.x, target.x, ACCEL * delta)
@@ -179,7 +188,9 @@ func _update_prompt() -> void:
 		if hit != null:
 			_look_target = hit
 			text = _prompt_for(hit)
-	if not held_item.is_empty() and text.is_empty():
+	if carried_body != null and is_instance_valid(carried_body) and text.is_empty():
+		text = "Carrying a body. The manhole is in the stockroom."
+	elif not held_item.is_empty() and text.is_empty():
 		text = "Carrying: %s" % GameState.ITEMS[held_item]["name"]
 	Signals.prompt_changed.emit(text)
 
@@ -205,6 +216,9 @@ func _prompt_for(hit: Object) -> String:
 		"shop": return "[E] Call the supplier"
 		"shutter_control": return "[E] Shutter"
 		"cash": return "[E] Pick up cash"
+		"body":
+			var b: Node = hit.get_meta("body_ref", null)
+			return str(b.call("prompt")) if b != null and is_instance_valid(b) else ""
 	return ""
 
 
@@ -297,15 +311,49 @@ func _interact() -> void:
 				Signals.notice.emit("Shutter down. Nobody's buying anything now." if not closed else "Shutter up.", "info")
 		"manhole", "manhole_street", "manhole_mid", \
 		"ladder_up_stock", "ladder_up_street", "ladder_up_mid":
+			# With somebody over your shoulder the manhole is a place to put them
+			# down, not a place to climb into.
+			if id == "manhole" and carried_body != null and is_instance_valid(carried_body):
+				carried_body.call("dispose")
+				carried_body = null
+				return
 			_travel(id)
 		"sewer_cache":
 			_open_cache(hit)
+		"body":
+			_handle_body(hit)
 		"cash":
 			var value := int(hit.get_meta("value", 5))
 			GameState.add_money(value, "tips")
 			Audio.play("register", -18.0)
 			Signals.notice.emit("Found %d." % value, "good")
 			(hit as Node).queue_free()
+
+
+## Bagging one, then picking it up. Two presses, because they are two different
+## decisions: a bag is a thing you have to have bought, and putting them over
+## your shoulder is a thing you have to have time for.
+func _handle_body(hit: Node) -> void:
+	var b: Node = hit.get_meta("body_ref", null)
+	if b == null or not is_instance_valid(b):
+		return
+	if carried_body != null and is_instance_valid(carried_body):
+		Signals.notice.emit("You've already got one.", "warn")
+		return
+	if not bool(b.get("bagged")):
+		if GameState.body_bags <= 0:
+			Audio.play("deny", -14.0)
+			Signals.notice.emit("No bags. The supplier sells them, and you should have thought of that.", "bad")
+			return
+		b.call("bag")
+		return
+	if bool(b.call("take_up")):
+		carried_body = b
+		# Both hands. You are not serving anybody or shooting anybody like this.
+		clear_hands()
+		equipped = ""
+		holding_scanner = false
+		Signals.notice.emit("Over your shoulder. Get to the manhole.", "warn")
 
 
 ## Somebody's crate at the end of the spur. There is one, it is worth about a

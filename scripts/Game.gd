@@ -24,6 +24,7 @@ var pause: PauseUI
 var night_director: NightDirector
 var raid_director: RaidDirector
 var sewer_director: SewerDirector
+var body_director: BodyDirector
 var checkout: Checkout
 
 var _screen_effect: ColorRect
@@ -257,6 +258,10 @@ func _build_directors() -> void:
 	sewer_director.setup(world, player)
 	add_child(sewer_director)
 
+	body_director = BodyDirector.new()
+	body_director.setup(world)
+	add_child(body_director)
+
 	checkout = Checkout.new()
 	checkout.setup(world)
 	add_child(checkout)
@@ -401,12 +406,25 @@ func _start_shift() -> void:
 	player.dead = false
 	world.set_shutter_closed(false)
 	world.anchors["shutter_is_closed"] = false
+	# Anything still on the floor was settled up at the end of last night. It
+	# does not follow you into this one.
+	body_director.clear()
+	player.carried_body = null
 	night_director.start_night()
 
 
 func _on_shift_finished(summary: Dictionary) -> void:
 	phase = Phase.REPORT
 	Music.stop_all()
+
+	# Anything still on the floor is settled before the report is read, because
+	# it decides whether there is a raid — and the summary the report shows is
+	# the same dictionary that decision comes out of.
+	var left := body_director.settle_night()
+	summary["bodies"] = left
+	summary["evidence"] = GameState.evidence_against_you
+	summary["raid_reason"] = GameState.raid_reason
+
 	_pending_summary = summary
 	player.ui_locked = true
 	GameState.nights_survived += 1

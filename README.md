@@ -138,6 +138,36 @@ holds. Over five nights: serving the ask earns ~2300 and never misses rent,
 refusing every ask earns ~320 and misses rent four nights in five, and throwing
 everybody out earns nothing, misses every night, and ends with a name at 0%.
 
+## What you do with the body
+
+Shooting somebody used to cost a mouse click. A bag was spent automatically, a
+little heat came off, and three and a half seconds later they were gone — so
+the worst thing you can do in this game took less work than ringing up a packet
+of crisps.
+
+They stay where they fell now, and dealing with them is three steps you have to
+find time for while the queue is still coming in:
+
+1. **Bag them.** Costs a body bag, which you had to have bought.
+2. **Pick them up.** Fills both hands — no scanner, no weapon, no serving —
+   and slows you to a walk.
+3. **Put them down the manhole.** That is the only place one goes.
+
+The pressure comes from what happens if you don't. **Anyone who gets near an
+unbagged body bolts**: they leave without paying, it costs you heat and your
+name, and it counts as evidence. Each person only reacts once, so standing next
+to one is not a per-frame drain — but every new customer through the door is a
+fresh one.
+
+Bagging stops the panic. It does not get rid of them. **Close up at 05:00 with
+one still on the floor and it is evidence**, at +26 heat for a dead customer
+and +10 for a dead officer — the difference being that there is nobody left to
+explain why the customer is dead.
+
+Getting one down the manhole takes some heat back off, but never all of it. The
+heat from pulling the trigger is not refundable; only the extra you earn by
+leaving them where they landed.
+
 ## The raid
 
 When the shutter fails they throw something through the hatch, and there is a
@@ -591,8 +621,6 @@ the raid, the economy and the detective system all live and tuned.
 
 Known gaps, in rough priority order:
 
-- **The body-bag mechanic is vestigial.** Bags auto-consume to reduce heat
-  rather than being something you actually do.
 - **Content depth.** Forty-three tells and nine standing questions carries a
   long way, but a determined player will eventually start recognising them.
   This is still the main thing between the slice and a release.

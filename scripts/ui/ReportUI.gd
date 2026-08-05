@@ -153,6 +153,13 @@ func _build_report() -> void:
 	if int(_payload.get("gave_up", 0)) > 0:
 		col.add_child(UIKit.field("Gave up waiting", str(int(_payload["gave_up"])), UIKit.AMBER))
 
+	# Whatever you did not get down the manhole in time.
+	var bodies: Dictionary = _payload.get("bodies", {})
+	var left_out: int = int(bodies.get("civilians", 0)) + int(bodies.get("officers", 0))
+	if left_out > 0:
+		col.add_child(UIKit.field("Still on the floor at five",
+			"%d   +%d heat" % [left_out, int(bodies.get("heat", 0))], UIKit.RED))
+
 	col.add_child(UIKit.field("Rent", "-%d" % int(_payload.get("rent", 0)), UIKit.WHITE))
 	col.add_child(UIKit.field("In hand", str(GameState.money), UIKit.WHITE))
 
