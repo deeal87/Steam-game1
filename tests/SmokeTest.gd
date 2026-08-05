@@ -17,6 +17,7 @@ func _ready() -> void:
 	GameState.reset_run()
 	test_classes_resolve()
 	test_achievements()
+	test_hints()
 	test_audio()
 	test_textures()
 	test_icon()
@@ -114,6 +115,81 @@ func _collect_class_names(dir_path: String, into: Array[String]) -> void:
 				f.close()
 		entry = dir.get_next()
 	dir.list_dir_end()
+
+
+## Hints exist so a new player is never confused about the *controls*. The rule
+## they are written to — explain the control, never the decision — is the thing
+## most likely to erode, so it is asserted rather than trusted.
+func test_hints() -> void:
+	print("\nHints:")
+	Tutor.reset()
+	Tutor.enabled = true
+	print("   %d hints" % Tutor.HINTS.size())
+
+	# Each one fires once, ever, and survives a reload.
+	_check(Tutor.fire("open"), "a hint fires the first time")
+	_check(not Tutor.fire("open"), "and never again")
+	_check(Tutor.seen("open"), "and is remembered")
+	Tutor._shown.clear()
+	Tutor.load_progress()
+	_check(Tutor.seen("open"), "including across a reload, so a second run is silent")
+	_check(not Tutor.fire("not_a_hint"), "an unknown id does nothing")
+
+	# Turning them off has to actually turn them off.
+	Tutor.reset()
+	Tutor.enabled = false
+	_check(not Tutor.fire("asked"), "switched off, nothing fires")
+	_check(not Tutor.seen("asked"), "and nothing is marked as seen either")
+	Tutor.enabled = true
+
+	# The design rule. A hint that tells you what to *do* about a person is the
+	# game playing itself, and it is the easiest line in the world to cross
+	# while writing helpful text.
+	var preachy: Array[String] = []
+	for id: String in Tutor.HINTS:
+		var text := str(Tutor.HINTS[id]).to_lower()
+		for phrase: String in ["you should", "make sure you", "do not sell",
+				"don\'t sell", "always ", "never sell", "the right", "best to"]:
+			if text.contains(phrase):
+				preachy.append("%s (%s)" % [id, phrase.strip_edges()])
+	_check(preachy.is_empty(), "no hint tells you what to decide%s" %
+		("" if preachy.is_empty() else " — %s" % ", ".join(preachy)))
+
+	# And they have to be short, because they share the notice column with
+	# everything else that happens while somebody is standing at your counter.
+	var long_ones: Array[String] = []
+	for id: String in Tutor.HINTS:
+		if str(Tutor.HINTS[id]).length() > 240:
+			long_ones.append(id)
+	_check(long_ones.is_empty(), "and none of them is a wall of text%s" %
+		("" if long_ones.is_empty() else " — %s" % ", ".join(long_ones)))
+
+	# Every hint has to be reachable, or it is text nobody will ever read.
+	var fired: Array[String] = []
+	Signals.notice.connect(func(_t: String, _tone: String) -> void: pass)
+	Tutor.reset()
+	Signals.night_started.emit(1)
+	Signals.checkout_changed.emit(0, 2, 10)
+	Signals.checkout_changed.emit(2, 2, 10)
+	Signals.scan_completed.emit(["something"])
+	Signals.evidence_logged.emit({})
+	GameState.body_bags = 1
+	Signals.body_dropped.emit(null)
+	GameState.body_bags = 0
+	Tutor._on_body(null)
+	Signals.money_changed.emit(9999)
+	Tutor.fire("empty_shelf")
+	Tutor.fire("asked")
+	Tutor.fire("torch")
+	Tutor.fire("sewer")
+	for id: String in Tutor.HINTS:
+		if not Tutor.seen(id):
+			fired.append(id)
+	_check(fired.is_empty(), "every hint has a trigger that reaches it%s" %
+		("" if fired.is_empty() else " — unreachable: %s" % ", ".join(fired)))
+
+	Tutor.reset()
+	GameState.reset_run()
 
 
 ## Achievements have to work with no Steam at all, because that is every build

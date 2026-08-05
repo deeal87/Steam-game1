@@ -369,6 +369,25 @@ no argument that could distinguish an officer from a civilian, and the smoke
 suite asserts that two identical situations score identically. The night number
 and the clock *are* fair game — both are on screen already.
 
+## Learning it
+
+There is a lot to know here, and for a game that asks you to make judgement
+calls, being confused about the *controls* is the worst possible reason to lose.
+
+So there is no tutorial and no first night on rails. Twelve hints fire **once
+each, ever**, the first time the situation they explain actually arises, as a
+line in the same notice column everything else uses — the first customer puts
+shopping on your counter, the first person makes the ask, the first shelf runs
+out, the first body hits the floor. Then they never speak again. Progress lives
+in `user://hints.cfg`, so a second run is silent from the start.
+
+The rule they are written to: **explain the control, never the decision.** Which
+key sweeps somebody is a thing the game should tell you. Whether to sell to them
+is the entire game and it stays yours. The smoke suite greps every hint for
+advice-shaped phrasing and fails on it, so that stays true as hints get added.
+
+`Esc` → SETTINGS turns them off, or shows them all again.
+
 ## Achievements
 
 Ten of them, listed under `Esc` → ACHIEVEMENTS. They work with **no Steam at
@@ -651,7 +670,7 @@ scenes/Boot.tscn            entry point; everything else is built in code
 scripts/
   Game.gd                   phase machine, panel routing, the SubViewport
   autoload/                 GameState · Signals · Audio · Music · InputSetup ·
-                            Settings · Achievements
+                            Settings · Achievements · Tutor
   systems/
     Tells.gd                the evidence database — every tell, question, answer
     Checkout.gd             scanning, bagging, the till

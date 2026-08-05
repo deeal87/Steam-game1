@@ -161,6 +161,30 @@ func _rebuild() -> void:
 		Settings.apply())
 	_body.add_child(subs)
 
+	# Hints explain controls, never decisions, and each one appears once ever.
+	# Off for anyone who would rather work it out, and resettable for anyone who
+	# wants to be shown again.
+	var hints := CheckBox.new()
+	hints.text = "Hints"
+	hints.button_pressed = Tutor.enabled
+	hints.add_theme_font_size_override("font_size", UIKit.FONT_S)
+	hints.add_theme_color_override("font_color", UIKit.WHITE)
+	hints.toggled.connect(func(on: bool) -> void:
+		Tutor.enabled = on
+		Tutor.save_progress())
+	_body.add_child(hints)
+
+	var again := Button.new()
+	again.text = "Show the hints again"
+	again.flat = true
+	again.add_theme_font_size_override("font_size", UIKit.FONT_S)
+	again.add_theme_color_override("font_color", UIKit.GREEN_DIM)
+	again.pressed.connect(func() -> void:
+		Tutor.reset()
+		Audio.play("click", -20.0)
+		Signals.notice.emit("Hints reset.", "info"))
+	_body.add_child(again)
+
 	_build_footer()
 
 

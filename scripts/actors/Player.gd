@@ -401,6 +401,9 @@ func _travel(which: String) -> void:
 		return
 	# Going down from inside the kiosk is the escape route during a raid.
 	var is_escape := which == "manhole"
+	if destination.y < World.SEWER_Y + 2.0:
+		Tutor.fire("torch")
+		Tutor.fire("sewer")
 	Audio.play("click", -14.0)
 	Signals.travel_requested.emit(destination, label, is_escape)
 

@@ -395,6 +395,7 @@ func _ask_for_illicit() -> void:
 	_asked_for_illicit = true
 	Signals.customer_spoke.emit(profile.full_name, ProfileGenerator.illicit_line(profile))
 	Signals.notice.emit("They're asking. Decide.", "warn")
+	Tutor.fire("asked")
 
 
 func receive_illicit(units: int) -> void:
