@@ -31,6 +31,30 @@ var _entries: Array[Vector3] = []
 var _queue: Array[RaidUnit] = []
 var _wave_timer: float = 0.0
 
+## Shared contact. Whoever sees you tells everybody, which is the single thing
+## that most makes them read as a team rather than as eight people who happen to
+## be in the same room: breaking line of sight with the one in front of you no
+## longer means the one behind him has lost you too.
+var squad_last_known: Vector3 = Vector3.ZERO
+var squad_contact_age: float = 999.0
+## How long a called-out position stays worth walking to.
+const INTEL_LIFETIME := 6.0
+
+
+## Called by any unit with eyes on the player.
+func report_contact(at: Vector3) -> void:
+	squad_last_known = at
+	squad_contact_age = 0.0
+
+
+## The squad's best guess, or nothing if it has gone stale. Stale intel matters:
+## a team that walks forever towards a five-minute-old sighting is a team you can
+## lead round in circles, and one that never forgets is one you can never escape.
+func shared_intel() -> Dictionary:
+	if squad_contact_age > INTEL_LIFETIME:
+		return {}
+	return {"at": squad_last_known, "age": squad_contact_age}
+
 
 func setup(world: World, player: Player) -> void:
 	_world = world
@@ -47,6 +71,8 @@ func start(evidence: int, night: int) -> void:
 	_units.clear()
 	_queue.clear()
 	_wave_timer = 0.0
+	squad_contact_age = 999.0
+	squad_last_known = Vector3.ZERO
 
 	_world.set_shutter_closed(true)
 	_world.anchors["shutter_is_closed"] = true
@@ -117,6 +143,9 @@ func _process(delta: float) -> void:
 	if _player == null or _player.dead:
 		return
 
+	# Intel goes stale on its own. Nobody has to remember to forget.
+	squad_contact_age += delta
+
 	match phase:
 		Phase.FORMING:
 			_timer -= delta
@@ -165,16 +194,37 @@ func _breach() -> void:
 	_send_wave()
 
 
+## A wave is a pair, and the pair has a job each.
+##
+## The first through is the **point**: he closes on you, going wide round the
+## counter island rather than straight up the middle. The second is his **cover**:
+## he stops just inside the doorway with a line across the room and shoots the
+## moment you show yourself.
+##
+## That is what makes two of them worse than two of them used to be. Against a
+## pair with no plan you could hold one angle and win. Against a point and a
+## cover, staying still gets you flushed and moving gets you shot, and you have
+## to decide which of the two to spend your shells on.
+##
+## When there are two ways in they take one each, so you cannot face both.
 func _send_wave() -> void:
-	var sent := 0
-	while sent < WAVE_SIZE and not _queue.is_empty():
+	var sending: Array[RaidUnit] = []
+	while sending.size() < WAVE_SIZE and not _queue.is_empty():
 		var u: RaidUnit = _queue.pop_front()
-		if not is_instance_valid(u) or u.state == RaidUnit.State.DEAD:
-			continue
-		var entry: Vector3 = _entries[randi() % _entries.size()]
+		if is_instance_valid(u) and u.state != RaidUnit.State.DEAD:
+			sending.append(u)
+
+	for i in sending.size():
+		var u := sending[i]
+		# Split the pair across the available doors. With one door open they
+		# come through the same hole, which is exactly why closing one is worth
+		# paying for.
+		var entry: Vector3 = _entries[i % _entries.size()]
 		entry += Vector3(randf_range(-0.6, 0.6), 0.0, randf_range(-0.2, 0.2))
-		u.breach(entry)
-		sent += 1
+		if i == 0:
+			u.assign_point(entry, self)
+		else:
+			u.assign_cover(entry, self)
 
 		if _trap_armed:
 			_trap_armed = false
@@ -184,7 +234,9 @@ func _send_wave() -> void:
 			Signals.notice.emit("The trap takes the first one through.", "good")
 
 	_wave_timer = WAVE_GAP
-	if sent > 0 and not _queue.is_empty():
+	if sending.size() > 1:
+		Signals.notice.emit("Two of them. One's holding the door.", "bad")
+	if not sending.is_empty() and not _queue.is_empty():
 		Signals.notice.emit("More coming.", "warn")
 
 
@@ -200,6 +252,28 @@ func _on_unit_died(_unit: RaidUnit) -> void:
 	var left := _live_count()
 	if left > 0:
 		Signals.notice.emit("%d left." % left, "warn")
+	_promote_cover()
+
+
+## If the point man goes down, whoever was covering him stops covering and comes
+## on himself.
+##
+## Without this, shooting the point is the whole fight: his cover would sit in
+## the doorway watching an empty room forever, and the correct play would be to
+## kill one man per wave and then walk away.
+func _promote_cover() -> void:
+	var has_point := false
+	for u in _units:
+		if is_instance_valid(u) and u.state != RaidUnit.State.DEAD and u.role == RaidUnit.Role.POINT:
+			has_point = true
+			break
+	if has_point:
+		return
+	for u in _units:
+		if is_instance_valid(u) and u.state != RaidUnit.State.DEAD and u.role == RaidUnit.Role.COVER:
+			u.promote_to_point()
+			Signals.notice.emit("The one on the door is moving up.", "bad")
+			return
 
 
 func _finish(survived: bool) -> void:

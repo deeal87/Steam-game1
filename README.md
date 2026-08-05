@@ -150,6 +150,30 @@ the counter genuinely breaks their line, and there is a beat between them
 acquiring you and pulling the trigger, so stepping into a doorway is a
 mistake rather than an execution. The room's geometry is the weapon.
 
+**They come in pairs, and the pair has a job each.** The first through takes
+**point**: he closes on you, going wide round the end of the counter island
+rather than up the middle into your shotgun. The second is his **cover**: he
+stops a pace inside the door with a line across the room and fires the moment
+you show yourself. He does not go looking for you — leaving his angle is how a
+doorway becomes free — and because he is standing still he shoots noticeably
+better than the man who is moving.
+
+That pairing is the difficulty of the fight. Against two people with no plan you
+could hold one angle and win. Against a point and a cover, staying still gets
+you flushed and moving gets you shot, so you have to decide which of the two to
+spend your shells on. Kill the point and his cover stops covering and comes on
+himself — otherwise shooting one man per wave would clear the room.
+
+**With both doors open they take one each**, which is the clearest argument for
+paying to close one: a single approach means the pair has to funnel, and a
+funnel is a thing you can point a shotgun at.
+
+**They share what they see.** One of them getting eyes on you calls it in, and
+everybody walks to that, whether or not they saw it themselves. Breaking line of
+sight with the man in front of you no longer means the man behind him has lost
+you. Called-in positions go stale after a few seconds, though — a team that
+never forgets is one you can never escape.
+
 Three fittings from the supplier change the shape of the fight:
 
 | | |
@@ -567,8 +591,6 @@ the raid, the economy and the detective system all live and tuned.
 
 Known gaps, in rough priority order:
 
-- **The raid still has no flanking or squad coordination.** It has pacing and
-  line-of-sight now, but they do not work as a team.
 - **The body-bag mechanic is vestigial.** Bags auto-consume to reduce heat
   rather than being something you actually do.
 - **Content depth.** Forty-three tells and nine standing questions carries a

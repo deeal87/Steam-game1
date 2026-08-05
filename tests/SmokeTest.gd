@@ -1306,6 +1306,89 @@ func test_raid() -> void:
 	_check(raid._live_count() == 0, "the squad can be killed")
 	raid.stop()
 	raid.queue_free()
+	await test_squad_works_together()
+
+
+## The difference between eight people in a room and a door team.
+func test_squad_works_together() -> void:
+	print("\nThe squad working together:")
+	GameState.reset_run()
+	GameState.defenses = []
+	var raid := RaidDirector.new()
+	raid.setup(_world, _player)
+	add_child(raid)
+	raid.start(2, 5)
+	raid._open_up()
+	raid._breach()
+
+	# A wave is a point and a cover, not two of the same thing.
+	var point: RaidUnit = null
+	var cover: RaidUnit = null
+	for u in raid._units:
+		if u.state != RaidUnit.State.BREACHING:
+			continue
+		if u.role == RaidUnit.Role.POINT and point == null:
+			point = u
+		elif u.role == RaidUnit.Role.COVER and cover == null:
+			cover = u
+	_check(point != null, "somebody takes point")
+	_check(cover != null, "and somebody covers him")
+	if point != null and cover != null:
+		_check(cover.accuracy > point.accuracy,
+			"the man holding still shoots better than the man moving (%.2f vs %.2f)"
+				% [cover.accuracy, point.accuracy])
+		_check(point._has_flank,
+			"the point man goes round the counter rather than up the middle")
+
+	# Two ways in means one each. That is what closing one of them buys you.
+	var entries: Array[float] = []
+	for u in [point, cover]:
+		if u != null:
+			entries.append(u.entry_used.x)
+	_check(raid._entries.size() == 2, "both approaches are open in this test")
+	_check(entries.size() == 2 and absf(entries[0] - entries[1]) > 1.0,
+		"with two doors open the pair splits between them")
+
+	# Shared contact: one of them seeing you tells the rest.
+	var seen_at := Vector3(1.5, 0.0, 2.0)
+	raid.report_contact(seen_at)
+	var intel := raid.shared_intel()
+	_check(not intel.is_empty() and intel["at"] == seen_at, "a sighting is called in")
+	if cover != null:
+		cover._squad = raid
+		cover._last_known = Vector3(-99, 0, -99)
+		_check(cover._search_goal() == seen_at,
+			"and somebody who never saw you goes to where he was told, not where he guessed")
+
+	# But intel goes stale, or you could never shake them.
+	raid.squad_contact_age = RaidDirector.INTEL_LIFETIME + 1.0
+	_check(raid.shared_intel().is_empty(), "an old sighting stops being worth walking to")
+	if cover != null:
+		_check(cover._search_goal() == cover._last_known,
+			"and they fall back on what they saw themselves")
+
+	# A cover man holds his angle instead of wandering off looking.
+	if cover != null:
+		cover.state = RaidUnit.State.SEARCHING
+		var held := cover.global_position
+		for i in 20:
+			cover._physics_process(0.05)
+		_check(cover.global_position.distance_to(held) < 0.5,
+			"the cover man does not leave the door to go searching")
+
+	# Kill the point and his cover has to come on, or shooting one man per wave
+	# would clear the room.
+	if point != null and cover != null:
+		point.take_damage(9999.0)
+		raid._promote_cover()
+		_check(cover.role == RaidUnit.Role.POINT,
+			"killing the point man moves his cover up")
+		_check(cover.state == RaidUnit.State.BREACHING, "and puts him back in motion")
+
+	raid.stop()
+	raid.queue_free()
+	GameState.reset_run()
+	await get_tree().process_frame
 
 
 # --- Every panel, built once --------------------------------------------------

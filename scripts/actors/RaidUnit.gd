@@ -2,18 +2,36 @@ class_name RaidUnit
 extends CharacterBody3D
 ## One member of the door team.
 ##
-## They are not clever. They advance to a firing position, they shoot at where
-## you are, and they keep doing it. What makes them dangerous is that there are
-## several of them and the room is four metres wide.
+## They are still not clever, but they work in pairs now, and the pair has a job
+## each. The **point** closes on you, going wide round the counter island rather
+## than up the middle. His **cover** stops just inside the door with a line
+## across the room and shoots the moment you show yourself.
+##
+## That pairing is the whole difficulty of the fight. Against two people with no
+## plan you could hold one angle and win. Against a point and a cover, staying
+## still gets you flushed and moving gets you shot, so you have to choose which
+## one to spend your shells on — and if you choose the point, his cover stops
+## covering and comes on himself.
+##
+## They also share what they see. Breaking line of sight with the one in front
+## of you no longer means the one behind him has lost you.
 
 signal died(unit: RaidUnit)
 
 enum State { ADVANCING, ENGAGING, BREACHING, SEARCHING, DEAD }
+## POINT closes, COVER holds an angle. Before the shutter goes they are all
+## APPROACH — outside, forming up, with no job yet.
+enum Role { APPROACH, POINT, COVER }
 
 const ADVANCE_SPEED := 2.4
 const BREACH_SPEED := 1.9
+## A cover man does not walk into the room, so he needs to be able to hit across
+## it. A point man is moving, so he should not.
+const COVER_ACCURACY_BONUS := 0.12
+const POINT_ACCURACY_PENALTY := 0.18
 
 var state: State = State.ADVANCING
+var role: Role = Role.APPROACH
 var health: float = 100.0
 var damage: float = 9.0
 var fire_interval: float = 1.15
@@ -37,6 +55,18 @@ var _has_contact: bool = false
 ## Time between seeing you and firing. Without it, stepping into a doorway is
 ## instant death and the fight has no texture.
 var _acquire: float = 0.0
+
+## The squad they belong to, for calling out contacts and asking where the
+## player was last seen. Null for a unit tested on its own.
+var _squad: Node = null
+## The waypoint a point man swings through on his way in, so he arrives from the
+## side rather than walking up the middle of the room into your shotgun.
+var _flank: Vector3 = Vector3.ZERO
+var _has_flank: bool = false
+## Which door this one was sent through. Kept because `_target` is the next
+## waypoint, which for a point man is the end of the counter rather than the way
+## he came in — so it is not something the entry can be read back out of.
+var entry_used: Vector3 = Vector3.ZERO
 
 
 ## Called before the unit is in the tree, so the spawn point is stored and
@@ -137,25 +167,110 @@ func _physics_process(delta: float) -> void:
 			if _sees_player():
 				_try_fire(delta)
 			if global_position.distance_to(_target) < 0.7:
-				state = State.ENGAGING
+				if _has_flank:
+					# Round the end of the counter, now go for them.
+					_has_flank = false
+					_target = _aim_point()
+				else:
+					state = State.ENGAGING
 		State.SEARCHING:
 			if _sees_player():
 				state = State.ENGAGING
 			else:
-				_move_to(_last_known, BREACH_SPEED, delta)
-				if global_position.distance_to(_last_known) < 0.8:
+				# A cover man does not go looking. His job is the angle he is
+				# already holding, and leaving it is how a doorway becomes free.
+				if role == Role.COVER:
+					_idle(delta)
+					_face_dir(_watch_direction())
+					return
+				var goal := _search_goal()
+				_move_to(goal, BREACH_SPEED, delta)
+				if global_position.distance_to(goal) < 0.8:
 					# Nothing here. Hold and watch the room.
 					_idle(delta)
 
 	_muzzle.light_energy = maxf(0.0, _muzzle.light_energy - delta * 30.0)
 
 
-## Called by the director once the shutter fails.
+## Called by the director once the shutter fails. Kept for the plain case and
+## for tests; a raid proper goes through assign_point / assign_cover.
 func breach(entry: Vector3) -> void:
 	if state == State.DEAD:
 		return
 	_target = entry
 	state = State.BREACHING
+
+
+## First through: comes in and closes, round the side of the counter island.
+func assign_point(entry: Vector3, squad: Node = null) -> void:
+	if state == State.DEAD:
+		return
+	_squad = squad
+	role = Role.POINT
+	entry_used = entry
+	accuracy = maxf(0.10, accuracy - POINT_ACCURACY_PENALTY)
+	_plan_flank(entry)
+	_target = _flank if _has_flank else entry
+	state = State.BREACHING
+
+
+## Second through: stops inside the door and watches the room.
+func assign_cover(entry: Vector3, squad: Node = null) -> void:
+	if state == State.DEAD:
+		return
+	_squad = squad
+	role = Role.COVER
+	entry_used = entry
+	accuracy = minf(0.95, accuracy + COVER_ACCURACY_BONUS)
+	_has_flank = false
+	# A pace or two inside, not in the doorway itself — a man standing in the
+	# gap is a silhouette and blocks his own team.
+	_target = entry + Vector3(0.0, 0.0, 0.9)
+	state = State.BREACHING
+
+
+## His point man is down. Stop watching the door and go in.
+func promote_to_point() -> void:
+	if state == State.DEAD or role == Role.POINT:
+		return
+	role = Role.POINT
+	accuracy = maxf(0.10, accuracy - COVER_ACCURACY_BONUS - POINT_ACCURACY_PENALTY)
+	_plan_flank(global_position)
+	_target = _flank if _has_flank else _aim_point()
+	state = State.BREACHING
+
+
+## Picks the end of the counter furthest from the player and routes through it.
+##
+## The shop is one room with a counter island across the middle, so "flanking"
+## here is not clever pathing — it is going round the correct end. Straight down
+## the middle is the shot you were waiting for, and them never taking it is what
+## makes the room's geometry worth using.
+func _plan_flank(entry: Vector3) -> void:
+	_has_flank = false
+	if _player == null:
+		return
+	var left := Vector3(World.CHECKOUT_MIN_X - 0.9, 0.0, World.CHECKOUT_Z - 0.2)
+	var right := Vector3(World.CHECKOUT_MAX_X + 0.9, 0.0, World.CHECKOUT_Z - 0.2)
+	# Round the end the player is *not* nearest to.
+	var pick := left if _player.global_position.x > 0.0 else right
+	# Unless that end is a long way past the door they came in by, in which case
+	# taking it would mean crossing the whole room in the open first.
+	if absf(pick.x - entry.x) > 7.0:
+		pick = right if pick == left else left
+	_flank = pick
+	_has_flank = true
+
+
+## Where a point man ends up: close, but not inside the player.
+func _aim_point() -> Vector3:
+	if _player == null:
+		return global_position
+	var to_me := (global_position - _player.global_position)
+	to_me.y = 0.0
+	if to_me.length() < 0.1:
+		to_me = Vector3(0, 0, 1)
+	return _player.global_position + to_me.normalized() * 1.9
 
 
 ## True when there is a clear line from their eyeline to the player's chest.
@@ -174,7 +289,36 @@ func _sees_player() -> bool:
 		return false
 	_last_known = _player.global_position
 	_has_contact = true
+	# Call it in. Everyone else now knows where you are, whether or not they can
+	# see you themselves.
+	if _squad != null and is_instance_valid(_squad) and _squad.has_method("report_contact"):
+		_squad.report_contact(_last_known)
 	return true
+
+
+## Where to look when you have lost them: what the squad last called in, if it
+## is still fresh, otherwise the last place this unit saw them itself.
+##
+## Fresher intel wins. A team where everybody converges on the newest sighting
+## is a team you have to keep moving to escape, rather than one you can shake by
+## stepping behind the counter once.
+func _search_goal() -> Vector3:
+	if _squad != null and is_instance_valid(_squad) and _squad.has_method("shared_intel"):
+		var intel: Dictionary = _squad.shared_intel()
+		if not intel.is_empty():
+			return intel["at"]
+	return _last_known
+
+
+## A cover man faces the middle of the room, or the last called-in position if
+## there is one.
+func _watch_direction() -> Vector3:
+	var goal := _search_goal()
+	var dir := goal - global_position
+	dir.y = 0.0
+	if dir.length() < 0.2:
+		dir = Vector3(0, 0, 1)
+	return dir.normalized()
 
 
 func _try_fire(delta: float) -> void:
