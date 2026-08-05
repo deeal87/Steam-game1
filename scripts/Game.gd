@@ -173,6 +173,10 @@ func _build_world() -> void:
 	world = World.new()
 	viewport_3d.add_child(world)
 
+	# Positional audio has to live in the same viewport as the camera that hears
+	# it, and the camera is inside this SubViewport.
+	Audio.attach_to_world(world)
+
 	player = Player.new()
 	player.world = world
 	viewport_3d.add_child(player)

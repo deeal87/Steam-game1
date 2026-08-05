@@ -170,6 +170,8 @@ func _rebuild() -> void:
 		func(v: float) -> void: Settings.master_volume = v)
 	_slider("Music", Settings.music_volume, 0.0, 1.0, "",
 		func(v: float) -> void: Settings.music_volume = v)
+	_slider("Effects", Settings.sfx_volume, 0.0, 1.0, "",
+		func(v: float) -> void: Settings.sfx_volume = v)
 	_slider("Mouse sensitivity", Settings.mouse_sensitivity, 0.25, 3.0, "",
 		func(v: float) -> void: Settings.mouse_sensitivity = v, 0.05)
 

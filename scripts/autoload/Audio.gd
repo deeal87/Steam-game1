@@ -5,36 +5,153 @@ extends Node
 ## buffer as raw 16-bit PCM the first time it is asked for, then cached.
 
 const RATE := 22050
+## Its own bus, so effects can be turned down without touching the music and
+## vice versa. Everything used to play straight onto Master, which meant the
+## only way to quieten a gunshot was to quieten the whole game.
+const BUS := "SFX"
+
+## How far a world sound carries. The shop is ten metres across and the street a
+## hundred, so this is generous enough to hear a raid forming up outside and
+## tight enough that a gunshot at the far end of the sewer is not in your ear.
+const WORLD_MAX_DISTANCE := 34.0
 
 var _cache: Dictionary = {}
 var _players: Array[AudioStreamPlayer] = []
+var _world_players: Array[AudioStreamPlayer3D] = []
 var _next_player: int = 0
+var _next_world: int = 0
 var _ambience: AudioStreamPlayer
+var _bus_index: int = 0
 
 
 func _ready() -> void:
+	_make_bus()
 	# A small pool so overlapping cues do not cut each other off.
 	for i in 12:
 		var p := AudioStreamPlayer.new()
-		p.bus = "Master"
+		p.bus = BUS
 		add_child(p)
 		_players.append(p)
+
+	# A second pool that exists in space. Positional audio is not decoration
+	# here: the sewer is pitch dark, so which direction a thing is coming from
+	# is the only information you get about it, and a raid you can hear forming
+	# up on your left is a raid you can prepare for.
+	for i in 10:
+		var p3 := AudioStreamPlayer3D.new()
+		p3.bus = BUS
+		p3.max_distance = WORLD_MAX_DISTANCE
+		p3.unit_size = 4.0
+		# Inverse-square falloff, which is what real sound does and what makes
+		# distance readable rather than merely quieter.
+		p3.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_SQUARE_DISTANCE
+		add_child(p3)
+		_world_players.append(p3)
+
 	_ambience = AudioStreamPlayer.new()
-	_ambience.bus = "Master"
+	_ambience.bus = BUS
 	_ambience.volume_db = -20.0
 	add_child(_ambience)
 
 
+## Moves the positional pool into the viewport the 3D camera lives in.
+##
+## This is not optional and it is easy to miss. An AudioStreamPlayer3D resolves
+## its listener from *its own* viewport, and the 3D world here renders into a
+## SubViewport while this autoload sits under the root. Left where they are
+## built, every positional sound would look for a listener in a viewport that
+## contains no 3D camera at all — and the failure is silence, which is
+## indistinguishable from a sound simply not having been triggered.
+func attach_to_world(host: Node) -> void:
+	if host == null or not is_instance_valid(host):
+		return
+	for p in _world_players:
+		if p.get_parent() == host:
+			continue
+		p.get_parent().remove_child(p)
+		host.add_child(p)
+
+
+## Where the positional pool currently lives, so a test can check it is
+## somewhere a listener can hear it.
+func world_pool_viewport() -> Viewport:
+	if _world_players.is_empty():
+		return null
+	return _world_players[0].get_viewport()
+
+
+func _make_bus() -> void:
+	if AudioServer.get_bus_index(BUS) >= 0:
+		_bus_index = AudioServer.get_bus_index(BUS)
+		return
+	_bus_index = AudioServer.bus_count
+	AudioServer.add_bus(_bus_index)
+	AudioServer.set_bus_name(_bus_index, BUS)
+	AudioServer.set_bus_send(_bus_index, "Master")
+
+
+func set_volume(linear: float) -> void:
+	if _bus_index <= 0:
+		return
+	AudioServer.set_bus_volume_db(_bus_index, linear_to_db(clampf(linear, 0.0001, 1.0)))
+	AudioServer.set_bus_mute(_bus_index, linear <= 0.001)
+
+
+## A sound with no place in the world: interface, and things happening in your
+## own hands.
 func play(cue: String, volume_db: float = -8.0, pitch: float = 1.0) -> void:
 	var stream := _cue(cue)
 	if stream == null:
 		return
-	var p := _players[_next_player]
-	_next_player = (_next_player + 1) % _players.size()
+	var p := _free_player()
 	p.stream = stream
 	p.volume_db = volume_db
 	p.pitch_scale = pitch * randf_range(0.94, 1.06)
 	p.play()
+
+
+## A sound that happens somewhere. Falls back to the flat pool when there is no
+## position to give it, so a caller never has to check.
+func play_at(cue: String, at: Vector3, volume_db: float = -8.0, pitch: float = 1.0) -> void:
+	var stream := _cue(cue)
+	if stream == null:
+		return
+	if _world_players.is_empty():
+		play(cue, volume_db, pitch)
+		return
+	var p := _free_world_player()
+	p.stream = stream
+	p.global_position = at
+	p.volume_db = volume_db
+	p.pitch_scale = pitch * randf_range(0.94, 1.06)
+	p.play()
+
+
+## Prefers a player that is not already busy, and only steals the oldest one
+## when they are all in use.
+##
+## Plain round-robin advanced regardless, so a burst of interface clicks could
+## cut off a gunshot that was still sounding while three idle players sat there.
+func _free_player() -> AudioStreamPlayer:
+	for i in _players.size():
+		var idx := (_next_player + i) % _players.size()
+		if not _players[idx].playing:
+			_next_player = (idx + 1) % _players.size()
+			return _players[idx]
+	var p := _players[_next_player]
+	_next_player = (_next_player + 1) % _players.size()
+	return p
+
+
+func _free_world_player() -> AudioStreamPlayer3D:
+	for i in _world_players.size():
+		var idx := (_next_world + i) % _world_players.size()
+		if not _world_players[idx].playing:
+			_next_world = (idx + 1) % _world_players.size()
+			return _world_players[idx]
+	var p := _world_players[_next_world]
+	_next_world = (_next_world + 1) % _world_players.size()
+	return p
 
 
 func start_ambience() -> void:

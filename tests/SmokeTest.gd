@@ -554,6 +554,69 @@ func test_audio() -> void:
 			built += 1
 	_check(built == cues.size(), "all %d cues synthesise (%d built)" % [cues.size(), built])
 
+	# Effects get their own bus, so they can be turned down without taking the
+	# music with them. Before this everything played straight onto Master.
+	_check(AudioServer.get_bus_index(Audio.BUS) > 0, "effects have their own bus")
+	_check(AudioServer.get_bus_index("Music") > 0, "and music still has its own")
+
+	# Positional audio, which is a gameplay system rather than polish: the sewer
+	# is pitch dark, so which direction a thing is coming from is the only
+	# information the player gets about it.
+	_check(not Audio._world_players.is_empty(), "there is a pool of positional players")
+	var mispooled := 0
+	for p3: AudioStreamPlayer3D in Audio._world_players:
+		if p3.bus != Audio.BUS or p3.max_distance <= 0.0:
+			mispooled += 1
+	_check(mispooled == 0, "and they are all on the effects bus with a falloff distance")
+
+	# A burst of interface clicks must not cut off a gunshot that is still
+	# sounding while idle players sit there. Plain round-robin did exactly that.
+	# From a known state: under the dummy audio driver a stream never advances,
+	# so every player an earlier test touched still reports itself as playing and
+	# the pool looks permanently full.
+	for p: AudioStreamPlayer in Audio._players:
+		p.stop()
+	Audio._next_player = 0
+	var busy := Audio._players[0]
+	busy.stream = Audio._cue("breach")
+	busy.play()
+	var handed := Audio._free_player()
+	_check(handed != busy, "a player that is still sounding is not stolen while others are free")
+
+	# And when they really are all busy, it takes the oldest rather than
+	# refusing to make a sound.
+	for p2: AudioStreamPlayer in Audio._players:
+		p2.stream = Audio._cue("click")
+		p2.play()
+	_check(Audio._free_player() != null, "and a full pool still returns something to play on")
+	for p3: AudioStreamPlayer in Audio._players:
+		p3.stop()
+
+
+## Positional sound has to live in the same viewport as the camera that hears it.
+##
+## An AudioStreamPlayer3D resolves its listener from its *own* viewport, and this
+## game renders the 3D world into a SubViewport while the audio autoload sits
+## under the root. Left where they are built, every world sound would be looking
+## for a listener in a viewport with no 3D camera in it — and the symptom is
+## silence, which looks exactly like a sound that was never triggered. Nothing
+## else in the suite would notice.
+func _test_positional_audio_can_be_heard() -> void:
+	var pool := Audio.world_pool_viewport()
+	_check(pool != null, "the positional pool is in the tree")
+	if pool == null:
+		return
+
+	# In the real game Game.gd hands it the world node inside the SubViewport.
+	# The harness owns the world here, so it is the same question asked of
+	# whatever viewport that is: does the pool sit where the camera can hear it?
+	Audio.attach_to_world(_world)
+	pool = Audio.world_pool_viewport()
+	_check(pool == _world.get_viewport(),
+		"and it follows the world into the viewport the camera is in")
+	_check(_player.camera != null and _player.camera.get_viewport() == pool,
+		"which is the same viewport the player's camera renders from")
+
 
 ## The icon is the one generated asset that has to exist as a file on disk
 ## before a build runs, which means it can go stale without anything noticing.
@@ -2198,6 +2261,7 @@ func test_panels() -> void:
 	dialogue._rebuild()
 	_check(dialogue._options.size() > 0, "dialogue still offers actions once questions run out")
 	dialogue.close()
+	_test_positional_audio_can_be_heard()
 	_test_dialogue_fits()
 	dialogue.close()
 

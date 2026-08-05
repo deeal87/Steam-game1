@@ -116,7 +116,7 @@ func _physics_process(delta: float) -> void:
 			_wander(delta)
 			if distance < notice:
 				state = State.HUNTING
-				Audio.play("beep_low", -26.0, 0.35)
+				Audio.play_at("beep_low", global_position + Vector3(0, 1.0, 0), -26.0, 0.35)
 		State.HUNTING:
 			_move_toward_player(delta)
 			if distance <= STRIKE_RANGE:
@@ -131,7 +131,7 @@ func _physics_process(delta: float) -> void:
 	_growl_timer -= delta
 	if _growl_timer <= 0.0 and state != State.LURKING:
 		_growl_timer = randf_range(2.5, 6.0)
-		Audio.play("swing", -30.0, randf_range(0.35, 0.55))
+		Audio.play_at("swing", global_position + Vector3(0, 0.6, 0), -30.0, randf_range(0.35, 0.55))
 
 
 func _wander(delta: float) -> void:
@@ -164,8 +164,8 @@ func _strike(delta: float, distance: float) -> void:
 	# Both arms come forward, then it hits you.
 	for s in _shoulders:
 		s.rotation.x = -1.6
-	Audio.play("swing", -12.0, 0.7)
-	Audio.play("impact", -14.0)
+	Audio.play_at("swing", global_position + Vector3(0, 1.0, 0), -12.0, 0.7)
+	Audio.play_at("impact", global_position + Vector3(0, 1.0, 0), -14.0)
 	_player.take_damage(damage)
 
 
@@ -185,7 +185,7 @@ func take_damage(amount: float, _source: Object = null) -> void:
 func _die() -> void:
 	state = State.DEAD
 	collision_layer = 0
-	Audio.play("impact", -12.0, 0.8)
+	Audio.play_at("impact", global_position + Vector3(0, 0.6, 0), -12.0, 0.8)
 	if _eyes != null:
 		_eyes.light_energy = 0.0
 	var tw := create_tween()

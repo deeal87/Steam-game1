@@ -96,7 +96,7 @@ func bag() -> bool:
 	# A bag reads as a bag: one long dark shape, no limbs.
 	_visual.add_child(ProcMesh.box(Vector3(0.62, 0.42, 1.85), Vector3(0, 0.21, 0),
 		ProcMesh.mat(ProcTex.flat(Color(0.045, 0.05, 0.055))), "Bagged"))
-	Audio.play("click", -12.0)
+	Audio.play_at("click", global_position + Vector3(0, 0.4, 0), -12.0)
 	Signals.notice.emit("Bagged. Now it has to go somewhere.", "info")
 	return true
 

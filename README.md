@@ -393,6 +393,31 @@ The wary and bad sections switch the bed from Am–F–C–G to Am–F–Dm–E.
 a major chord in a minor key, and its G# is why the dark bed sounds like it is
 leaning on you.
 
+### Where a sound comes from
+
+Effects that happen somewhere in the world are played **positionally** —
+gunshots, a raid unit going down, a customer's footsteps, the chime when
+somebody reaches the counter, and everything in the tunnels. That last one is a
+gameplay system rather than polish: the sewer is pitch dark, so which direction
+a thing is coming from is the only information you get about it, and hearing a
+raid form up on your left is the difference between being ready and not.
+
+Interface sounds and things happening in your own hands stay flat, because they
+are not in the world.
+
+Effects have their own bus, so they can be turned down without taking the music
+with them — they used to play straight onto Master, where the only way to
+quieten a gunshot was to quieten the whole game.
+
+Two things here are easy to get wrong and are tested rather than trusted. A
+still-sounding cue is never cut off while an idle voice is free, which plain
+round-robin did. And the positional pool has to sit in the **same viewport as
+the camera**: this game renders the world into a SubViewport, and an
+`AudioStreamPlayer3D` looks for its listener in its own viewport, so a pool left
+on the autoload under the root would search a viewport containing no 3D camera
+at all. The symptom is silence, which is indistinguishable from a sound that was
+never triggered.
+
 **The score is not allowed to know who is police.** A sting when an officer
 walks in would hand you the answer the entire game is built on withholding.
 Tension is computed from three things you can already see on your own screen:

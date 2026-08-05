@@ -223,7 +223,7 @@ func _follow_path(delta: float, speed: float) -> void:
 func _take_from_shelf(item_id: String) -> void:
 	if GameState.take_from_shelf(item_id):
 		basket.append(item_id)
-		Audio.play("click", -24.0)
+		Audio.play_at("click", global_position + Vector3(0, 1.2, 0), -24.0)
 		if world != null:
 			world.refresh_shelves()
 	else:
@@ -373,7 +373,7 @@ func _arrive() -> void:
 	if _spoke_greeting:
 		return
 	_spoke_greeting = true
-	Audio.play("chime", -18.0)
+	Audio.play_at("chime", global_position + Vector3(0, 1.5, 0), -18.0)
 	Signals.customer_spoke.emit(profile.full_name, profile.greeting)
 	# The director puts the basket on the counter in response to this.
 	Signals.customer_arrived.emit(self)
@@ -573,7 +573,7 @@ func _die() -> void:
 	state = State.DEAD
 	outcome = "killed"
 	collision_layer = 0
-	Audio.play("impact", -8.0)
+	Audio.play_at("impact", global_position + Vector3(0, 0.5, 0), -8.0)
 
 	var tw := create_tween()
 	tw.tween_property(_body, "rotation:x", deg_to_rad(-88.0), 0.45).set_trans(Tween.TRANS_BOUNCE)

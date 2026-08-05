@@ -331,7 +331,7 @@ func _try_fire(delta: float) -> void:
 		return
 	_fire_timer = fire_interval * randf_range(0.85, 1.30)
 
-	Audio.play("gunshot", -10.0, randf_range(0.95, 1.08))
+	Audio.play_at("gunshot", global_position + Vector3(0, 1.35, 0), -10.0, randf_range(0.95, 1.08))
 	_muzzle.light_energy = 2.6
 	if randf() < accuracy:
 		_player.take_damage(damage)
@@ -352,7 +352,7 @@ func take_damage(amount: float, _source: Object = null) -> void:
 func _die() -> void:
 	state = State.DEAD
 	collision_layer = 0
-	Audio.play("impact", -10.0)
+	Audio.play_at("impact", global_position + Vector3(0, 1.0, 0), -10.0)
 	var tw := create_tween()
 	tw.tween_property(_body, "rotation:x", deg_to_rad(-88.0), 0.4).set_trans(Tween.TRANS_BOUNCE)
 	tw.parallel().tween_property(_body, "position:y", 0.10, 0.4)
