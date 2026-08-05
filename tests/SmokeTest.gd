@@ -14,8 +14,12 @@ var _player: Player
 
 func _ready() -> void:
 	print("\n=== KIOSK AT MIDNIGHT · smoke ===\n")
+	# The suite drives thousands of operations; a log of them all would bury the
+	# results it exists to print.
+	Log.mute(true)
 	GameState.reset_run()
 	test_classes_resolve()
+	test_persistence_errors()
 	test_saves()
 	test_achievements()
 	test_hints()
@@ -197,6 +201,52 @@ func _collect_resources(n: Node, meshes: Dictionary, mats: Dictionary) -> void:
 			mats[mi.material_override.get_instance_id()] = true
 	for ch in n.get_children():
 		_collect_resources(ch, meshes, mats)
+
+
+## Writing to disk, and what happens when it does not work.
+##
+## Every `ConfigFile.save()` in this project used to be called for its side
+## effect with the return value dropped. That is fine until a disk is full, a
+## profile directory is read-only, Steam Cloud is mid-conflict, or antivirus has
+## the file open — all of which fail, and all of which used to fail silently. The
+## player found out when they relaunched and the run was gone.
+func test_persistence_errors() -> void:
+	print("\nWhen the disk says no:")
+	var cfg := ConfigFile.new()
+	cfg.set_value("x", "y", 1)
+
+	_check(Persist.write(cfg, "user://persist_probe.cfg", "probe"),
+		"a normal write succeeds")
+
+	# A path that cannot exist. The write must fail, must say so, and must not
+	# take the game down with it.
+	var failed_quietly := Persist.write(cfg, "res://nowhere/at/all/probe.cfg", "probe")
+	_check(not failed_quietly, "a write that cannot land reports failure")
+
+	# Reading distinguishes "not there yet" from "there and broken". The first is
+	# normal on a fresh install and must stay silent; only the second is a fault.
+	var fresh := ConfigFile.new()
+	_check(not Persist.read(fresh, "user://definitely_not_here.cfg", "probe"),
+		"a missing file is not an error")
+
+	var broken := FileAccess.open("user://persist_broken.cfg", FileAccess.WRITE)
+	if broken != null:
+		broken.store_string("this is not a config file at all [[[ = = =")
+		broken.close()
+	var parsed := ConfigFile.new()
+	_check(not Persist.read(parsed, "user://persist_broken.cfg", "probe"),
+		"and a corrupt one is reported rather than trusted")
+
+	# The important half: a failed save must never leave the game in a state
+	# where it thinks it saved.
+	GameState.night = 5
+	GameState.save_run()
+	_check(GameState.saved_night() == 5, "a real run save round-trips through the new path")
+
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://persist_probe.cfg"))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://persist_broken.cfg"))
+	GameState.reset_run()
+	GameState.clear_save()
 
 
 ## Saving and loading a run.

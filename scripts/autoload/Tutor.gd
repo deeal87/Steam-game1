@@ -119,12 +119,12 @@ func save_progress() -> void:
 	cfg.set_value("hints", "enabled", enabled)
 	for id: String in _shown:
 		cfg.set_value("shown", id, true)
-	cfg.save(SAVE_PATH)
+	Persist.write(cfg, SAVE_PATH, "hints")
 
 
 func load_progress() -> void:
 	var cfg := ConfigFile.new()
-	if cfg.load(SAVE_PATH) != OK:
+	if not Persist.read(cfg, SAVE_PATH, "hints"):
 		return
 	enabled = bool(cfg.get_value("hints", "enabled", true))
 	if not cfg.has_section("shown"):

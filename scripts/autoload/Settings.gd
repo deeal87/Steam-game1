@@ -155,12 +155,12 @@ func save_settings() -> void:
 	cfg.set_value("video", "resolution", resolution_index)
 	cfg.set_value("video", "vsync", vsync)
 	cfg.set_value("video", "fps_cap", fps_cap)
-	cfg.save(PATH)
+	Persist.write(cfg, PATH, "settings")
 
 
 func load_settings() -> void:
 	var cfg := ConfigFile.new()
-	if cfg.load(PATH) != OK:
+	if not Persist.read(cfg, PATH, "settings"):
 		# First run. Open at the biggest listed size this screen can hold rather
 		# than at a hardcoded 720p, so a 1440p monitor does not get a small
 		# window in the corner and a handheld does not get one it cannot fit.

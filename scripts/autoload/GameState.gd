@@ -409,12 +409,12 @@ func save_run() -> void:
 	cfg.set_value("gear", "ammo", ammo)
 	cfg.set_value("gear", "defenses", defenses)
 	cfg.set_value("gear", "body_bags", body_bags)
-	cfg.save(SAVE_PATH)
+	Persist.write(cfg, SAVE_PATH, "run", true)
 
 
 func load_run() -> bool:
 	var cfg := ConfigFile.new()
-	if cfg.load(SAVE_PATH) != OK:
+	if not Persist.read(cfg, SAVE_PATH, "saved run"):
 		return false
 	night = cfg.get_value("run", "night", 1)
 	money = cfg.get_value("run", "money", 85)
@@ -450,7 +450,7 @@ func load_run() -> bool:
 ## window is not a small thing.
 func saved_night() -> int:
 	var cfg := ConfigFile.new()
-	if cfg.load(SAVE_PATH) != OK:
+	if not Persist.read(cfg, SAVE_PATH, "saved run"):
 		return 0
 	return int(cfg.get_value("run", "night", 0))
 

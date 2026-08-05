@@ -22,6 +22,7 @@ config/macos_native_icon="res://icon.icns"
 
 [autoload]
 
+Log="*res://scripts/autoload/Log.gd"
 Signals="*res://scripts/autoload/Signals.gd"
 GameState="*res://scripts/autoload/GameState.gd"
 InputSetup="*res://scripts/autoload/InputSetup.gd"

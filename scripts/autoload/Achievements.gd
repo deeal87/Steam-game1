@@ -172,12 +172,12 @@ func save_progress() -> void:
 	var cfg := ConfigFile.new()
 	for id: String in _earned:
 		cfg.set_value("earned", id, true)
-	cfg.save(SAVE_PATH)
+	Persist.write(cfg, SAVE_PATH, "achievements")
 
 
 func load_progress() -> void:
 	var cfg := ConfigFile.new()
-	if cfg.load(SAVE_PATH) != OK:
+	if not Persist.read(cfg, SAVE_PATH, "achievements"):
 		return
 	for id: String in cfg.get_section_keys("earned") if cfg.has_section("earned") else []:
 		if CATALOGUE.has(id):

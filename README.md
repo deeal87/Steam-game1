@@ -586,6 +586,10 @@ xvfb-run -a godot --path . res://tests/Screenshots.tscn -- --shots=/tmp/shots
 godot --headless --path . res://tests/Soak.tscn -- --nights=5
 ```
 
+Run every suite under a timeout. A parse error in a test file leaves a scriptless
+node that never calls `quit()`, so the run hangs forever rather than failing —
+which on CI is a stuck job rather than a red build.
+
 The other two suites check parts in isolation and argue about numbers. Neither
 can catch the failure that matters most before shipping: **a night that never
 ends.** So this one drives the real game — a bot works the counter, scans,
@@ -624,6 +628,27 @@ repository could have found:
 
 All four have regression tests in the smoke suite that fail against the old
 code.
+
+## When something goes wrong
+
+The game writes `kiosk.log` next to the saves, and keeps the previous run's as
+`kiosk.previous.log`. The previous one is the half that matters: a crash means
+the player relaunches to tell you about it, and a single log file would already
+have been overwritten by the time they did.
+
+The header is what a bug report needs before the first line of gameplay — build,
+OS, renderer, display server, screen size and refresh rate, CPU, memory — because
+nearly every "cannot reproduce" comes down to one of those being different from
+the reporter's. After that it records each night opening and closing with the
+money, heat, name and rent, every raid and why it happened, fleeing, and the end
+of a run.
+
+Every write to disk goes through `Persist`, which checks the return code.
+Previously all five `ConfigFile.save()` calls dropped it — fine until a disk is
+full, a profile directory is read-only, Steam Cloud is mid-conflict or antivirus
+has the file open, all of which fail and all of which used to fail *silently*.
+Now a failed run save says so on screen while the player can still do something
+about it, and everything lands in the log.
 
 ## Building for release
 

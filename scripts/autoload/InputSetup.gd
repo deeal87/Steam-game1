@@ -255,12 +255,12 @@ func save_overrides() -> void:
 			if ev is InputEventKey:
 				cfg.set_value("keys", action, (ev as InputEventKey).physical_keycode)
 				break
-	cfg.save(OVERRIDE_PATH)
+	Persist.write(cfg, OVERRIDE_PATH, "key bindings")
 
 
 func load_overrides() -> void:
 	var cfg := ConfigFile.new()
-	if cfg.load(OVERRIDE_PATH) != OK:
+	if not Persist.read(cfg, OVERRIDE_PATH, "key bindings"):
 		return
 	for entry: Array in REBINDABLE:
 		var action: String = entry[0]

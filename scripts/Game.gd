@@ -412,6 +412,9 @@ func _start_shift() -> void:
 	player.ui_locked = false
 	player.health = player.max_health
 	player.dead = false
+	Log.info("night %d opens · money %d · heat %.0f · name %.0f%% · rent %d"
+		% [GameState.night, GameState.money, GameState.heat,
+			GameState.reputation, GameState.rent_due()])
 	world.set_shutter_closed(false)
 	world.anchors["shutter_is_closed"] = false
 	# Anything still on the floor was settled up at the end of last night. It
@@ -433,6 +436,11 @@ func _on_shift_finished(summary: Dictionary) -> void:
 	summary["evidence"] = GameState.evidence_against_you
 	summary["raid_reason"] = GameState.raid_reason
 
+	Log.info("night %d closes · served %d · took %d of %d rent · evidence %d · %s"
+		% [GameState.night, GameState.customers_served,
+			int(summary.get("earned", 0)), int(summary.get("rent", 0)),
+			GameState.evidence_against_you,
+			"rent paid" if bool(summary.get("rent_paid", false)) else "SHORT"])
 	_pending_summary = summary
 	player.ui_locked = true
 	GameState.nights_survived += 1
@@ -466,6 +474,9 @@ func _on_report_continued() -> void:
 				Signals.notice.emit("%s in your hands." %
 					GameState.WEAPONS[player.equipped]["name"], "info")
 			Music.play_raid()
+			Log.info("raid begins on night %d · evidence %d · reason: %s"
+				% [GameState.night, int(_pending_summary.get("evidence", 0)),
+					str(_pending_summary.get("raid_reason", "unstated"))])
 			raid_director.start(int(_pending_summary.get("evidence", 0)), GameState.night)
 
 
@@ -500,6 +511,8 @@ func _on_player_died(cause: String) -> void:
 	var text := "They came through the door and you were still holding a bag of crisps."
 	if cause != "shot":
 		text = cause
+	Log.info("run over on night %d after %d nights survived · cause: %s"
+		% [GameState.night, GameState.nights_survived, cause])
 	# The run is over, so there is nothing to come back to. Without this,
 	# quitting from the game-over screen rather than pressing "open up again"
 	# would leave a dead run in the save file for the next launch to resume.
@@ -557,6 +570,7 @@ func _on_travel_requested(destination: Vector3, label: String, is_escape: bool) 
 
 
 func _flee_raid() -> void:
+	Log.info("player fled the raid through the sewer on night %d" % GameState.night)
 	var lost := GameState.flee_through_sewer()
 	raid_director.stop()
 	raid_director.phase = RaidDirector.Phase.IDLE
