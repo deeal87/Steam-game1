@@ -10,11 +10,61 @@ const PS1_SHADER := preload("res://shaders/ps1.gdshader")
 
 static var _shader_cache: Shader = null
 
+# --- Resource sharing ---------------------------------------------------------
+#
+# Meshes and materials here are immutable once built, so two things that look
+# the same can *be* the same. Before this, the shop built 376 MeshInstance3Ds
+# backed by 376 separate BoxMesh resources — every crate, every shelf plank and
+# every brick of the kiosk carrying its own copy of a shape that a dozen others
+# already had. Each unique mesh and material pair is a draw call the renderer
+# cannot combine, so this was costing memory and draw calls at the same time.
+#
+# Sharing is safe precisely because nothing mutates them: `box()` sets size once
+# at creation, and per-instance differences live on the MeshInstance3D
+# (position, name) rather than on the resource.
+
+static var _box_cache: Dictionary = {}    ## "x,y,z" -> BoxMesh
+static var _cyl_cache: Dictionary = {}    ## "r,h,sides" -> CylinderMesh
+static var _quad_cache: Dictionary = {}   ## "x,y" -> QuadMesh
+static var _mat_cache: Dictionary = {}    ## parameter digest -> ShaderMaterial
+
+
+static func cache_sizes() -> Dictionary:
+	return {
+		"box": _box_cache.size(), "cylinder": _cyl_cache.size(),
+		"quad": _quad_cache.size(), "material": _mat_cache.size(),
+	}
+
+
+static func clear_caches() -> void:
+	_box_cache.clear()
+	_cyl_cache.clear()
+	_quad_cache.clear()
+	_mat_cache.clear()
+	_shape_cache.clear()
+
 
 static func shader() -> Shader:
 	if _shader_cache == null:
 		_shader_cache = PS1_SHADER
 	return _shader_cache
+
+
+## Rounded to a tenth of a millimetre before it becomes a key, so sizes that
+## differ only by floating-point noise still share one resource.
+static func _size_key(v: Vector3) -> String:
+	return "%.4f,%.4f,%.4f" % [v.x, v.y, v.z]
+
+
+static func box_mesh(size: Vector3) -> BoxMesh:
+	var key := _size_key(size)
+	var hit: Variant = _box_cache.get(key)
+	if hit != null:
+		return hit
+	var mesh := BoxMesh.new()
+	mesh.size = size
+	_box_cache[key] = mesh
+	return mesh
 
 
 ## Builds a material using the PS1 shader. `uv_scale` tiles the texture across
@@ -29,6 +79,18 @@ static func mat(
 	snap: float = 1.0,
 	affine: float = 1.0
 ) -> ShaderMaterial:
+	# Keyed on the texture's identity rather than its contents — ProcTex already
+	# hands back the same ImageTexture for the same request, so two materials
+	# built from the same picture and the same numbers really are the same
+	# material.
+	var key := "%d|%.4f|%s|%.4f|%s|%.4f|%.4f" % [
+		tex.get_instance_id() if tex != null else 0, uv_scale, emission.to_html(true),
+		emission_strength, tint.to_html(true), snap, affine,
+	]
+	var hit: Variant = _mat_cache.get(key)
+	if hit != null:
+		return hit
+
 	var m := ShaderMaterial.new()
 	m.shader = shader()
 	m.set_shader_parameter("albedo_tex", tex)
@@ -39,6 +101,7 @@ static func mat(
 	m.set_shader_parameter("snap_strength", snap)
 	m.set_shader_parameter("affine_strength", affine)
 	m.set_shader_parameter("snap_grid", 110.0)
+	_mat_cache[key] = m
 	return m
 
 
@@ -49,10 +112,8 @@ static func colour_mat(c: Color, emission_strength: float = 0.0) -> ShaderMateri
 # --- Primitives --------------------------------------------------------------
 
 static func box(size: Vector3, pos: Vector3, material: Material, name: String = "Box") -> MeshInstance3D:
-	var mesh := BoxMesh.new()
-	mesh.size = size
 	var mi := MeshInstance3D.new()
-	mi.mesh = mesh
+	mi.mesh = box_mesh(size)
 	mi.material_override = material
 	mi.position = pos
 	mi.name = name
@@ -60,12 +121,16 @@ static func box(size: Vector3, pos: Vector3, material: Material, name: String = 
 
 
 static func cylinder(radius: float, height: float, pos: Vector3, material: Material, sides: int = 8) -> MeshInstance3D:
-	var mesh := CylinderMesh.new()
-	mesh.top_radius = radius
-	mesh.bottom_radius = radius
-	mesh.height = height
-	mesh.radial_segments = sides
-	mesh.rings = 1
+	var key := "%.4f,%.4f,%d" % [radius, height, sides]
+	var mesh: CylinderMesh = _cyl_cache.get(key)
+	if mesh == null:
+		mesh = CylinderMesh.new()
+		mesh.top_radius = radius
+		mesh.bottom_radius = radius
+		mesh.height = height
+		mesh.radial_segments = sides
+		mesh.rings = 1
+		_cyl_cache[key] = mesh
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
 	mi.material_override = material
@@ -74,8 +139,12 @@ static func cylinder(radius: float, height: float, pos: Vector3, material: Mater
 
 
 static func quad(size: Vector2, pos: Vector3, material: Material) -> MeshInstance3D:
-	var mesh := QuadMesh.new()
-	mesh.size = size
+	var key := "%.4f,%.4f" % [size.x, size.y]
+	var mesh: QuadMesh = _quad_cache.get(key)
+	if mesh == null:
+		mesh = QuadMesh.new()
+		mesh.size = size
+		_quad_cache[key] = mesh
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
 	mi.material_override = material
@@ -90,11 +159,25 @@ static func solid_box(size: Vector3, pos: Vector3, material: Material, name: Str
 	body.position = pos
 	body.add_child(box(size, Vector3.ZERO, material, name + "Mesh"))
 	var shape := CollisionShape3D.new()
-	var bs := BoxShape3D.new()
-	bs.size = size
-	shape.shape = bs
+	shape.shape = box_shape(size)
 	body.add_child(shape)
 	return body
+
+
+## Collision shapes share the same way meshes do, and for the same reason: the
+## physics server stores one copy and every body points at it.
+static var _shape_cache: Dictionary = {}
+
+
+static func box_shape(size: Vector3) -> BoxShape3D:
+	var key := _size_key(size)
+	var hit: Variant = _shape_cache.get(key)
+	if hit != null:
+		return hit
+	var bs := BoxShape3D.new()
+	bs.size = size
+	_shape_cache[key] = bs
+	return bs
 
 
 # --- Characters --------------------------------------------------------------
@@ -113,13 +196,23 @@ const OUTFITS := [
 static func human(seed_val: int, tall: float = 1.0, bulk: float = 1.0) -> Node3D:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_val
-	var outfit: Dictionary = OUTFITS[rng.randi() % OUTFITS.size()]
+	var outfit_index := rng.randi() % OUTFITS.size()
+	var outfit: Dictionary = OUTFITS[outfit_index]
 
 	var root := Node3D.new()
 	root.name = "Body"
 
-	var coat_mat := mat(ProcTex.grime(outfit["coat"], 0.35, seed_val + 11, 32))
-	var trouser_mat := mat(ProcTex.grime(outfit["trouser"], 0.3, seed_val + 22, 32))
+	# Cloth grime is seeded from the *outfit*, not the person.
+	#
+	# It used to be seeded per person, which meant a fresh 32x32 noise texture
+	# for every coat and every pair of trousers that ever walked in — and nobody
+	# alive can tell one customer from another by the dirt pattern on their coat.
+	# Six outfits means twelve textures for the whole game instead of two per
+	# customer, and it is the difference between a spawn costing three and a half
+	# milliseconds and costing a quarter of one. The face, which *is* how you tell
+	# people apart, stays unique per person.
+	var coat_mat := mat(ProcTex.grime(outfit["coat"], 0.35, 1100 + outfit_index, 32))
+	var trouser_mat := mat(ProcTex.grime(outfit["trouser"], 0.3, 2200 + outfit_index, 32))
 	var skin_mat := mat(ProcTex.flat(ProcTex.skin_for(seed_val)))
 	var face_mat := mat(ProcTex.face(seed_val))
 	var hair_mat := mat(ProcTex.flat(ProcTex.hair_for(seed_val)))

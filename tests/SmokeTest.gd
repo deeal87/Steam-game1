@@ -24,6 +24,7 @@ func _ready() -> void:
 	test_icon()
 	test_evidence()
 	test_world()
+	test_resource_sharing()
 	test_customer_construction()
 	await test_sewer_is_traversable()
 	test_identity_and_egg()
@@ -116,6 +117,75 @@ func _collect_class_names(dir_path: String, into: Array[String]) -> void:
 				f.close()
 		entry = dir.get_next()
 	dir.list_dir_end()
+
+
+## Meshes, materials, shapes and textures are immutable once built, so two
+## things that look the same are the same object. This used to be false: the shop
+## built 376 MeshInstance3Ds backed by 376 separate BoxMesh resources, and every
+## customer painted six fresh textures on the frame they walked in — which the
+## soak saw as a 40-75ms hitch every time somebody arrived.
+##
+## Sharing is easy to lose by accident (one `BoxMesh.new()` put back in a helper
+## does it), and nothing else would notice, so it is asserted here.
+func test_resource_sharing() -> void:
+	print("\nShared resources:")
+
+	# The same request must hand back the same object, not an equal one.
+	var a := ProcMesh.box_mesh(Vector3(1, 2, 3))
+	var b := ProcMesh.box_mesh(Vector3(1, 2, 3))
+	_check(a == b, "two boxes of the same size share one mesh")
+	_check(ProcMesh.box_mesh(Vector3(1, 2, 4)) != a, "and different sizes do not")
+	_check(ProcMesh.box_shape(Vector3(1, 2, 3)) == ProcMesh.box_shape(Vector3(1, 2, 3)),
+		"collision shapes share too")
+
+	var t1 := ProcTex.flat(Color(0.2, 0.3, 0.4))
+	var t2 := ProcTex.flat(Color(0.2, 0.3, 0.4))
+	_check(t1 == t2, "the same colour is painted once")
+	_check(ProcTex.flat(Color(0.2, 0.3, 0.5)) != t1, "and a different colour is a different texture")
+	_check(ProcMesh.mat(t1) == ProcMesh.mat(t1), "materials share on identical parameters")
+
+	# A face has to stay unique per person — it is how you tell them apart, and
+	# caching it by anything coarser would give two customers the same head.
+	_check(ProcTex.face(1234) == ProcTex.face(1234), "the same person has the same face every time")
+	_check(ProcTex.face(1234) != ProcTex.face(5678), "and two people do not share one")
+
+	# The world itself has to come out sharing, not just the helpers.
+	var meshes := {}
+	var mats := {}
+	_collect_resources(_world, meshes, mats)
+	var instances := _count_class(_world, "MeshInstance3D")
+	print("   the shop: %d mesh instances · %d distinct meshes · %d distinct materials"
+		% [instances, meshes.size(), mats.size()])
+	_check(instances > meshes.size() * 2,
+		"the shop reuses its geometry heavily (%d instances over %d meshes)"
+			% [instances, meshes.size()])
+
+	# Spawning a person is on the critical path — it happens while the player is
+	# standing there — so it gets a hard budget rather than a vague hope.
+	var started := Time.get_ticks_usec()
+	for i in 12:
+		ProcMesh.human(700000 + i, 1.0, 1.0).free()
+	var each := float(Time.get_ticks_usec() - started) / 12000.0
+	print("   building a customer costs %.2fms" % each)
+	_check(each < 8.0, "a customer can be built without dropping a frame (%.2fms)" % each)
+
+
+func _count_class(n: Node, cls: String) -> int:
+	var c := 1 if n.is_class(cls) else 0
+	for ch in n.get_children():
+		c += _count_class(ch, cls)
+	return c
+
+
+func _collect_resources(n: Node, meshes: Dictionary, mats: Dictionary) -> void:
+	if n is MeshInstance3D:
+		var mi := n as MeshInstance3D
+		if mi.mesh != null:
+			meshes[mi.mesh.get_instance_id()] = true
+		if mi.material_override != null:
+			mats[mi.material_override.get_instance_id()] = true
+	for ch in n.get_children():
+		_collect_resources(ch, meshes, mats)
 
 
 ## Saving and loading a run.
