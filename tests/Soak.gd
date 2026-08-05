@@ -102,6 +102,7 @@ func _play_night(night: int) -> bool:
 	while director.running:
 		await get_tree().process_frame
 		_work_the_counter(checkout, director)
+		_sample_frame()
 
 		var elapsed := float(Time.get_ticks_msec() - started) / 1000.0
 		if elapsed > NIGHT_BUDGET:
@@ -131,6 +132,8 @@ func _play_night(night: int) -> bool:
 	_note("night %d · %.0fs · served %d of %d due · never sent %d · took %d of %d rent · stock left %d · in hand %d"
 		% [night, float(Time.get_ticks_msec() - started) / 1000.0, served, _due_at_start,
 			never_sent, earned, rent, stock, GameState.money])
+
+	_report_frames()
 
 	if not _visits.is_empty():
 		var total := 0.0
@@ -271,6 +274,50 @@ func _shop_census(director: NightDirector) -> String:
 
 ## Restocks the back room the way the supplier screen does, cheapest first,
 ## while there is money for it.
+# --- Performance ---------------------------------------------------------------
+#
+# A baseline, so that "optimise it" has something to aim at. Frame times are
+# measured under time_scale, which does not change how long a frame takes to
+# compute — only how much game happens in one — so these numbers are honest.
+# What they are not is a substitute for measuring on real hardware with a real
+# renderer: this runs headless, so it is CPU and script cost only, with nothing
+# being drawn. That makes it exactly the right tool for finding a script-side
+# hotspot and exactly the wrong one for judging fill rate.
+
+var _frames: Array[float] = []
+var _last_frame_us: int = 0
+
+
+func _sample_frame() -> void:
+	var now := Time.get_ticks_usec()
+	if _last_frame_us > 0:
+		_frames.append(float(now - _last_frame_us) / 1000.0)
+	_last_frame_us = now
+
+
+func _report_frames() -> void:
+	if _frames.size() < 20:
+		_frames.clear()
+		_last_frame_us = 0
+		return
+	var sorted := _frames.duplicate()
+	sorted.sort()
+	var total := 0.0
+	for f in sorted:
+		total += f
+	var mean := total / float(sorted.size())
+	# The 99th percentile matters more than the mean: a game that averages well
+	# and hitches once a second feels worse than one that is steadily slower.
+	var p99: float = sorted[mini(sorted.size() - 1, int(float(sorted.size()) * 0.99))]
+	_note("        frame %.2fms mean · %.2fms median · %.2fms p99 · worst %.2fms · %d objects"
+		% [mean, sorted[sorted.size() / 2], p99, sorted[-1],
+			Performance.get_monitor(Performance.OBJECT_COUNT)])
+	if p99 > 16.6:
+		_note("        p99 is past a 60fps budget — worth a look when optimising")
+	_frames.clear()
+	_last_frame_us = 0
+
+
 func _crates() -> int:
 	var n := 0
 	for id: String in GameState.ITEMS:

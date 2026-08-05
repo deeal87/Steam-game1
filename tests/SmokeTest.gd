@@ -16,6 +16,7 @@ func _ready() -> void:
 	print("\n=== KIOSK AT MIDNIGHT · smoke ===\n")
 	GameState.reset_run()
 	test_classes_resolve()
+	test_saves()
 	test_achievements()
 	test_hints()
 	test_audio()
@@ -115,6 +116,78 @@ func _collect_class_names(dir_path: String, into: Array[String]) -> void:
 				f.close()
 		entry = dir.get_next()
 	dir.list_dir_end()
+
+
+## Saving and loading a run.
+##
+## The game has written this file after every shift since the first version and
+## never once read it back, so every launch started at night one however far the
+## last run got. The loading code was complete and correct — it simply had no
+## caller. These checks are here because a save system nothing exercises is a
+## save system that quietly stops working.
+func test_saves() -> void:
+	print("\nCarrying a run over:")
+	GameState.clear_save()
+	GameState.reset_run()
+	_check(not GameState.has_save(), "a fresh install has nothing to carry on from")
+
+	# Play a bit of a run and write it out.
+	GameState.night = 7
+	GameState.money = 412
+	GameState.heat = 43.5
+	GameState.reputation = 68.0
+	GameState.sewer_trips = 3
+	GameState.sewer_cache_taken = true
+	GameState.body_bags = 5
+	GameState.drug_stock = 9
+	GameState.weapons = ["bat", "shotgun"]
+	GameState.defenses = ["window_bars"]
+	GameState.nights_survived = 6
+	GameState.save_run()
+
+	_check(GameState.has_save(), "a run in progress leaves something to come back to")
+	_check(GameState.saved_night() == 7, "and the title knows which night it stopped on (%d)"
+		% GameState.saved_night())
+
+	# Wipe it out of memory the way relaunching does, then read it back.
+	GameState.reset_run()
+	_check(GameState.night == 1, "resetting really does clear it")
+	_check(GameState.load_run(), "the save loads")
+
+	var wrong: Array[String] = []
+	for field: Array in [["night", 7], ["money", 412], ["sewer_trips", 3],
+			["body_bags", 5], ["drug_stock", 9], ["nights_survived", 6]]:
+		if GameState.get(str(field[0])) != field[1]:
+			wrong.append("%s = %s, wanted %s" % [field[0], GameState.get(str(field[0])), field[1]])
+	if not is_equal_approx(GameState.heat, 43.5):
+		wrong.append("heat = %.1f" % GameState.heat)
+	if not is_equal_approx(GameState.reputation, 68.0):
+		wrong.append("reputation = %.1f" % GameState.reputation)
+	if not GameState.sewer_cache_taken:
+		wrong.append("the crate came back")
+	if not GameState.weapons.has("shotgun"):
+		wrong.append("the shotgun is missing")
+	if not GameState.defenses.has("window_bars"):
+		wrong.append("the hatch bars are missing")
+	_check(wrong.is_empty(), "and everything comes back with it%s" %
+		("" if wrong.is_empty() else " — %s" % "; ".join(wrong)))
+
+	# The title screen grows a second option when there is a run to resume, and
+	# a branch that only appears on a second launch is a branch nobody sees fail.
+	var title := ReportUI.new()
+	add_child(title)
+	title.show_title()
+	_check(title.open and title.get_child_count() > 0, "the title builds with a run to carry on from")
+	GameState.clear_save()
+	GameState.reset_run()
+	title.show_title()
+	_check(title.open and title.get_child_count() > 0, "and builds without one")
+	title.queue_free()
+
+	# Dying ends the run, so there must be nothing to resume.
+	GameState.clear_save()
+	_check(not GameState.has_save(), "and a finished run leaves nothing behind")
+	GameState.reset_run()
 
 
 ## Hints exist so a new player is never confused about the *controls*. The rule

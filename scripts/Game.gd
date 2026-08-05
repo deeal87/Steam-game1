@@ -38,6 +38,9 @@ var _pending_summary: Dictionary = {}
 
 func _ready() -> void:
 	randomize()
+	# Pick up where the last run stopped, if there was one. The title screen
+	# offers to start over instead.
+	GameState.load_run()
 	_set_window_icon()
 	_build_world()
 	_build_ui()
@@ -492,6 +495,10 @@ func _on_player_died(cause: String) -> void:
 	var text := "They came through the door and you were still holding a bag of crisps."
 	if cause != "shot":
 		text = cause
+	# The run is over, so there is nothing to come back to. Without this,
+	# quitting from the game-over screen rather than pressing "open up again"
+	# would leave a dead run in the save file for the next launch to resume.
+	GameState.clear_save()
 	await get_tree().create_timer(2.2).timeout
 	report.show_game_over(text)
 

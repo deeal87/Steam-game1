@@ -64,6 +64,14 @@ func _present() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not open:
 		return
+	# Starting over from the title, when there is a run to abandon.
+	if _mode == Mode.TITLE and GameState.has_save() and event.is_action_pressed("restock"):
+		GameState.clear_save()
+		GameState.reset_run()
+		Audio.play("deny", -14.0)
+		_present()
+		get_viewport().set_input_as_handled()
+		return
 	if event.is_action_pressed("interact") or event.is_action_pressed("jump"):
 		if _mode == Mode.GAME_OVER:
 			return
@@ -125,9 +133,23 @@ func _build_title() -> void:
 		col.add_child(l)
 
 	col.add_child(UIKit.spacer(16))
-	var go := UIKit.label("[E] open up", UIKit.FONT_M, UIKit.GREEN)
-	go.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(go)
+
+	# A run to go back to, if there is one. The game has always written the save
+	# file and never read it, so every run started at night one however far the
+	# last one got.
+	if GameState.has_save():
+		var back := UIKit.label("[E] carry on from night %d" % GameState.saved_night(),
+			UIKit.FONT_M, UIKit.GREEN)
+		back.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		col.add_child(back)
+		var fresh := UIKit.label("[R] start again from the first night",
+			UIKit.FONT_S, UIKit.GREEN_DIM)
+		fresh.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		col.add_child(fresh)
+	else:
+		var go := UIKit.label("[E] open up", UIKit.FONT_M, UIKit.GREEN)
+		go.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		col.add_child(go)
 
 
 func _build_report() -> void:

@@ -369,6 +369,18 @@ no argument that could distinguish an officer from a civilian, and the smoke
 suite asserts that two identical situations score identically. The night number
 and the clock *are* fair game — both are on screen already.
 
+## Carrying a run over
+
+The game writes your run after every shift, and on launch the title offers to
+**carry on from the night you stopped**, or to start again from the first. Dying
+ends the run and clears it — there is nothing to come back to.
+
+Worth saying plainly because it was broken for most of this project's life: the
+save was being written diligently after every shift, every trip down the ladder
+and every discovery, and never once read back. The loading code was complete and
+correct. It simply had no caller, so every launch began at night one however far
+the last run got.
+
 ## Learning it
 
 There is a lot to know here, and for a game that asks you to make judgement
@@ -544,6 +556,13 @@ ends.** So this one drives the real game — a bot works the counter, scans,
 takes payment, restocks, refuses every ask, buys stock between shifts and runs
 for the manhole when the door goes — and watches for shifts that stall, clocks
 that stop, and nights that serve nobody.
+
+It also reports a **frame-time baseline** per night — mean, median, p99, worst,
+and the live object count — so that optimising has something to aim at. Headless,
+so it measures CPU and script cost with nothing being drawn: the right tool for
+finding a script-side hotspot and the wrong one for judging fill rate. The
+current shape is a healthy ~7ms mean against occasional 40-75ms spikes, which is
+where an optimisation pass should start looking.
 
 It earned its keep immediately. Four bugs, none of which any unit test in this
 repository could have found:

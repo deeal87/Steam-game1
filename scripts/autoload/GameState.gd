@@ -441,6 +441,24 @@ func load_run() -> bool:
 	return true
 
 
+## Whether there is a run to go back to, and which night it stopped on.
+##
+## The game has always written this file after every shift, every trip down the
+## ladder and every discovery — and never once read it back, so every run began
+## at night one no matter how far the last one got. For a game whose whole shape
+## is "how long can you keep this up", losing a night eight run to closing the
+## window is not a small thing.
+func saved_night() -> int:
+	var cfg := ConfigFile.new()
+	if cfg.load(SAVE_PATH) != OK:
+		return 0
+	return int(cfg.get_value("run", "night", 0))
+
+
+func has_save() -> bool:
+	return saved_night() > 1
+
+
 func clear_save() -> void:
 	if FileAccess.file_exists(SAVE_PATH):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
