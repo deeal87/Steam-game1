@@ -21,6 +21,22 @@ const GAP_MAX := 7.5
 ## How many people will be in the shop at once. The queue has four marks, so
 ## this is one being served plus three waiting.
 const MAX_IN_SHOP := 4
+## Below this many minutes on the clock, nobody new comes in.
+const LAST_ORDERS := 12.0
+## How long the person actually at the counter gets after five, before the
+## shutter comes down on them too.
+const CLOSING_GRACE := 6.0
+## Real seconds of shift per customer the night intends to send. A visit is
+## roughly 140 seconds door to door and MAX_IN_SHOP of them overlap, so the shop
+## clears about one person every 140/4 seconds and the shift has to be at least
+## that long per head or it cannot deliver its own custom.
+const SECONDS_PER_CUSTOMER := 35.0
+## After closing time, how long the stragglers get to walk out before the night
+## ends without them. A backstop, not a schedule — normally the shop is empty
+## well before this.
+const LOCK_UP := 10.0
+## A little at the top of the night before the first one walks in.
+const OPENING_SLACK := 24.0
 
 var running: bool = false
 var minutes_left: float = SHIFT_MINUTES
@@ -33,6 +49,9 @@ var _seed_counter: int = 0
 
 ## Everyone currently in the shop, in the order they walked in.
 var _present: Array[Customer] = []
+## Seconds since the clock hit zero, for the closing-time grace.
+var _closing: float = 0.0
+var _called_time: bool = false
 ## Those who have finished shopping, in the order they joined the line.
 var _line: Array[Customer] = []
 
@@ -48,10 +67,20 @@ func start_night() -> void:
 	_queue_remaining = GameState.customer_count()
 	minutes_left = SHIFT_MINUTES
 
-	var expected_seconds := 24.0 + float(_queue_remaining) * 20.0
+	# Long enough to actually serve the people it is about to send.
+	#
+	# This used to budget twenty seconds a customer, a figure that predates
+	# customers shopping the floor for themselves. A visit now measures at
+	# 130-160 seconds door to door, and only MAX_IN_SHOP of them fit at once, so
+	# the shift was ending with a third of the night's custom never sent — while
+	# the rent went on scaling against the full count. The soak found it; the
+	# number below comes from what it measured rather than from taste.
+	var expected_seconds := OPENING_SLACK + float(_queue_remaining) * SECONDS_PER_CUSTOMER
 	_minutes_per_second = SHIFT_MINUTES / expected_seconds
 
 	_gap = 2.0
+	_closing = 0.0
+	_called_time = false
 	_clear_everyone()
 	running = true
 
@@ -89,13 +118,54 @@ func _process(delta: float) -> void:
 	_consider_pushing()
 	_reassign_line()
 
-	if _queue_remaining > 0 and minutes_left > 12.0 and _present.size() < MAX_IN_SHOP:
-		_gap -= delta
-		if _gap <= 0.0:
-			_spawn_next()
-			_gap = _rng.randf_range(GAP_MIN, GAP_MAX)
-	elif _queue_remaining <= 0 and _present.is_empty():
+	# Nobody new comes in near closing time.
+	#
+	# This used to read `_queue_remaining <= 0 and _present.is_empty()` on the
+	# other branch, which could never become true once the clock had run out
+	# with people still due to arrive: arrivals stopped below LAST_ORDERS and
+	# nothing decremented `_queue_remaining` again, so the shift hung forever.
+	# The clock is calibrated at about twenty seconds a customer, and anybody who
+	# actually reads the files and asks questions takes longer than that, so this
+	# was reachable by playing carefully. The end of the night is now a property
+	# of the clock, not of a counter that stops moving.
+	var still_arriving := _queue_remaining > 0 and minutes_left > LAST_ORDERS
+
+	if still_arriving:
+		if _present.size() < MAX_IN_SHOP:
+			_gap -= delta
+			if _gap <= 0.0:
+				_spawn_next()
+				_gap = _rng.randf_range(GAP_MIN, GAP_MAX)
+		return
+
+	if minutes_left <= 0.0:
+		_close_up(delta)
+	# The shift ends when the shop empties — or when it has had long enough to,
+	# whichever comes first. Waiting on `_present` alone means one customer who
+	# cannot reach the door holds the night open forever, and there is no state
+	# a shop can be in at five in the morning that justifies never closing.
+	if _present.is_empty() or _closing > CLOSING_GRACE + LOCK_UP:
 		_finish()
+
+
+## 05:00. The shutter comes down whether you are finished or not.
+##
+## Anyone still browsing or queueing goes straight away. Whoever is actually at
+## the counter gets a few seconds to be dealt with first, because having a sale
+## snatched out of your hands on the last frame is a rotten way to lose one —
+## but they go too when it runs out. Nothing may hold the shift open
+## indefinitely, including a customer wedged on a corner.
+func _close_up(delta: float) -> void:
+	_closing += delta
+	if not _called_time:
+		_called_time = true
+		Signals.notice.emit("Five o'clock. Shutter's coming down.", "info")
+	for c in _present:
+		if not is_instance_valid(c):
+			continue
+		if c.state == Customer.State.AT_COUNTER and _closing < CLOSING_GRACE:
+			continue
+		c._leave("closing")
 
 
 ## Drops anyone who has left or been freed.

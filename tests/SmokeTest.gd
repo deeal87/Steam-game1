@@ -1190,7 +1190,95 @@ func test_queue() -> void:
 		c.queue_free()
 	director.queue_free()
 	await get_tree().process_frame
+	await test_night_always_ends()
 	await test_pushing_in()
+
+
+## The shift has to be able to end. This is a regression test for a softlock the
+## soak found and no unit test could have: when the clock ran out with customers
+## still due to arrive, arrivals stopped and the exit condition needed a counter
+## that nothing would ever decrement again, so the night hung forever. The clock
+## is calibrated at roughly one customer per SECONDS_PER_CUSTOMER, and anybody
+## who reads the files properly runs slower than that — so it was reachable by
+## playing carefully rather than by doing anything strange.
+func test_night_always_ends() -> void:
+	print("\nThe night can always end:")
+	GameState.reset_run()
+	var director := NightDirector.new()
+	director.setup(_world)
+	add_child(director)
+	director.start_night()
+
+	# The worst case: five o'clock, an empty shop, and people still on the list.
+	director.minutes_left = 0.0
+	director._queue_remaining = 6
+	# An Array rather than a bool: GDScript lambdas capture locals by *value*,
+	# so a captured bool set inside one never reaches the caller.
+	var finished: Array[bool] = []
+	director.shift_finished.connect(func(_s: Dictionary) -> void: finished.append(true))
+
+	for tick in 400:
+		if not director.running:
+			break
+		director._process(0.05)
+	_check(not finished.is_empty(), "a shift with people still due ends when the clock runs out")
+	_check(not director.running, "and the director stops running")
+
+	# And with somebody still standing in the shop, which is the other half:
+	# nothing may hold the night open, including a customer who will not move.
+	GameState.reset_run()
+	var d2 := NightDirector.new()
+	d2.setup(_world)
+	add_child(d2)
+	d2.start_night()
+	var stuck := Customer.new()
+	stuck.setup(ProfileGenerator.generate(4242, 1, 0.0), _world)
+	_world.add_child(stuck)
+	stuck.state = Customer.State.QUEUEING
+	d2._present.append(stuck)
+	d2.minutes_left = 0.0
+	d2._queue_remaining = 3
+	var done2: Array[bool] = []
+	d2.shift_finished.connect(func(_s: Dictionary) -> void: done2.append(true))
+	for tick in 400:
+		if not d2.running:
+			break
+		d2._process(0.05)
+		d2._prune()
+	_check(stuck.state in [Customer.State.LEAVING, Customer.State.DEAD],
+		"a customer still in the shop at five is sent home")
+	_check(not done2.is_empty(), "and the night ends rather than waiting for them forever")
+
+	# And nobody browses forever. Queueing and standing at the counter both had
+	# patience timeouts; walking the shop floor had none, so a customer who could
+	# not reach their next waypoint held one of the four slots from opening to
+	# close — and because arrivals are gated on how many are already inside, four
+	# of those shut the door on the rest of the night's custom. The soak caught
+	# it three nights running.
+	GameState.reset_run()
+	var browser := Customer.new()
+	browser.setup(ProfileGenerator.generate(777, 1, 0.0), _world)
+	_world.add_child(browser)
+	browser.state = Customer.State.APPROACHING
+	# Somewhere it can never reach, which is what an obstruction amounts to.
+	browser._path = [{"pos": Vector3(0, 0, 9999), "take": ""}]
+	browser._path_index = 0
+	var gave_up_before := GameState.customers_gave_up
+	for tick in int(Customer.SHOPPING_LIMIT / 0.05) + 40:
+		if browser.state != Customer.State.APPROACHING:
+			break
+		browser._watch_for_getting_stuck(0.05)
+	_check(browser.state == Customer.State.LEAVING,
+		"a customer who cannot get round the shop gives up and leaves")
+	_check(GameState.customers_gave_up > gave_up_before,
+		"and it counts against you, because a shop people cannot walk through has a reputation")
+
+	director.queue_free()
+	d2.queue_free()
+	stuck.queue_free()
+	browser.queue_free()
+	GameState.reset_run()
+	await get_tree().process_frame
 
 
 ## Somebody impatient enough will step in front of the person ahead of them.

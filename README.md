@@ -532,6 +532,44 @@ looks like a kiosk:
 xvfb-run -a godot --path . res://tests/Screenshots.tscn -- --shots=/tmp/shots
 ```
 
+## Playing it, automatically
+
+```sh
+godot --headless --path . res://tests/Soak.tscn -- --nights=5
+```
+
+The other two suites check parts in isolation and argue about numbers. Neither
+can catch the failure that matters most before shipping: **a night that never
+ends.** So this one drives the real game — a bot works the counter, scans,
+takes payment, restocks, refuses every ask, buys stock between shifts and runs
+for the manhole when the door goes — and watches for shifts that stall, clocks
+that stop, and nights that serve nobody.
+
+It earned its keep immediately. Four bugs, none of which any unit test in this
+repository could have found:
+
+- **The night could never end.** If the clock ran out while customers were
+  still due to arrive, arrivals stopped below last orders and the exit
+  condition needed a counter nothing would decrement again. A hard softlock,
+  reachable by playing *carefully* — the clock was calibrated at roughly one
+  customer per 20 seconds and anybody who actually reads the files runs slower
+  than that.
+- **The shift was too short for its own customer count.** That 20-second figure
+  predated customers shopping the floor for themselves; a visit measures at
+  130-160 seconds and only four fit in the shop at once. A third of each
+  night's custom was never sent, while the rent went on scaling against the
+  full count.
+- **A customer with an empty basket blocked the till for 110 seconds.** With
+  nothing to ring up the till never opens, so the code that moves them on never
+  ran, and the only way out was a dismissal — which costs your name. Being
+  punished twice for an empty shelf is a trap, not a trade-off.
+- **A customer who could not get round the shop stood there all night.**
+  Queueing and the counter both had patience timeouts; the shop floor had none.
+  Four of them filled the shop and shut the door on everyone else.
+
+All four have regression tests in the smoke suite that fail against the old
+code.
+
 ## Building for release
 
 Install export templates for 4.3-stable first (Editor → Manage Export
@@ -690,7 +728,7 @@ scripts/
   util/                     ProcTex · ProcMesh · ProcIcon · PlayerIdentity
 shaders/                    ps1.gdshader · crt.gdshader
 tools/                      MakeIcon — writes icon.png/.ico/.icns
-tests/                      smoke · balance · screenshots
+tests/                      smoke · balance · soak · screenshots
 ```
 
 ## Where it stands

@@ -40,6 +40,9 @@ var patience_seconds: float = 110.0
 ## Waiting in line burns patience too, just more slowly than being ignored at
 ## the counter does.
 var _time_queued: float = 0.0
+## Time spent walking the shop floor, so somebody who cannot get where they are
+## going does not stand there all night holding a slot open.
+var _time_shopping: float = 0.0
 ## Builds while they are standing behind somebody and resets when they move up.
 ## Once it crosses PUSH_AT they will step in front of the person ahead — see
 ## NightDirector, which owns the line and does the actual swapping.
@@ -139,6 +142,7 @@ func _physics_process(delta: float) -> void:
 	match state:
 		State.APPROACHING:
 			_follow_path(delta, WALK_SPEED)
+			_watch_for_getting_stuck(delta)
 		State.QUEUEING:
 			_hold_position(delta)
 		State.AT_COUNTER:
@@ -152,6 +156,36 @@ func _physics_process(delta: float) -> void:
 			_follow_path(delta, FLEE_SPEED if outcome == "fled" else WALK_SPEED)
 		State.DEAD:
 			pass
+
+
+## How long somebody will keep trying to get round the shop before giving up.
+## Generous — a full trip measures at about forty seconds — but finite.
+const SHOPPING_LIMIT := 95.0
+
+
+## Nobody browses forever.
+##
+## Queueing and standing at the counter both had patience timeouts; walking the
+## shop floor had none, so a customer who could not reach their next waypoint
+## stayed in APPROACHING for the whole night. Because arrivals are gated on how
+## many people are already inside, four of those filled the shop and stopped
+## anybody else coming in at all — the soak caught three nights in a row where
+## the same four people stood there from opening to close while eleven more
+## never got through the door.
+##
+## Anything can cause it: a shelf tucked behind a rack, an awkward corner, or —
+## most likely in practice — the player standing in the aisle, which is not a
+## thing the game can forbid. So this does not try to diagnose the obstruction.
+## It just makes sure a customer who is not getting anywhere eventually leaves,
+## the same way the night itself eventually ends.
+func _watch_for_getting_stuck(delta: float) -> void:
+	_time_shopping += delta
+	if _time_shopping < SHOPPING_LIMIT:
+		return
+	GameState.note_gave_up_waiting()
+	Signals.notice.emit("%s couldn't get round the shop and left." %
+		profile.full_name.split(" ")[0], "warn")
+	_leave("stuck")
 
 
 func _follow_path(delta: float, speed: float) -> void:
@@ -347,6 +381,36 @@ func _arrive() -> void:
 	if not _observed_behaviour:
 		_observed_behaviour = true
 		get_tree().create_timer(2.4).timeout.connect(_reveal_behaviour)
+
+	# Somebody who found nothing on the shelves has nothing to ring up, so the
+	# till never opens and `on_paid` never fires — which used to mean they stood
+	# at the counter for their full hundred and ten seconds of patience with no
+	# way to move them on but a dismissal, and a dismissal costs your name. Being
+	# punished twice for an empty shelf, once in lost trade and once in
+	# reputation, is not a trade-off; it is a trap.
+	#
+	# They complain and go. If they were here for the other thing as well, they
+	# still get to ask, because that is what they came for.
+	if basket.is_empty():
+		if profile.wants_illicit:
+			get_tree().create_timer(1.5).timeout.connect(_ask_for_illicit)
+		else:
+			Signals.customer_spoke.emit(profile.full_name, _empty_handed())
+			Signals.notice.emit("%s found nothing worth buying." %
+				profile.full_name.split(" ")[0], "warn")
+			get_tree().create_timer(2.4).timeout.connect(
+				func() -> void: _leave("nothing_to_buy"))
+
+
+const EMPTY_HANDED := [
+	"You've got nothing. I'll try the garage.",
+	"Shelves are bare, mate.",
+	"Don't bother restocking on my account.",
+	"Is this a shop or a storage unit?",
+]
+
+func _empty_handed() -> String:
+	return EMPTY_HANDED[randi() % EMPTY_HANDED.size()]
 
 
 func _reveal_behaviour() -> void:
