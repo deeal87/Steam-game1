@@ -91,7 +91,8 @@ func start_night() -> void:
 	Audio.start_ambience()
 	Signals.night_started.emit(GameState.night)
 	Signals.quota_changed.emit(0, GameState.rent_due())
-	Signals.notice.emit("Night %d. Rent is %d by five." % [GameState.night, GameState.rent_due()], "info")
+	Signals.notice.emit(Loc.f("Night %d. Rent is %d by five.",
+		[GameState.night, GameState.rent_due()]), "info")
 
 
 func stop() -> void:
@@ -159,7 +160,7 @@ func _close_up(delta: float) -> void:
 	_closing += delta
 	if not _called_time:
 		_called_time = true
-		Signals.notice.emit("Five o'clock. Shutter's coming down.", "info")
+		Signals.notice.emit(Loc.t("Five o'clock. Shutter's coming down."), "info")
 	for c in _present:
 		if not is_instance_valid(c):
 			continue
@@ -235,7 +236,7 @@ func _on_finished_shopping(customer: Customer) -> void:
 		_line.append(customer)
 	_reassign_line()
 	if _line.size() > 1:
-		Signals.notice.emit("%d waiting." % _line.size(), "info")
+		Signals.notice.emit(Loc.f("%d waiting.", [_line.size()]), "info")
 
 
 func _on_customer_finished(customer: Customer, outcome: String) -> void:

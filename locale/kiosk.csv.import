@@ -1,0 +1,13 @@
+[remap]
+
+importer="keep"
+
+[deps]
+
+files=[]
+
+source_file="res://locale/kiosk.csv"
+dest_files=[]
+
+[params]
+

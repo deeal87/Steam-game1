@@ -45,9 +45,13 @@ static func panel(bg: Color = PANEL_BG, edge: Color = PANEL_EDGE) -> StyleBoxFla
 	return sb
 
 
+## Every piece of text in every panel is built with one of these two, which is
+## why the translation lookup lives here rather than at a hundred call sites.
+## A caller that has already composed its line with `Loc.f()` simply misses on
+## the second lookup and gets its own string back.
 static func label(text: String, size: int = FONT_M, colour: Color = GREEN) -> Label:
 	var l := Label.new()
-	l.text = text
+	l.text = Loc.t(text)
 	l.add_theme_font_size_override("font_size", size)
 	l.add_theme_color_override("font_color", colour)
 	l.add_theme_constant_override("line_spacing", 3)
@@ -59,7 +63,7 @@ static func rich(text: String, size: int = FONT_M, colour: Color = GREEN) -> Ric
 	r.bbcode_enabled = true
 	r.fit_content = true
 	r.scroll_active = false
-	r.text = text
+	r.text = Loc.t(text)
 	r.add_theme_font_size_override("normal_font_size", size)
 	r.add_theme_font_size_override("bold_font_size", size)
 	r.add_theme_color_override("default_color", colour)

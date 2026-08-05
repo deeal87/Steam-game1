@@ -80,9 +80,9 @@ func prompt() -> String:
 		return ""
 	if not bagged:
 		if GameState.body_bags <= 0:
-			return "[E] %s — no bags left" % who
-		return "[E] Bag them (%d left)" % GameState.body_bags
-	return "[E] Pick them up"
+			return Loc.f("[E] %s — no bags left", [who])
+		return Loc.f("[E] Bag them (%d left)", [GameState.body_bags])
+	return Loc.t("[E] Pick them up")
 
 
 ## Costs a bag. After this nobody panics at it, but it is still in your shop.
@@ -97,7 +97,7 @@ func bag() -> bool:
 	_visual.add_child(ProcMesh.box(Vector3(0.62, 0.42, 1.85), Vector3(0, 0.21, 0),
 		ProcMesh.mat(ProcTex.flat(Color(0.045, 0.05, 0.055))), "Bagged"))
 	Audio.play_at("click", global_position + Vector3(0, 0.4, 0), -12.0)
-	Signals.notice.emit("Bagged. Now it has to go somewhere.", "info")
+	Signals.notice.emit(Loc.t("Bagged. Now it has to go somewhere."), "info")
 	return true
 
 
@@ -119,7 +119,7 @@ func put_down(at: Vector3) -> void:
 
 ## Down the manhole. This is the only way one of these leaves the building.
 func dispose() -> void:
-	Signals.notice.emit("Gone. You hear it land.", "good")
+	Signals.notice.emit(Loc.t("Gone. You hear it land."), "good")
 	Audio.play("impact", -20.0)
 	# Whether anybody saw them before they went is the difference between having
 	# handled it and having been caught handling it.

@@ -71,7 +71,7 @@ func scan(index: int) -> bool:
 	var item: Dictionary = _items[index]
 	if bool(item["scanned"]):
 		Audio.play("deny", -18.0)
-		Signals.notice.emit("Already scanned.", "warn")
+		Signals.notice.emit(Loc.t("Already scanned."), "warn")
 		return false
 
 	item["scanned"] = true
@@ -90,7 +90,8 @@ func scan(index: int) -> bool:
 			if is_instance_valid(node):
 				node.visible = false)
 
-	Signals.notice.emit("%s — %d" % [GameState.ITEMS[item["id"]]["name"], item["price"]], "info")
+	Signals.notice.emit(Loc.f("%s — %d", [Loc.t(str(GameState.ITEMS[item["id"]]["name"])),
+		item["price"]]), "info")
 	changed.emit()
 	return true
 
@@ -126,7 +127,7 @@ func take_payment() -> bool:
 		return false
 	if not all_scanned():
 		Audio.play("deny", -12.0)
-		Signals.notice.emit("%d still to scan." % remaining(), "warn")
+		Signals.notice.emit(Loc.f("%d still to scan.", [remaining()]), "warn")
 		return false
 
 	var paid := _total

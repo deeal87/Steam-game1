@@ -61,7 +61,7 @@ func fire(id: String) -> bool:
 		return false
 	_shown[id] = true
 	save_progress()
-	Signals.notice.emit(str(HINTS[id]), "watch")
+	Signals.notice.emit(Loc.t(str(HINTS[id])), "watch")
 	return true
 
 

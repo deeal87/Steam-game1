@@ -102,24 +102,27 @@ func _rebuild() -> void:
 		return
 	var p := _customer.profile
 
-	var m := UIKit.modal(p.full_name if p.looked_up else "The person at the window", 0.84, 0.90)
+	var m := UIKit.modal(Loc.done(p.full_name) if p.looked_up
+		else Loc.t("The person at the window"), 0.84, 0.90)
 	_root = m["root"]
 	_body = m["body"]
 	add_child(_root)
 
 	# --- What they just said ---
 	if not _last_answer.is_empty():
-		var quote := UIKit.rich("[i]\"%s\"[/i]" % _last_answer, UIKit.FONT_M, UIKit.WHITE)
+		var quote := UIKit.rich(Loc.f("[i]\"%s\"[/i]", [Loc.t(_last_answer)]),
+			UIKit.FONT_M, UIKit.WHITE)
 		_body.add_child(quote)
 		if not _last_note.is_empty():
-			_body.add_child(UIKit.label("→ " + _last_note, UIKit.FONT_S, UIKit.tone_colour(_last_tone)))
+			_body.add_child(UIKit.label(Loc.f("→ %s", [Loc.t(_last_note)]),
+				UIKit.FONT_S, UIKit.tone_colour(_last_tone)))
 		_body.add_child(UIKit.spacer(6))
 		_body.add_child(UIKit.rule())
 
 	# --- Where you stand ---
 	var status := HBoxContainer.new()
 	status.add_theme_constant_override("separation", 18)
-	status.add_child(UIKit.label("Patience %d/%d" % [p.patience, p.patience_max], UIKit.FONT_S,
+	status.add_child(UIKit.label(Loc.f("Patience %d/%d", [p.patience, p.patience_max]), UIKit.FONT_S,
 		UIKit.RED if p.patience <= 1 else UIKit.GREEN_DIM))
 	status.add_child(UIKit.label(p.read_out(), UIKit.FONT_S, _read_colour(p)))
 	if not p.scanned:
@@ -152,11 +155,11 @@ func _rebuild() -> void:
 		var start: int = _question_page * room
 		for i in range(start, mini(start + room, questions.size())):
 			var q: Dictionary = questions[i]
-			var note: String = "" if q["kind"] == "base" else "· on the evidence"
-			_add_option({"type": "ask", "entry": q}, str(q["prompt"]), true, note)
+			var note: String = "" if q["kind"] == "base" else Loc.t("· on the evidence")
+			_add_option({"type": "ask", "entry": q}, Loc.t(str(q["prompt"])), true, note)
 		if paged:
-			_add_option({"type": "page"}, "More questions", true,
-				"· page %d of %d" % [_question_page + 1, pages])
+			_add_option({"type": "page"}, Loc.t("More questions"), true,
+				Loc.f("· page %d of %d", [_question_page + 1, pages]))
 
 	# --- Actions ---
 	_body.add_child(UIKit.spacer(6))
@@ -164,14 +167,16 @@ func _rebuild() -> void:
 	_body.add_child(UIKit.label("DO", UIKit.FONT_S, UIKit.GREEN_DIM))
 
 	if _player.held_illicit > 0:
-		_add_option({"type": "sell"}, "Sell them what's in your hand (%d)" % _player.held_illicit,
-			_customer._asked_for_illicit, "" if _customer._asked_for_illicit else "· they haven't asked")
+		_add_option({"type": "sell"},
+			Loc.f("Sell them what's in your hand (%d)", [_player.held_illicit]),
+			_customer._asked_for_illicit,
+			"" if _customer._asked_for_illicit else Loc.t("· they haven't asked"))
 
 	if _customer._asked_for_illicit and not p.sold_illicit:
-		_add_option({"type": "refuse"}, "Tell them you don't do that here", true)
+		_add_option({"type": "refuse"}, Loc.t("Tell them you don't do that here"), true)
 
-	_add_option({"type": "dismiss"}, "Tell them to move on", true)
-	_add_option({"type": "close"}, "Step back", true)
+	_add_option({"type": "dismiss"}, Loc.t("Tell them to move on"), true)
+	_add_option({"type": "close"}, Loc.t("Step back"), true)
 
 	# --- What you have on them ---
 	var evidence := p.evidence_lines()
@@ -180,7 +185,7 @@ func _rebuild() -> void:
 		_body.add_child(UIKit.rule())
 		_body.add_child(UIKit.label("WHAT YOU HAVE", UIKit.FONT_S, UIKit.GREEN_DIM))
 		for line in evidence:
-			var l := UIKit.label(line, UIKit.FONT_S, UIKit.WHITE)
+			var l := UIKit.label(Loc.t(line), UIKit.FONT_S, UIKit.WHITE)
 			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			_body.add_child(l)
 
@@ -192,7 +197,7 @@ func _rebuild() -> void:
 	_body.add_child(UIKit.spacer(6))
 	_body.add_child(UIKit.label(
 		"[D-pad] move   ·   [A] choose   ·   [B] step back" if _pad_active
-			else "[1-9] choose   ·   [ESC] step back",
+			else Loc.t("[1-9] choose   ·   [ESC] step back"),
 		UIKit.FONT_S, UIKit.GREEN_DIM))
 
 
@@ -238,7 +243,7 @@ func _choose(option: Dictionary) -> void:
 			_last_tone = _note_tone(str(result["outcome"]))
 			Audio.play("beep_low", -22.0)
 			if bool(result["aborted"]):
-				Signals.notice.emit("They've had enough of the questions.", "warn")
+				Signals.notice.emit(Loc.t("They've had enough of the questions."), "warn")
 				_customer._leave("spooked")
 				close()
 				return

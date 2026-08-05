@@ -142,6 +142,11 @@ func _run_self_test(path: String) -> void:
 			audible.append(name)
 	print("[selftest] score section %d · playing: %s" % [
 		Music.section(), ", ".join(audible) if not audible.is_empty() else "nothing"])
+	# The translation table is a loose file rather than an imported resource, so
+	# whether it survived the export is a real question and not one a rendered
+	# frame answers. Reading it back out of the packed build is the only proof.
+	print("[selftest] language %s · %d in the table · offered: %s" % [
+		Loc.locale(), Loc.template_keys().size(), ", ".join(Loc.locales())])
 	get_tree().quit(0)
 
 
@@ -357,10 +362,11 @@ func _on_customer_arrived(customer: Customer) -> void:
 	var basket: Array[String] = customer.basket
 	var placed := checkout.begin(customer, basket)
 	if placed <= 0:
-		Signals.notice.emit("They came to the counter with nothing. Fill the shelves.", "warn")
+		Signals.notice.emit(Loc.t("They came to the counter with nothing. Fill the shelves."), "warn")
 	else:
-		Signals.notice.emit("%d item%s on the counter. Scan them." %
-			[placed, "" if placed == 1 else "s"], "info")
+		Signals.notice.emit(Loc.f(
+			"%d item on the counter. Scan it." if placed == 1
+				else "%d items on the counter. Scan them.", [placed]), "info")
 
 
 ## If the person being rung up walks off — refused, dismissed, shot, or simply
@@ -368,7 +374,7 @@ func _on_customer_arrived(customer: Customer) -> void:
 func _on_customer_departed(customer: Customer, _outcome: String) -> void:
 	if checkout.active and checkout.customer == customer:
 		if checkout.remaining() > 0:
-			Signals.notice.emit("They left their shopping on the counter.", "warn")
+			Signals.notice.emit(Loc.t("They left their shopping on the counter."), "warn")
 		checkout.clear()
 	# Whoever is at the front now gets the counter.
 	var next := night_director.current_customer()
@@ -475,8 +481,8 @@ func _on_report_continued() -> void:
 			if player.equipped.is_empty():
 				player.equipped = GameState.best_weapon()
 				player._show_in_hand("weapon")
-				Signals.notice.emit("%s in your hands." %
-					GameState.WEAPONS[player.equipped]["name"], "info")
+				Signals.notice.emit(Loc.f("%s in your hands.",
+					[Loc.t(str(GameState.WEAPONS[player.equipped]["name"]))]), "info")
 			Music.play_raid()
 			Log.info("raid begins on night %d · evidence %d · reason: %s"
 				% [GameState.night, int(_pending_summary.get("evidence", 0)),
@@ -512,7 +518,7 @@ func _on_player_died(cause: String) -> void:
 	checkout.clear()
 	Music.stop_all()
 	Audio.stop_ambience()
-	var text := "They came through the door and you were still holding a bag of crisps."
+	var text := Loc.t("They came through the door and you were still holding a bag of crisps.")
 	if cause != "shot":
 		text = cause
 	Log.info("run over on night %d after %d nights survived · cause: %s"
@@ -579,8 +585,9 @@ func _flee_raid() -> void:
 	raid_director.stop()
 	raid_director.phase = RaidDirector.Phase.IDLE
 	Audio.stop_ambience()
-	Signals.notice.emit("You get the cover back over your head. Above you, they are taking the place apart.", "warn")
-	Signals.notice.emit("Gone: %d in cash, %d units." % [int(lost["cash"]), int(lost["stash"])], "bad")
+	Signals.notice.emit(Loc.t("You get the cover back over your head. Above you, they are taking the place apart."), "warn")
+	Signals.notice.emit(Loc.f("Gone: %d in cash, %d units.",
+		[int(lost["cash"]), int(lost["stash"])]), "bad")
 	_advance_night()
 
 
@@ -590,11 +597,12 @@ func _flee_raid() -> void:
 func _on_easter_egg_found(_unused: String) -> void:
 	Achievements.unlock("MASTER")
 	var path := await _capture_screenshot("kiosk_master")
-	Signals.notice.emit("YOU ARE THE MASTER OF MASTER %s" % PlayerIdentity.display_name().to_upper(), "good")
+	Signals.notice.emit(Loc.f("YOU ARE THE MASTER OF MASTER %s",
+		[PlayerIdentity.display_name().to_upper()]), "good")
 	if path.is_empty():
-		Signals.notice.emit("(Screenshot failed to save.)", "bad")
+		Signals.notice.emit(Loc.t("(Screenshot failed to save.)"), "bad")
 	else:
-		Signals.notice.emit("Screenshot saved: %s" % path, "info")
+		Signals.notice.emit(Loc.f("Screenshot saved: %s", [path]), "info")
 
 
 ## Writes a PNG next to the save file. Returns the absolute path, or "".

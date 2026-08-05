@@ -255,14 +255,14 @@ func suspicion_score() -> int:
 func read_out() -> String:
 	var s := suspicion_score()
 	if s <= 0:
-		return "Nothing on them."
+		return Loc.t("Nothing on them.")
 	elif s <= 3:
-		return "One or two odd things."
+		return Loc.t("One or two odd things.")
 	elif s <= 7:
-		return "Enough to be careful."
+		return Loc.t("Enough to be careful.")
 	elif s <= 12:
-		return "This does not add up."
-	return "This is a police officer."
+		return Loc.t("This does not add up.")
+	return Loc.t("This is a police officer.")
 
 
 func evidence_lines() -> Array[String]:
@@ -272,19 +272,31 @@ func evidence_lines() -> Array[String]:
 		if not st["discovered"]:
 			continue
 		var t := Tells.get_tell(id)
-		var line: String = "· " + str(t["label"])
+		var note := ""
 		match st["outcome"]:
-			"cleared": line += "\n    → " + str(t["cleared_note"])
-			"confirmed": line += "\n    → " + str(t["confirmed_note"])
-			"unclear": line += "\n    → " + Tells.EVASIVE_NOTE
-			_: line += "\n    → Not put to them yet."
-		out.append(line)
+			"cleared": note = str(t["cleared_note"])
+			"confirmed": note = str(t["confirmed_note"])
+			"unclear": note = Tells.EVASIVE_NOTE
+			_: note = Loc.t("Not put to them yet.")
+		# Two translated pieces glued together with punctuation. `done()` keeps
+		# the glued result out of the translator's file, where it would be a
+		# second copy of two lines they have already written.
+		out.append(Loc.done("· %s\n    → %s" % [Loc.t(str(t["label"])), Loc.t(note)]))
 	for qid: String in asked_base:
 		var ans: Dictionary = base_answers.get(qid, {})
 		if not ans.get("matches_file", true):
-			out.append("· Answer to \"%s\" contradicts the file." % Tells.BASE_QUESTIONS[qid]["prompt"])
+			out.append(Loc.f("· Answer to \"%s\" contradicts the file.",
+				[Loc.t(str(Tells.BASE_QUESTIONS[qid]["prompt"]))]))
 	return out
 
 
+## Whether they arrived in something. Read off the plate rather than off the
+## description, because the description is translated text and "None
+## registered" stops being the string to compare against the moment somebody
+## plays in another language.
+func has_vehicle() -> bool:
+	return plate != "—" and not plate.is_empty()
+
+
 func address_line() -> String:
-	return "%s, %s" % [street, district]
+	return Loc.done("%s, %s" % [street, district])

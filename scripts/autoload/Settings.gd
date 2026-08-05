@@ -51,6 +51,12 @@ const FPS_CAPS := [0, 30, 60, 90, 120, 144, 240]
 ## Overrides whatever Steam or the OS reports. Empty means "work it out".
 var player_name: String = ""
 
+## Which language to read the game in. Empty means "not chosen yet", which is
+## not the same as English: on first run the game takes the one the machine is
+## set to if it has a table for it, and a player who later picks English gets
+## English recorded rather than being re-detected every launch.
+var locale: String = ""
+
 
 func _ready() -> void:
 	load_settings()
@@ -58,6 +64,7 @@ func _ready() -> void:
 
 
 func apply() -> void:
+	Loc.set_locale(locale if not locale.is_empty() else Loc.detect())
 	apply_display()
 	AudioServer.set_bus_volume_db(0, linear_to_db(clampf(master_volume, 0.0001, 1.0)))
 	AudioServer.set_bus_mute(0, master_volume <= 0.001)
@@ -142,6 +149,7 @@ func reset() -> void:
 	retro_intensity = 1.0
 	subtitles = true
 	player_name = ""
+	locale = ""
 	apply()
 	save_settings()
 
@@ -157,6 +165,7 @@ func save_settings() -> void:
 	cfg.set_value("video", "retro", retro_intensity)
 	cfg.set_value("ui", "subtitles", subtitles)
 	cfg.set_value("ui", "player_name", player_name)
+	cfg.set_value("ui", "locale", locale)
 	cfg.set_value("video", "window_mode", window_mode)
 	cfg.set_value("video", "resolution", resolution_index)
 	cfg.set_value("video", "vsync", vsync)
@@ -181,6 +190,7 @@ func load_settings() -> void:
 	retro_intensity = cfg.get_value("video", "retro", retro_intensity)
 	subtitles = cfg.get_value("ui", "subtitles", subtitles)
 	player_name = cfg.get_value("ui", "player_name", player_name)
+	locale = cfg.get_value("ui", "locale", locale)
 	window_mode = cfg.get_value("video", "window_mode", window_mode)
 	resolution_index = cfg.get_value("video", "resolution", default_resolution_index())
 	vsync = cfg.get_value("video", "vsync", vsync)

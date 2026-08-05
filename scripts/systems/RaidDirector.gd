@@ -122,10 +122,10 @@ func start(evidence: int, night: int) -> void:
 	Audio.play("radio", -12.0)
 	Audio.play("breach", -14.0)
 	Signals.raid_incoming.emit(GameState.raid_reason)
-	Signals.notice.emit("%d of them. Shutter's down." % squad, "bad")
+	Signals.notice.emit(Loc.f("%d of them. Shutter's down.", [squad]), "bad")
 
 	if GameState.defenses.has("camera"):
-		Signals.notice.emit("Camera: they're stacking on the left side of the door.", "watch")
+		Signals.notice.emit(Loc.t("Camera: they're stacking on the left side of the door."), "watch")
 
 
 func stop() -> void:
@@ -151,7 +151,7 @@ func _process(delta: float) -> void:
 			_timer -= delta
 			if _timer <= 0.0:
 				phase = Phase.PRESSING
-				Signals.notice.emit("They're on the shutter.", "bad")
+				Signals.notice.emit(Loc.t("They're on the shutter."), "bad")
 		Phase.PRESSING:
 			_shutter_hp -= delta * _live_count()
 			if int(_shutter_hp) % 2 == 0:
@@ -178,7 +178,7 @@ func _open_up() -> void:
 	Audio.play("breach", -6.0)
 	_world.set_shutter_closed(false)
 	_world.anchors["shutter_is_closed"] = false
-	Signals.notice.emit("Shutter's gone. Something lands on the floor.", "bad")
+	Signals.notice.emit(Loc.t("Shutter's gone. Something lands on the floor."), "bad")
 	Signals.flashbang.emit()
 
 	_queue.clear()
@@ -231,13 +231,13 @@ func _send_wave() -> void:
 			GameState.defenses.erase("floor_trap")
 			u.take_damage(500.0)
 			Audio.play("impact", -8.0)
-			Signals.notice.emit("The trap takes the first one through.", "good")
+			Signals.notice.emit(Loc.t("The trap takes the first one through."), "good")
 
 	_wave_timer = WAVE_GAP
 	if sending.size() > 1:
-		Signals.notice.emit("Two of them. One's holding the door.", "bad")
+		Signals.notice.emit(Loc.t("Two of them. One's holding the door."), "bad")
 	if not sending.is_empty() and not _queue.is_empty():
-		Signals.notice.emit("More coming.", "warn")
+		Signals.notice.emit(Loc.t("More coming."), "warn")
 
 
 func _live_count() -> int:
@@ -251,7 +251,7 @@ func _live_count() -> int:
 func _on_unit_died(_unit: RaidUnit) -> void:
 	var left := _live_count()
 	if left > 0:
-		Signals.notice.emit("%d left." % left, "warn")
+		Signals.notice.emit(Loc.f("%d left.", [left]), "warn")
 	_promote_cover()
 
 
@@ -272,7 +272,7 @@ func _promote_cover() -> void:
 	for u in _units:
 		if is_instance_valid(u) and u.state != RaidUnit.State.DEAD and u.role == RaidUnit.Role.COVER:
 			u.promote_to_point()
-			Signals.notice.emit("The one on the door is moving up.", "bad")
+			Signals.notice.emit(Loc.t("The one on the door is moving up."), "bad")
 			return
 
 
@@ -285,6 +285,6 @@ func _finish(survived: bool) -> void:
 		GameState.evidence_against_you = 0
 		GameState.raid_reason = ""
 		GameState.add_heat(-18.0)
-		Signals.notice.emit("It's quiet. You are still standing.", "good")
+		Signals.notice.emit(Loc.t("It's quiet. You are still standing."), "good")
 	Signals.raid_resolved.emit(survived)
 	raid_over.emit(survived)

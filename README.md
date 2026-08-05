@@ -562,8 +562,9 @@ listed size that actually fits the screen rather than a hardcoded 720p — so a
 1440p monitor does not get a small window in the corner, and a handheld is never
 handed a window it cannot fit.
 
-Then volume, music, mouse sensitivity, field of view, subtitles, hints,
-your name for the board at the end of the road, plus the two that matter:
+Then language — shown only when there is more than English installed — volume,
+music, effects, mouse sensitivity, field of view, subtitles, hints, your name
+for the board at the end of the road, plus the two that matter:
 
 - **Screen effect** — scanlines, grain, vignette and colour fringing.
 - **Retro geometry** — vertex jitter and affine texture warping.
@@ -573,6 +574,63 @@ and perspective-correct. This is an accessibility control, not a taste one:
 those effects cause real eye strain for some people, and the jitter that sells
 the era is motion instability by another name. Turning them off costs you
 nothing but the look.
+
+## Language
+
+The game is written and shipped in English, and it is not stuck there.
+
+Every string a player reads goes through `Loc.t()` — or `Loc.f()`, if it has a
+number in it — and the English text *is* the key. There is no `MENU_TITLE_02`
+layer to keep in step with anything, nothing to look up while writing a line,
+and a translation that is missing a line falls back to the English original
+rather than to a shouty identifier.
+
+`locale/kiosk.csv` is what a translator is handed: one row per string, a `key`
+column and an `en` column beside it. To add a language, add a column, name it
+with the locale code, and fill it in:
+
+```csv
+key,en,de
+"Torch on.","Torch on.","Licht an."
+"Found %d.","Found %d.","%d gefunden."
+```
+
+Anything left blank falls back to English, so a half-finished translation is
+playable rather than broken. A translation that has lost or gained a `%d` is
+refused and the English is used, because these files are meant to be edited by
+people and a mismatched format string would otherwise take the game down.
+
+Tables are read at runtime with `FileAccess`, not imported as resources. Two
+consequences, both deliberate: `locale/kiosk.csv.import` is pinned to `keep` and
+committed (otherwise Godot turns it into a binary `.translation` and drops the
+readable file from the build), and anything dropped into `user://locale/` wins
+over what shipped — so somebody can install or correct a community translation
+without a rebuild. A language row appears in the pause menu only once there is
+more than English to choose between.
+
+Regenerate the template after writing any new player-facing text:
+
+```sh
+godot --headless --path . tools/MakeTemplate.tscn
+```
+
+It reads the source for every `Loc.t`/`Loc.f` literal and every string handed
+straight to a `UIKit` builder, then walks the content tables — the tells, the
+hints, the achievements, the greetings, the shopping — as the live dictionaries
+they are, so a new tell is in the template the moment it is written.
+
+What stops the template rotting is neither of those passes. The smoke suite runs
+the whole game with `Loc.recording` on and fails if it is ever asked to
+translate a string the template does not contain, printing the missing lines and
+writing them to `user://locale-missing.csv` in the template's own format. A gap
+is a red test, not an English sentence in the middle of somebody's German.
+
+Names, streets, employers and registration plates are not translated. They are
+the setting rather than the language, and a file that reads as documentary
+evidence stops doing that if the person in it is renamed. Everything that
+*describes* — occupations, prior matters, what the scanner found, what the
+terminal makes of it — is translated, so a German player reads a German file
+about a man called Tomas Dressler on Cutter Lane.
 
 ## Controls
 

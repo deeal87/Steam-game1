@@ -115,17 +115,17 @@ func _frame(title: String, subtitle: String = "") -> VBoxContainer:
 
 
 func _build_title() -> void:
-	var col := _frame("KIOSK AT MIDNIGHT",
-		"A lonely kiosk on a dark street. Nothing else for a mile in any direction.")
+	var col := _frame(Loc.t("KIOSK AT MIDNIGHT"),
+		Loc.t("A lonely kiosk on a dark street. Nothing else for a mile in any direction."))
 
 	for line: String in [
-		"You keep the shelves full and the lights on.",
-		"You also keep something under the counter, which is the only reason the rent gets paid.",
+		Loc.t("You keep the shelves full and the lights on."),
+		Loc.t("You also keep something under the counter, which is the only reason the rent gets paid."),
 		"",
-		"Some of the people who come to the window are police, and they are here to buy from you once.",
-		"You have a scanner, a registry terminal, and however many questions they will stand for.",
+		Loc.t("Some of the people who come to the window are police, and they are here to buy from you once."),
+		Loc.t("You have a scanner, a registry terminal, and however many questions they will stand for."),
 		"",
-		"Work out who they are before you decide what to sell them.",
+		Loc.t("Work out who they are before you decide what to sell them."),
 	]:
 		var l := UIKit.label(line, UIKit.FONT_S, UIKit.WHITE)
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -138,7 +138,7 @@ func _build_title() -> void:
 	# file and never read it, so every run started at night one however far the
 	# last one got.
 	if GameState.has_save():
-		var back := UIKit.label("[E] carry on from night %d" % GameState.saved_night(),
+		var back := UIKit.label(Loc.f("[E] carry on from night %d", [GameState.saved_night()]),
 			UIKit.FONT_M, UIKit.GREEN)
 		back.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		col.add_child(back)
@@ -154,7 +154,8 @@ func _build_title() -> void:
 
 func _build_report() -> void:
 	var survived := bool(_payload.get("rent_paid", false))
-	var col := _frame("SHIFT %d" % int(_payload.get("night", 1)), "05:00. You put the shutter down.")
+	var col := _frame(Loc.f("SHIFT %d", [int(_payload.get("night", 1))]),
+		Loc.t("05:00. You put the shutter down."))
 
 	var bill: Dictionary = _payload.get("bill", {})
 	col.add_child(UIKit.field("Customers served", str(_payload.get("served", 0)), UIKit.WHITE))
@@ -180,7 +181,7 @@ func _build_report() -> void:
 	var left_out: int = int(bodies.get("civilians", 0)) + int(bodies.get("officers", 0))
 	if left_out > 0:
 		col.add_child(UIKit.field("Still on the floor at five",
-			"%d   +%d heat" % [left_out, int(bodies.get("heat", 0))], UIKit.RED))
+			Loc.f("%d   +%d heat", [left_out, int(bodies.get("heat", 0))]), UIKit.RED))
 
 	col.add_child(UIKit.field("Rent", "-%d" % int(_payload.get("rent", 0)), UIKit.WHITE))
 	col.add_child(UIKit.field("In hand", str(GameState.money), UIKit.WHITE))
@@ -191,7 +192,7 @@ func _build_report() -> void:
 	if rep < 95.0:
 		var lost := int(round((1.0 - GameState.reputation_multiplier()) * 100.0))
 		col.add_child(UIKit.label(
-			"    Fewer people will bother coming tomorrow — about %d%% down." % lost,
+			Loc.f("    Fewer people will bother coming tomorrow — about %d%% down.", [lost]),
 			UIKit.FONT_S, UIKit.GREEN_DIM))
 
 	col.add_child(UIKit.spacer(8))
@@ -199,7 +200,7 @@ func _build_report() -> void:
 
 	var cops: int = int(_payload.get("cops", 0))
 	if cops > 0:
-		col.add_child(UIKit.label("Officers dealt with: %d" % cops, UIKit.FONT_S, UIKit.GREEN))
+		col.add_child(UIKit.label(Loc.f("Officers dealt with: %d", [cops]), UIKit.FONT_S, UIKit.GREEN))
 	if not survived:
 		col.add_child(UIKit.label("You are short on the rent. He will want it tomorrow, with interest.",
 			UIKit.FONT_S, UIKit.RED))
@@ -211,14 +212,15 @@ func _build_report() -> void:
 
 
 func _build_raid_warning() -> void:
-	var col := _frame("THEY'RE COMING BACK", str(_payload.get("reason", "")))
+	var col := _frame(Loc.t("THEY'RE COMING BACK"), str(_payload.get("reason", "")))
 	for line: String in [
-		"The radio behind you stops playing music and starts playing nothing.",
+		Loc.t("The radio behind you stops playing music and starts playing nothing."),
 		"",
-		"There are %d of them forming up at the end of the street." % int(_payload.get("squad", 4)),
-		"The shutter will hold for a few seconds. Not many.",
+		Loc.f("There are %d of them forming up at the end of the street.",
+			[int(_payload.get("squad", 4))]),
+		Loc.t("The shutter will hold for a few seconds. Not many."),
 		"",
-		"Get behind the counter and stay there.",
+		Loc.t("Get behind the counter and stay there."),
 	]:
 		var l := UIKit.label(line, UIKit.FONT_S, UIKit.WHITE)
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -231,9 +233,10 @@ func _build_raid_warning() -> void:
 
 
 func _build_game_over() -> void:
-	var col := _frame("THE LIGHTS GO OUT", str(_payload.get("cause", "")))
-	col.add_child(UIKit.label("You lasted %d night%s." %
-		[GameState.nights_survived, "" if GameState.nights_survived == 1 else "s"],
+	var col := _frame(Loc.t("THE LIGHTS GO OUT"), str(_payload.get("cause", "")))
+	col.add_child(UIKit.label(Loc.f(
+		"You lasted %d night." if GameState.nights_survived == 1
+			else Loc.t("You lasted %d nights."), [GameState.nights_survived]),
 		UIKit.FONT_M, UIKit.WHITE))
 	col.add_child(UIKit.spacer(16))
 
@@ -243,7 +246,7 @@ func _build_game_over() -> void:
 	col.add_child(buttons)
 
 	var again := Button.new()
-	again.text = "OPEN UP AGAIN"
+	again.text = Loc.t("OPEN UP AGAIN")
 	again.add_theme_font_size_override("font_size", UIKit.FONT_M)
 	again.pressed.connect(func() -> void:
 		close()
@@ -251,7 +254,7 @@ func _build_game_over() -> void:
 	buttons.add_child(again)
 
 	var quit := Button.new()
-	quit.text = "GO HOME"
+	quit.text = Loc.t("GO HOME")
 	quit.add_theme_font_size_override("font_size", UIKit.FONT_M)
 	quit.pressed.connect(func() -> void: quit_requested.emit())
 	buttons.add_child(quit)

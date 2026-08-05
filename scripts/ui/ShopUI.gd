@@ -52,16 +52,16 @@ func _rebuild() -> void:
 	var body: VBoxContainer = m["body"]
 	add_child(_root)
 
-	_money_label = UIKit.label("On hand: %d" % GameState.money, UIKit.FONT_M, UIKit.GREEN)
+	_money_label = UIKit.label(Loc.f("On hand: %d", [GameState.money]), UIKit.FONT_M, UIKit.GREEN)
 	body.add_child(_money_label)
 	body.add_child(UIKit.spacer(4))
 
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 6)
-	for conf: Array in [["stock", "SHELF STOCK"], ["under", "UNDER THE COUNTER"],
-			["arms", "ARMS"], ["fittings", "FITTINGS"]]:
+	for conf: Array in [["stock", Loc.t("SHELF STOCK")], ["under", Loc.t("UNDER THE COUNTER")],
+			["arms", Loc.t("ARMS")], ["fittings", Loc.t("FITTINGS")]]:
 		var b := Button.new()
-		b.text = conf[1]
+		b.text = Loc.t(conf[1])
 		b.add_theme_font_size_override("font_size", UIKit.FONT_S)
 		b.add_theme_color_override("font_color", UIKit.GREEN if _tab == conf[0] else UIKit.GREEN_DIM)
 		b.flat = true
@@ -130,15 +130,17 @@ func _build_stock() -> void:
 		var item: Dictionary = GameState.ITEMS[id]
 		var cost: int = int(item["cost"]) * 6
 		var margin: int = (int(item["price"]) - int(item["cost"])) * 6
-		_row("%s  ×6" % item["name"], "sells for %d each · %d margin on the case" % [item["price"], margin],
+		_row(Loc.f("%s  ×6", [Loc.t(str(item["name"]))]),
+			Loc.f("sells for %d each · %d margin on the case", [item["price"], margin]),
 			cost, GameState.money >= cost,
 			func() -> void: GameState.crate_stock[id] = int(GameState.crate_stock.get(id, 0)) + 6,
-			"back: %d  shelf: %d" % [int(GameState.crate_stock.get(id, 0)), GameState.shelf_units(id)])
+			Loc.f("back: %d  shelf: %d",
+				[int(GameState.crate_stock.get(id, 0)), GameState.shelf_units(id)]))
 
 
 func _build_under() -> void:
 	_list.add_child(UIKit.label(
-		"He doesn't say what it is on the phone and neither do you.",
+		Loc.t("He doesn't say what it is on the phone and neither do you."),
 		UIKit.FONT_S, UIKit.GREEN_DIM))
 	_list.add_child(UIKit.spacer(4))
 	for batch: int in [3, 6, 12]:
@@ -146,11 +148,12 @@ func _build_under() -> void:
 		# holding more stock than you can safely move in one night.
 		var discount := 1.0 - 0.06 * float([3, 6, 12].find(batch))
 		var price := int(float(batch * GameState.illicit_unit_cost()) * discount)
-		_row("%d units" % batch, "%d a unit · they go for %d–%d, depending who's asking" %
-			[int(float(price) / float(batch)), 38 + GameState.night * 7, 66 + GameState.night * 7],
+		_row(Loc.f("%d units", [batch]),
+			Loc.f("%d a unit · they go for %d–%d, depending who's asking",
+				[int(float(price) / float(batch)), 38 + GameState.night * 7, 66 + GameState.night * 7]),
 			price, GameState.money >= price,
 			func() -> void: GameState.drug_stock += batch,
-			"under the counter: %d" % GameState.drug_stock)
+			Loc.f("under the counter: %d", [GameState.drug_stock]))
 
 
 func _build_arms() -> void:
@@ -158,10 +161,12 @@ func _build_arms() -> void:
 		var w: Dictionary = GameState.WEAPONS[id]
 		var owned := GameState.has_weapon(id)
 		if owned:
-			_list.add_child(UIKit.label("%s — owned" % w["name"], UIKit.FONT_S, UIKit.GREEN_DIM))
+			_list.add_child(UIKit.label(Loc.f("%s — owned", [Loc.t(str(w["name"]))]),
+				UIKit.FONT_S, UIKit.GREEN_DIM))
 		else:
 			var price := int(w["price"])
-			_row(str(w["name"]), "damage %d · %s" % [w["damage"], "melee" if w["melee"] else "firearm"],
+			_row(Loc.t(str(w["name"])), Loc.f("damage %d · %s", [w["damage"],
+				Loc.t("melee") if w["melee"] else Loc.t("firearm")]),
 				price, GameState.money >= price,
 				func() -> void: GameState.weapons.append(id))
 	_list.add_child(UIKit.spacer(6))
@@ -171,22 +176,25 @@ func _build_arms() -> void:
 			continue
 		var price: int = int(GameState.AMMO_PRICE[id])
 		var per: int = int(GameState.AMMO_PER_BOX[id])
-		_row("%s ammunition  ×%d" % [GameState.WEAPONS[id]["name"], per], "",
+		_row(Loc.f("%s ammunition  ×%d",
+				[Loc.t(str(GameState.WEAPONS[id]["name"])), per]), "",
 			price, GameState.money >= price,
 			func() -> void: GameState.add_ammo(id, per),
-			"have: %d" % GameState.ammo_for(id))
+			Loc.f("have: %d", [GameState.ammo_for(id)]))
 
 
 func _build_fittings() -> void:
 	for id: String in GameState.DEFENSES:
 		var d: Dictionary = GameState.DEFENSES[id]
 		if GameState.defenses.has(id):
-			_list.add_child(UIKit.label("%s — fitted" % d["name"], UIKit.FONT_S, UIKit.GREEN_DIM))
+			_list.add_child(UIKit.label(Loc.f("%s — fitted", [Loc.t(str(d["name"]))]),
+				UIKit.FONT_S, UIKit.GREEN_DIM))
 			continue
 		var price := int(d["price"])
-		_row(str(d["name"]), str(d["desc"]), price, GameState.money >= price,
+		_row(Loc.t(str(d["name"])), Loc.t(str(d["desc"])), price, GameState.money >= price,
 			func() -> void: GameState.defenses.append(id))
 	_list.add_child(UIKit.spacer(6))
-	_row("Body bags  ×2", "for the nights it goes badly", 55, GameState.money >= 55,
+	_row(Loc.t("Body bags  ×2"), Loc.t("for the nights it goes badly"), 55,
+		GameState.money >= 55,
 		func() -> void: GameState.body_bags += 2,
-		"have: %d" % GameState.body_bags)
+		Loc.f("have: %d", [GameState.body_bags]))

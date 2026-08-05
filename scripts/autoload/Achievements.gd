@@ -93,7 +93,7 @@ func unlock(id: String) -> bool:
 	save_progress()
 	_push_to_steam(id)
 	var entry: Dictionary = CATALOGUE[id]
-	Signals.notice.emit("Achievement: %s" % entry["name"], "good")
+	Signals.notice.emit(Loc.f("Achievement: %s", [Loc.t(str(entry["name"]))]), "good")
 	Audio.play("chime", -12.0)
 	unlocked.emit(id, entry)
 	return true

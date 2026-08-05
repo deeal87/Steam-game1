@@ -70,6 +70,18 @@ const FRONT_EMPLOYERS := [
 const CAR_MAKES := ["Vesper", "Kolt", "Brandt", "Marlin", "Ostrow", "Dace"]
 const CAR_COLOURS := ["grey", "brown", "dark blue", "white", "green", "red", "black"]
 
+## What the registry says about the accounts at an address.
+const UTILITIES_POOL := [
+	"Electricity, water, refuse — all in name",
+	"Electricity in name. Water with the landlord",
+	"All accounts in name since 2021",
+]
+
+## How the person named as next of kin is related to them.
+const KIN_RELATIONS := [
+	"sister", "brother", "mother", "father", "partner", "daughter", "son",
+]
+
 const RECORD_POOL := [
 	"Drunk and disorderly", "Driving without insurance", "Possession, minor",
 	"Criminal damage", "Theft, retail", "Breach of the peace",
@@ -158,11 +170,11 @@ static func _phone(rng: RandomNumberGenerator) -> String:
 
 
 static func _date(rng: RandomNumberGenerator, year_lo: int, year_hi: int) -> String:
-	return "%d %s %d" % [
+	return Loc.done("%d %s %d" % [
 		rng.randi_range(1, 28),
-		MONTHS[rng.randi() % 12],
+		Loc.t(MONTHS[rng.randi() % 12]),
 		rng.randi_range(year_lo, year_hi),
-	]
+	])
 
 
 ## `night` scales how careful the officers are. `undercover_chance` comes from
@@ -190,30 +202,28 @@ static func generate(seed_value: int, night: int, undercover_chance: float) -> C
 	p.district = _pick(DISTRICTS, rng)
 
 	var job: Dictionary = _pick(JOBS, rng)
-	p.occupation = job["occupation"]
+	p.occupation = Loc.t(job["occupation"])
 	p.employer = job["employer"]
 
 	if rng.randf() < 0.45:
 		p.plate = _plate(rng)
-		p.vehicle_desc = "%s %s (%s)" % [_pick(CAR_COLOURS, rng), _pick(CAR_MAKES, rng), p.plate]
+		p.vehicle_desc = Loc.done("%s %s (%s)" % [
+			Loc.t(_pick(CAR_COLOURS, rng)), _pick(CAR_MAKES, rng), p.plate])
 	else:
-		p.vehicle_desc = "None registered"
+		p.vehicle_desc = Loc.t("None registered")
 		p.plate = "—"
 
 	p.phone = _phone(rng)
 	p.phone_registered = _date(rng, 2018, 2025)
-	p.next_of_kin = "%s %s (%s)" % [_pick(FIRST_NAMES, rng), _pick(SURNAMES, rng),
-		_pick(["sister", "brother", "mother", "father", "partner", "daughter", "son"], rng)]
-	p.utilities = _pick([
-		"Electricity, water, refuse — all in name",
-		"Electricity in name. Water with the landlord",
-		"All accounts in name since 2021",
-	], rng)
-	p.employment_note = "Continuous since %d" % rng.randi_range(2012, 2023)
+	p.next_of_kin = Loc.done("%s %s (%s)" % [_pick(FIRST_NAMES, rng), _pick(SURNAMES, rng),
+		Loc.t(_pick(KIN_RELATIONS, rng))])
+	p.utilities = Loc.t(_pick(UTILITIES_POOL, rng))
+	p.employment_note = Loc.f("Continuous since %d", [rng.randi_range(2012, 2023)])
 
 	var n_record := rng.randi_range(0, 3)
 	for i in n_record:
-		var entry: String = "%s (%d)" % [_pick(RECORD_POOL, rng), rng.randi_range(2014, 2025)]
+		var entry: String = Loc.done("%s (%d)" % [
+			Loc.t(_pick(RECORD_POOL, rng)), rng.randi_range(2014, 2025)])
 		if not p.record.has(entry):
 			p.record.append(entry)
 
@@ -352,49 +362,50 @@ static func _apply_tell_consequences(p: CustomerProfile, rng: RandomNumberGenera
 	if p.has_tell("record_scrubbed"):
 		p.record.clear()
 	if p.has_tell("id_recent"):
-		p.id_issued = "%d %s 2026" % [rng.randi_range(1, 28), MONTHS[2]]
+		p.id_issued = Loc.done("%d %s 2026" % [rng.randi_range(1, 28), Loc.t(MONTHS[2])])
 	if p.has_tell("vehicle_fleet"):
 		p.plate = "CT %d%d%d" % [rng.randi() % 10, rng.randi() % 10, rng.randi() % 10]
-		p.vehicle_desc = "white Kolt panel van (%s)" % p.plate
+		p.vehicle_desc = Loc.f("white Kolt panel van (%s)", [p.plate])
 	if p.has_tell("wrong_slang"):
 		p.wants_illicit = true
 	if p.has_tell("phone_new"):
-		p.phone_registered = "%d %s 2026" % [rng.randi_range(1, 28), MONTHS[2]]
+		p.phone_registered = Loc.done("%d %s 2026" % [rng.randi_range(1, 28), Loc.t(MONTHS[2])])
 	if p.has_tell("no_utilities"):
-		p.utilities = "No accounts at this address in this name"
+		p.utilities = Loc.t("No accounts at this address in this name")
 	if p.has_tell("employment_gap"):
-		p.employment_note = "Seven-month gap, 2025. Unaccounted for."
+		p.employment_note = Loc.t("Seven-month gap, 2025. Unaccounted for.")
 	if p.has_tell("kin_switchboard"):
-		p.next_of_kin = "0800 %d%d %d%d%d%d — switchboard, no name given" % [
+		p.next_of_kin = Loc.f("0800 %d%d %d%d%d%d — switchboard, no name given", [
 			rng.randi() % 10, rng.randi() % 10, rng.randi() % 10,
-			rng.randi() % 10, rng.randi() % 10, rng.randi() % 10]
+			rng.randi() % 10, rng.randi() % 10, rng.randi() % 10])
 	# An officer whose cover includes a spell inside needs the record to show
 	# it, otherwise the honest explanation would contradict their own file.
 	if p.has_tell("employment_gap") and p.kind == CustomerProfile.Kind.CIVILIAN:
-		p.record.append("Custodial sentence, 8 months (2025)")
+		p.record.append(Loc.t("Custodial sentence, 8 months (2025)"))
 
 	# The second pass of terminal tells, same rule: if the terminal says it, the
 	# file has to show it, or the player is reading a claim rather than a record.
 	if p.has_tell("licence_endorsed"):
-		p.record.append("Driving licence reissued ×4 (2020-2026)")
+		p.record.append(Loc.t("Driving licence reissued ×4 (2020-2026)"))
 	if p.has_tell("no_school"):
-		p.employment_note = "No education or training record before age 26."
+		p.employment_note = Loc.t("No education or training record before age 26.")
 	if p.has_tell("kin_shares_address"):
-		p.next_of_kin = "%s %s — same address, not named on any account there" % [
-			_pick(FIRST_NAMES, rng), p.full_name.split(" ")[-1]]
+		p.next_of_kin = Loc.f("%s %s — same address, not named on any account there",
+			[_pick(FIRST_NAMES, rng), p.full_name.split(" ")[-1]])
 	if p.has_tell("bank_new"):
-		p.utilities = "Single account, opened %s 2026. Salary credits only." % MONTHS[0]
+		p.utilities = Loc.f("Single account, opened %s 2026. Salary credits only.",
+			[Loc.t(MONTHS[0])])
 	if p.has_tell("photo_mismatch"):
-		p.record.append("Photograph on file dated 2022, not retaken")
+		p.record.append(Loc.t("Photograph on file dated 2022, not retaken"))
 
 	# The behavioural tells that assert something checkable. Without these the
 	# innocent explanation cites a record that is not there, which reads as a lie
 	# when the player goes to verify it.
 	if p.has_tell("reads_the_room") and p.kind == CustomerProfile.Kind.CIVILIAN:
-		p.record.append("Victim of assault, licensed premises (2025)")
+		p.record.append(Loc.t("Victim of assault, licensed premises (2025)"))
 	if p.has_tell("wrong_hours") and p.kind == CustomerProfile.Kind.CIVILIAN:
-		p.next_of_kin = "%s %s — admitted, St Cuthbert's Ward 9" % [
-			_pick(FIRST_NAMES, rng), p.full_name.split(" ")[-1]]
+		p.next_of_kin = Loc.f("%s %s — admitted, St Cuthbert's Ward 9",
+			[_pick(FIRST_NAMES, rng), p.full_name.split(" ")[-1]])
 
 
 ## Answers to the four standing questions.
@@ -422,90 +433,92 @@ static func _write_base_answers(p: CustomerProfile, rng: RandomNumberGenerator, 
 					var other: Dictionary = _pick(JOBS, rng)
 					while other["occupation"] == p.occupation:
 						other = _pick(JOBS, rng)
-					text = "%s. Over at %s." % [other["occupation"], other["employer"]]
+					text = Loc.f("%s. Over at %s.",
+						[Loc.t(other["occupation"]), other["employer"]])
 					matches = false
 				else:
-					text = "%s. %s." % [p.occupation, p.employer] if p.employer != "—" else "Not working at the minute."
+					text = Loc.f("%s. %s.", [p.occupation, p.employer]) if p.employer != "—" \
+						else Loc.t("Not working at the minute.")
 			"q_live":
 				if slipped:
 					var other_d: String = _pick(DISTRICTS, rng)
 					while other_d == p.district:
 						other_d = _pick(DISTRICTS, rng)
-					text = "%s way. Fifteen minutes on foot." % other_d
+					text = Loc.f("%s way. Fifteen minutes on foot.", [other_d])
 					matches = false
 				else:
-					text = "%s. %s." % [p.district, p.street]
+					text = Loc.f("%s. %s.", [p.district, p.street])
 			"q_car":
-				if p.vehicle_desc == "None registered":
+				if not p.has_vehicle():
 					if slipped:
-						text = "Blue one on the corner. That's mine."
+						text = Loc.t("Blue one on the corner. That's mine.")
 						matches = false
 					else:
-						text = "I don't drive. Walked."
+						text = Loc.t("I don't drive. Walked.")
 				else:
 					if slipped:
-						text = "No, I came on the tram."
+						text = Loc.t("No, I came on the tram.")
 						matches = false
 					else:
-						text = "The %s. Why?" % p.vehicle_desc.split(" (")[0]
+						text = Loc.f("The %s. Why?", [p.vehicle_desc.split(" (")[0]])
 			"q_name":
 				if slipped:
-					text = "%s %s." % [_pick(FIRST_NAMES, rng), _pick(SURNAMES, rng)]
+					text = Loc.done("%s %s." % [_pick(FIRST_NAMES, rng), _pick(SURNAMES, rng)])
 					matches = false
 				else:
-					text = "%s. It's on the card." % p.full_name
+					text = Loc.f("%s. It's on the card.", [p.full_name])
 			"q_born":
 				var year := int(p.dob.split(" ")[-1])
 				if slipped:
 					# A cover identity's date of birth is the detail that goes
 					# first, because it is the one they never had to live with.
-					text = "%d. Why?" % (year + [-3, -2, 2, 3][rng.randi() % 4])
+					text = Loc.f("%d. Why?", [year + [-3, -2, 2, 3][rng.randi() % 4]])
 					matches = false
 				else:
-					text = "%d. It's on the card as well, you know." % year
+					text = Loc.f("%d. It's on the card as well, you know.", [year])
 			"q_ask_employer":
 				if p.employer == "—":
 					if slipped:
-						text = "%s. Been there years." % _pick(JOBS, rng)["employer"]
+						text = Loc.f("%s. Been there years.", [_pick(JOBS, rng)["employer"]])
 						matches = false
 					else:
-						text = "Nobody, at the minute. I'm looking."
+						text = Loc.t("Nobody, at the minute. I'm looking.")
 				elif slipped:
 					var other_e: String = _pick(JOBS, rng)["employer"]
 					while other_e == p.employer:
 						other_e = _pick(JOBS, rng)["employer"]
-					text = "%s. Why, do you know it?" % other_e
+					text = Loc.f("%s. Why, do you know it?", [other_e])
 					matches = false
 				else:
-					text = "%s. Same crowd eleven years." % p.employer
+					text = Loc.f("%s. Same crowd eleven years.", [p.employer])
 			"q_street":
 				if slipped:
 					# Close enough to sound right, wrong enough to check.
-					text = "%d %s." % [rng.randi_range(1, 90), _pick(STREETS, rng)]
+					text = Loc.done("%d %s." % [rng.randi_range(1, 90), _pick(STREETS, rng)])
 					matches = false
 				else:
-					text = "%s. Two minutes that way." % p.street
+					text = Loc.f("%s. Two minutes that way.", [p.street])
 			"q_ask_plate":
-				if p.vehicle_desc == "None registered":
+				if not p.has_vehicle():
 					if slipped:
-						text = "%s. It's round the corner." % _plate(rng)
+						text = Loc.f("%s. It's round the corner.", [_plate(rng)])
 						matches = false
 					else:
-						text = "Haven't got one. I don't drive."
+						text = Loc.t("Haven't got one. I don't drive.")
 				elif slipped:
 					# A registration is six characters somebody else chose for
 					# you. Nobody rehearsing a cover gets it wrong by a mile —
 					# they get it wrong by a digit.
-					text = "%s, I think. I never look at it." % _plate(rng)
+					text = Loc.f("%s, I think. I never look at it.", [_plate(rng)])
 					matches = false
 				else:
-					text = "%s. Why?" % p.plate
+					text = Loc.f("%s. Why?", [p.plate])
 			"q_ask_number":
 				if slipped:
-					text = "%s. Ring it if you like." % _phone(rng)
+					text = Loc.f("%s. Ring it if you like.", [_phone(rng)])
 					matches = false
 				else:
-					text = "%s. Not that you'll ever ring it." % p.phone
+					text = Loc.f("%s. Not that you'll ever ring it.", [p.phone])
 
 		p.base_answers[qid] = {"text": text, "matches_file": matches, "truth": truth}
 

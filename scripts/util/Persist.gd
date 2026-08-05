@@ -28,8 +28,8 @@ static func write(cfg: ConfigFile, path: String, what: String,
 		# silently refused the write is the worst outcome this game has, and it
 		# is the one thing the player can still act on — quit, free some space,
 		# and the run is still in memory.
-		Signals.notice.emit(
-			"Could not save your %s. Check disk space before you quit." % what, "bad")
+		Signals.notice.emit(Loc.f(
+			"Could not save your %s. Check disk space before you quit.", [Loc.t(what)]), "bad")
 	return false
 
 

@@ -67,7 +67,7 @@ func _rebuild() -> void:
 		left.add_child(UIKit.spacer(4))
 		left.add_child(UIKit.field("Swept", "yes" if p.scanned else "no"))
 		left.add_child(UIKit.field("File pulled", "yes" if p.looked_up else "no"))
-		left.add_child(UIKit.field("Patience", "%d of %d" % [p.patience, p.patience_max]))
+		left.add_child(UIKit.field("Patience", Loc.f("%d of %d", [p.patience, p.patience_max])))
 		left.add_child(UIKit.field("Asking for", "the other thing" if p.wants_illicit else "shelf goods only"))
 		left.add_child(UIKit.spacer(6))
 		var evidence := p.evidence_lines()
@@ -92,7 +92,7 @@ func _rebuild() -> void:
 	right.add_child(UIKit.field("Tips and finds", str(GameState.tips)))
 	right.add_child(UIKit.field("Rent due", str(GameState.rent_due()),
 		UIKit.GREEN if GameState.takings + GameState.illicit_takings + GameState.tips >= GameState.rent_due() else UIKit.RED))
-	right.add_child(UIKit.field("Under the counter", "%d units" % GameState.drug_stock))
+	right.add_child(UIKit.field("Under the counter", Loc.f("%d units", [GameState.drug_stock])))
 	right.add_child(UIKit.field("Body bags", str(GameState.body_bags)))
 	right.add_child(UIKit.field("Your name", "%d%%" % int(GameState.reputation),
 		UIKit.GREEN if GameState.reputation > 60.0 else UIKit.RED))
@@ -106,13 +106,13 @@ func _rebuild() -> void:
 	right.add_child(UIKit.spacer(8))
 	right.add_child(UIKit.label("HOW ANY OF THIS WORKS", UIKit.FONT_S, UIKit.GREEN_DIM))
 	for line: String in [
-		"E — scan an item, work the till, talk",
-		"Q — refill the shelf you're looking at",
-		"F — sweep them with the scanner",
-		"TAB — this pad",
-		"X — change what's in your hands",
-		"T — torch",
-		"MOUSE 1 — use it",
+		Loc.t("E — scan an item, work the till, talk"),
+		Loc.t("Q — refill the shelf you're looking at"),
+		Loc.t("F — sweep them with the scanner"),
+		Loc.t("TAB — this pad"),
+		Loc.t("X — change what's in your hands"),
+		Loc.t("T — torch"),
+		Loc.t("MOUSE 1 — use it"),
 	]:
 		right.add_child(UIKit.label(line, UIKit.FONT_S, UIKit.WHITE))
 

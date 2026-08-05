@@ -40,11 +40,11 @@ func enter() -> void:
 	_spawn(count, tier)
 
 	if count == 0:
-		Signals.notice.emit("Quiet down here. For now.", "info")
+		Signals.notice.emit(Loc.t("Quiet down here. For now."), "info")
 	elif GameState.sewer_trips == 1:
-		Signals.notice.emit("Something is down here with you.", "warn")
+		Signals.notice.emit(Loc.t("Something is down here with you."), "warn")
 	else:
-		Signals.notice.emit("More of them than last time.", "bad")
+		Signals.notice.emit(Loc.t("More of them than last time."), "bad")
 
 
 ## Called when the player climbs back out. Everything down there is forgotten;
@@ -110,9 +110,9 @@ func _spawn(count: int, tier: int) -> void:
 func _on_died(_d: SewerDweller) -> void:
 	var left := alive_count()
 	if left > 0:
-		Signals.notice.emit("%d still moving." % left, "warn")
+		Signals.notice.emit(Loc.f("%d still moving.", [left]), "warn")
 	else:
-		Signals.notice.emit("Nothing else down here.", "good")
+		Signals.notice.emit(Loc.t("Nothing else down here."), "good")
 		cleared.emit()
 
 

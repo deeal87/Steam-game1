@@ -17,6 +17,12 @@ func _ready() -> void:
 	# The suite drives thousands of operations; a log of them all would bury the
 	# results it exists to print.
 	Log.mute(true)
+	# Everything the suite builds gets asked to translate itself, and the
+	# translation test at the end checks that the shipped template has a line
+	# for every string that came past. Switched on here rather than there so the
+	# recording covers the whole run, not just the last test in it.
+	Loc.forget()
+	Loc.recording = true
 	GameState.reset_run()
 	test_classes_resolve()
 	test_persistence_errors()
@@ -44,6 +50,7 @@ func _ready() -> void:
 	await test_violence()
 	test_raid()
 	test_panels()
+	test_translation()
 	_report()
 	get_tree().quit(1 if not failures.is_empty() else 0)
 
@@ -557,7 +564,7 @@ func test_audio() -> void:
 	# Effects get their own bus, so they can be turned down without taking the
 	# music with them. Before this everything played straight onto Master.
 	_check(AudioServer.get_bus_index(Audio.BUS) > 0, "effects have their own bus")
-	_check(AudioServer.get_bus_index("Music") > 0, "and music still has its own")
+	_check(AudioServer.get_bus_index(Loc.t("Music")) > 0, "and music still has its own")
 
 	# Positional audio, which is a gameplay system rather than polish: the sewer
 	# is pitch dark, so which direction a thing is coming from is the only
@@ -2294,15 +2301,16 @@ func test_panels() -> void:
 	report.show_title()
 	report.show_report({"night": 3, "served": 8, "takings": 90, "illicit": 120,
 		"tips": 14, "rent": 219, "rent_paid": true, "cops": 1, "civilians": 0, "evidence": 1})
-	report.show_raid_warning("You sold to an officer.", 6)
-	report.show_game_over("shot")
+	report.show_raid_warning(Loc.t("You sold to an officer."), 6)
+	report.show_game_over(
+		"They came through the door and you were still holding a bag of crisps.")
 	_check(report.open, "every interstitial builds")
 	report.close()
 
 	var hud := HUD.new()
 	add_child(hud)
 	hud.bind_player(_player)
-	Signals.notice.emit("test", "bad")
+	Signals.notice.emit(Loc.done("a notice from the smoke test"), "bad")
 	Signals.customer_spoke.emit("Anders Vesely", "Evening.")
 	Signals.shift_clock.emit(120.0)
 	Signals.money_changed.emit(50)
@@ -2310,6 +2318,93 @@ func test_panels() -> void:
 	_check(true, "HUD absorbs every signal it listens for")
 
 	c.queue_free()
+
+
+## Localisation.
+##
+## Two halves. The first is the machinery — that a lookup with nothing loaded
+## returns the English it was given, that a table read off disk comes back
+## intact including the lines with commas and newlines in them, and that a
+## translation which has lost a placeholder is refused rather than formatted
+## into a crash.
+##
+## The second is the part that rots: the shipped template has to contain every
+## string the game asks for. The recorder has been on since the first line of
+## this suite, so by the time this runs it is holding every piece of text that
+## every panel, notice, prompt, file and question produced. Anything in that set
+## and not in `locale/kiosk.csv` is a line a translator would never be shown,
+## and the fix is to run `tools/MakeTemplate.tscn` again.
+func test_translation() -> void:
+	print("\nLanguage:")
+
+	Loc.recording = false
+	var recorded := Loc.seen()
+
+	# --- The machinery ---
+	_check(Loc.t("Torch on.") == "Torch on.",
+		"an untranslated string comes back as it went in")
+	_check(Loc.f("Found %d.", [7]) == "Found 7.", "and a formatted one formats")
+	_check(Loc.locales().size() >= 1 and Loc.locales()[0] == "en",
+		"English is always on the list and always first")
+
+	# A round trip through a real file, with the two things CSV gets wrong.
+	var dir := "user://locale"
+	DirAccess.make_dir_recursive_absolute(dir)
+	var path := dir.path_join("smoketest.csv")
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	f.store_csv_line(PackedStringArray(["key", "en", "xx"]))
+	f.store_csv_line(PackedStringArray(["Torch on.", "Torch on.", "TORCH, ON"]))
+	f.store_csv_line(PackedStringArray(["Found %d.", "Found %d.", "FOUND %d"]))
+	# A translation that dropped its placeholder. Formatting this would fail.
+	f.store_csv_line(PackedStringArray(["Tip: %d", "Tip: %d", "TIP"]))
+	f.store_csv_line(PackedStringArray(["two\nlines", "two\nlines", "ZWEI\nZEILEN"]))
+	f.close()
+
+	Loc.reload()
+	_check(Loc.locales().has("xx"), "a table dropped in user:// is picked up")
+	Loc.set_locale("xx")
+	_check(Loc.locale() == "xx", "and can be selected")
+	_check(Loc.t("Torch on.") == "TORCH, ON", "a line with a comma in it survives the file")
+	_check(Loc.t("two\nlines") == "ZWEI\nZEILEN", "and so does a line with a newline in it")
+	_check(Loc.f("Found %d.", [7]) == "FOUND 7", "the translated string is what gets formatted")
+	_check(Loc.f("Tip: %d", [4]) == "Tip: 4",
+		"a translation missing its placeholder is refused, not formatted")
+	_check(Loc.t("Nothing else down here.") == "Nothing else down here.",
+		"a line the table has no entry for falls back to English")
+
+	Loc.set_locale("en")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	Loc.reload()
+	_check(Loc.locale() == "en" and not Loc.locales().has("xx"),
+		"and removing the file puts it back to English")
+
+	# --- The template ---
+	var template := Loc.template_keys()
+	_check(template.size() > 400, "the shipped template has been generated (%d lines)" % template.size())
+
+	var missing: Array[String] = []
+	for text: String in recorded:
+		if not template.has(text):
+			missing.append(text)
+	if not missing.is_empty():
+		# Written out in the template's own format as well as printed, because
+		# a list of a hundred strings is no use scrolling past in a terminal and
+		# every one of them has to be looked at individually.
+		missing.sort()
+		var report_path := "user://locale-missing.csv"
+		var out := FileAccess.open(report_path, FileAccess.WRITE)
+		if out != null:
+			out.store_csv_line(PackedStringArray(["key", "en"]))
+			for text: String in missing:
+				out.store_csv_line(PackedStringArray([text, text]))
+			out.close()
+		print("   %d string(s) the game says are not in locale/kiosk.csv:" % missing.size())
+		for text: String in missing.slice(0, 12):
+			print("     · %s" % text.replace("\n", "\\n"))
+		print("   full list: %s" % ProjectSettings.globalize_path(report_path))
+		print("   run: godot --headless --path . tools/MakeTemplate.tscn")
+	_check(missing.is_empty(),
+		"every string the game showed is in the template (%d checked)" % recorded.size())
 
 
 func _report() -> void:

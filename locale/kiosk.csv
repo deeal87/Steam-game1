@@ -1,0 +1,805 @@
+key,en
+"
+Stand at the hatch with someone in front of you and try again.","
+Stand at the hatch with someone in front of you and try again."
+    %s,    %s
+    Fewer people will bother coming tomorrow — about %d%% down.,    Fewer people will bother coming tomorrow — about %d%% down.
+"    Leave blank to use your Steam name, or your computer's account name.","    Leave blank to use your Steam name, or your computer's account name."
+  · %s,  · %s
+%d   +%d heat,%d   +%d heat
+%d   -%d,%d   -%d
+"%d a unit · they go for %d–%d, depending who's asking","%d a unit · they go for %d–%d, depending who's asking"
+%d fps,%d fps
+%d item on the counter. Scan it.,%d item on the counter. Scan it.
+%d left.,%d left.
+%d of %d,%d of %d
+%d of them. Shutter's down.,%d of them. Shutter's down.
+%d reading.,%d reading.
+%d still moving.,%d still moving.
+%d still to scan.,%d still to scan.
+%d under the counter,%d under the counter
+%d units,%d units
+%d waiting.,%d waiting.
+%d%%,%d%%
+"%d. It's on the card as well, you know.","%d. It's on the card as well, you know."
+%d. Why?,%d. Why?
+%s  (%s),%s  (%s)
+%s  (age %d),%s  (age %d)
+%s  (registered %s),%s  (registered %s)
+%s  ×6,%s  ×6
+%s %s,%s %s
+"%s %s — admitted, St Cuthbert's Ward 9","%s %s — admitted, St Cuthbert's Ward 9"
+"%s %s — same address, not named on any account there","%s %s — same address, not named on any account there"
+%s ammunition  ×%d,%s ammunition  ×%d
+%s couldn't get round the shop and left.,%s couldn't get round the shop and left.
+%s found nothing worth buying.,%s found nothing worth buying.
+%s got tired of waiting.,%s got tired of waiting.
+%s in your hands.,%s in your hands.
+%s put their basket down and walked out.,%s put their basket down and walked out.
+%s saw it. They're gone.,%s saw it. They're gone.
+%s stepped in front of %s.,%s stepped in front of %s.
+%s way. Fifteen minutes on foot.,%s way. Fifteen minutes on foot.
+%s — %d,%s — %d
+%s — empty  [Q] restock,%s — empty  [Q] restock
+%s — fitted,%s — fitted
+%s — leaving,%s — leaving
+%s — owned,%s — owned
+%s — shopping,%s — shopping
+"%s, I think. I never look at it.","%s, I think. I never look at it."
+%s. %s.,%s. %s.
+%s. Been there years.,%s. Been there years.
+%s. It's on the card.,%s. It's on the card.
+%s. It's round the corner.,%s. It's round the corner.
+%s. Not that you'll ever ring it.,%s. Not that you'll ever ring it.
+%s. Over at %s.,%s. Over at %s.
+%s. Ring it if you like.,%s. Ring it if you like.
+%s. Same crowd eleven years.,%s. Same crowd eleven years.
+%s. Two minutes that way.,%s. Two minutes that way.
+"%s. Why, do you know it?","%s. Why, do you know it?"
+%s. Why?,%s. Why?
+'Scuse me.,'Scuse me.
+(Screenshot failed to save.),(Screenshot failed to save.)
+-%d,-%d
+...Does it matter? I just want to pay and go.,...Does it matter? I just want to pay and go.
+...What is that. What is that on the floor.,...What is that. What is that on the floor.
+...You're joking. I come in here every night.,...You're joking. I come in here every night.
+...and the other thing. If you've got it.,...and the other thing. If you've got it.
+.38 Revolver,.38 Revolver
+05:00. You put the shutter down.,05:00. You put the shutter down.
+"0800 %d%d %d%d%d%d — switchboard, no name given","0800 %d%d %d%d%d%d — switchboard, no name given"
+A badge falls out of their coat. You were right.,A badge falls out of their coat. You were right.
+"A bound notebook, ruled and numbered. Something written in it tonight.","A bound notebook, ruled and numbered. Something written in it tonight."
+A file this empty has usually been emptied.,A file this empty has usually been emptied.
+A lonely kiosk on a dark street. Nothing else for a mile in any direction.,A lonely kiosk on a dark street. Nothing else for a mile in any direction.
+A numbered pocketbook is not a diary. It is a record.,A numbered pocketbook is not a diary. It is a record.
+"A regular's order, and they knew it to the coin.","A regular's order, and they knew it to the coin."
+ACHIEVEMENTS,ACHIEVEMENTS
+ADDRESS,ADDRESS
+ANALYSIS,ANALYSIS
+ARMS,ARMS
+ASK,ASK
+Abandon the run,Abandon the run
+Achievement: %s,Achievement: %s
+"Active transmitter, centre chest. Something is listening.","Active transmitter, centre chest. Something is listening."
+"Address history shows the move, dated January.","Address history shows the move, dated January."
+Alder House. The number matches the home on the file.,Alder House. The number matches the home on the file.
+All accounts in name since 2021,All accounts in name since 2021
+All rung up. Work the till to take the money.,All rung up. Work the till to take the money.
+Already scanned.,Already scanned.
+"Alright, alright. I'm going.","Alright, alright. I'm going."
+Alright.,Alright.
+An officer left with suspicions but no buy.,An officer left with suspicions but no buy.
+Any chance?,Any chance?
+Any of the good gear? The proper gear?,Any of the good gear? The proper gear?
+April,April
+Are you serious?,Are you serious?
+Asked for it by a name nobody's used round here in ten years.,Asked for it by a name nobody's used round here in ten years.
+Asking for,Asking for
+Assault reported on this street in February. Same person.,Assault reported on this street in February. Same person.
+"Assault, common","Assault, common"
+August,August
+Auxiliary nurse,Auxiliary nurse
+BODY,BODY
+Back,Back
+"Back brace. I lift for a living and my spine's finished. It's medical, I've got the letter.","Back brace. I lift for a living and my spine's finished. It's medical, I've got the letter."
+Back to the counter,Back to the counter
+Back up into the stockroom.,Back up into the stockroom.
+"Bag them before anybody walks in, then carry them to the manhole in the stockroom. Nothing else gets rid of one.","Bag them before anybody walks in, then carry them to the manhole in the stockroom. Nothing else gets rid of one."
+Bagged. Now it has to go somewhere.,Bagged. Now it has to go somewhere.
+Barman,Barman
+Baseball Bat,Baseball Bat
+Batteries,Batteries
+Bear Trap,Bear Trap
+"Because I'm half deaf on this side and you all mumble. Say it again, louder.","Because I'm half deaf on this side and you all mumble. Say it again, louder."
+Been at the hospital since two. My mother's in Ward 9 and I've not been home to change.,Been at the hospital since two. My mother's in Ward 9 and I've not been home to change.
+Beer,Beer
+Between jobs. It happens. It's not a crime to be between jobs.,Between jobs. It happens. It's not a crime to be between jobs.
+Blue one on the corner. That's mine.,Blue one on the corner. That's mine.
+Body bags,Body bags
+Body bags  ×2,Body bags  ×2
+Borderless,Borderless
+"Borrowed it. Mate of mine. Look, do you want to sell me something or not?","Borrowed it. Mate of mine. Look, do you want to sell me something or not?"
+"Boxed gloves in the coat. Powder-free, still sealed.","Boxed gloves in the coat. Powder-free, still sealed."
+Breach of the peace,Breach of the peace
+Bus driver,Bus driver
+"Bus in four minutes and it's the last one. Sorry, I'm not being rude.","Bus in four minutes and it's the last one. Sorry, I'm not being rude."
+CONTROLS,CONTROLS
+Called an aerial a phone while holding the phone.,Called an aerial a phone while holding the phone.
+Came with the money already counted.,Came with the money already counted.
+Camera: they're stacking on the left side of the door.,Camera: they're stacking on the left side of the door.
+Cameras are all rubbish. It's me.,Cameras are all rubbish. It's me.
+Carbine,Carbine
+Care worker,Care worker
+Caretaker on file. Forty keys is about right.,Caretaker on file. Forty keys is about right.
+Carrying a body. The manhole is in the stockroom.,Carrying a body. The manhole is in the stockroom.
+Carrying: %s,Carrying: %s
+Change hands,Change hands
+"Changed provider. The old lot put the price up twice in a year, so I walked.","Changed provider. The old lot put the price up twice in a year, so I walked."
+Cigarettes,Cigarettes
+Claims lifelong residence with no record of it.,Claims lifelong residence with no record of it.
+Claims years here against a file that starts in January.,Claims years here against a file that starts in January.
+Clean Read,Clean Read
+Cleaner,Cleaner
+"Click a key to change it. Bindings are stored by physical key, so a ","Click a key to change it. Bindings are stored by physical key, so a "
+Coffee,Coffee
+Cola,Cola
+Cold one.,Cold one.
+"Confirmed means they contradicted themselves. Cleared means it holds up. Unclear means they would not say, which innocent people do often enough that it proves nothing on its own.","Confirmed means they contradicted themselves. Cleared means it holds up. Unclear means they would not say, which innocent people do often enough that it proves nothing on its own."
+Continuous since %d,Continuous since %d
+Could not account for sterile evidence containers.,Could not account for sterile evidence containers.
+Could not name the school in their own district.,Could not name the school in their own district.
+Could not save your %s. Check disk space before you quit.,Could not save your %s. Check disk space before you quit.
+Couldn't sleep.,Couldn't sleep.
+Counted out the exact amount before you'd said the price.,Counted out the exact amount before you'd said the price.
+Counted the doors on the way in. You watched them do it.,Counted the doors on the way in. You watched them do it.
+Crates are empty.,Crates are empty.
+Criminal damage,Criminal damage
+Crisps,Crisps
+Cross-reference with sweep: %d item on their person unaccounted for by the file.,Cross-reference with sweep: %d item on their person unaccounted for by the file.
+Crouch,Crouch
+Custodial sentence on the record covering exactly that window.,Custodial sentence on the record covering exactly that window.
+"Custodial sentence, 8 months (2025)","Custodial sentence, 8 months (2025)"
+Customers served,Customers served
+Customers you threw out,Customers you threw out
+DATE OF BIRTH,DATE OF BIRTH
+DISPLAY,DISPLAY
+DO,DO
+Deal with a body before anybody sees it.,Deal with a body before anybody sees it.
+December,December
+Defaults,Defaults
+Delivery rider,Delivery rider
+Denied a weapon the scanner is still reading.,Denied a weapon the scanner is still reading.
+Denied doing something you watched them do.,Denied doing something you watched them do.
+"Dense panel across the chest and back. Under the shirt, not over it.","Dense panel across the chest and back. Under the shirt, not over it."
+Depot lift is a real arrangement. It's in the shift pattern.,Depot lift is a real arrangement. It's in the shift pattern.
+Did I? Just looking at the shelves.,Did I? Just looking at the shelves.
+Did not know about four licences in their own name.,Did not know about four licences in their own name.
+Did not want a second thing of yours in their hand.,Did not want a second thing of yours in their hand.
+Did you not see the queue?,Did you not see the queue?
+Didn't answer. Could be anything.,Didn't answer. Could be anything.
+Didn't think anywhere'd be open.,Didn't think anywhere'd be open.
+Do you actually work here?,Do you actually work here?
+Don't bother restocking on my account.,Don't bother restocking on my account.
+Down into the dark.,Down into the dark.
+"Dressed for a day shift, at half three in the morning.","Dressed for a day shift, at half three in the morning."
+"Drew it out Friday. Cashed the whole wage packet, the machine gives you them in order.","Drew it out Friday. Cashed the whole wage packet, the machine gives you them in order."
+Driving licence issued four times in six years. Same name each time.,Driving licence issued four times in six years. Same name each time.
+Driving licence reissued ×4 (2020-2026),Driving licence reissued ×4 (2020-2026)
+Driving without insurance,Driving without insurance
+Drunk and disorderly,Drunk and disorderly
+"E — scan an item, work the till, talk","E — scan an item, work the till, talk"
+EMPLOYER,EMPLOYER
+EMPLOYMENT,EMPLOYMENT
+EXPIRES,EXPIRES
+Earphone. I was listening to something. It's off now.,Earphone. I was listening to something. It's off now.
+Effects,Effects
+Electricity in name. Water with the landlord,Electricity in name. Water with the landlord
+"Electricity, water, refuse — all in name","Electricity, water, refuse — all in name"
+"Emergency contact is a switchboard number, not a person.","Emergency contact is a switchboard number, not a person."
+Emergency contact lives at their address but is on no bill there.,Emergency contact lives at their address but is on no bill there.
+Employed by city sanitation. Take-home vehicle is standard.,Employed by city sanitation. Take-home vehicle is standard.
+Employer exists only on paper.,Employer exists only on paper.
+"Employer has no premises, no filings, and one employee.","Employer has no premises, no filings, and one employee."
+Empty shelf cost you a sale.,Empty shelf cost you a sale.
+Empty the inside pocket for me.,Empty the inside pocket for me.
+Empty. There's more in the back.,Empty. There's more in the back.
+Empty. You already had this.,Empty. You already had this.
+Enough to be careful.,Enough to be careful.
+Enrolled on a supervised programme. Explains the pots.,Enrolled on a supervised programme. Explains the pots.
+Evening.,Evening.
+F — sweep them with the scanner,F — sweep them with the scanner
+FITTINGS,FITTINGS
+Failure to appear,Failure to appear
+"Fair point about the camera, honestly.","Fair point about the camera, honestly."
+February,February
+Field of view,Field of view
+File pulled,File pulled
+Filled %s (+%d).,Filled %s (+%d).
+Find the thing at the end of the road.,Find the thing at the end of the road.
+Find what is at the end of the spur.,Find what is at the end of the spur.
+Fine. Have a good night.,Fine. Have a good night.
+Finish a night with your name still at 100%.,Finish a night with your name still at 100%.
+Firearms licence checks out against the file.,Firearms licence checks out against the file.
+Five o'clock. Shutter's coming down.,Five o'clock. Shutter's coming down.
+"Flat shield-shaped metal, inner left pocket.","Flat shield-shaped metal, inner left pocket."
+For the cold. My hands get bad.,For the cold. My hands get bad.
+Forget it. Forget I said anything.,Forget it. Forget I said anything.
+Forty years old and never so much as a ticket?,Forty years old and never so much as a ticket?
+Forward,Forward
+Found %d.,Found %d.
+Found the second exit inside four seconds.,Found the second exit inside four seconds.
+Frame limit,Frame limit
+Fullscreen,Fullscreen
+GO HOME,GO HOME
+Gave up waiting,Gave up waiting
+Genuinely too tired to care.,Genuinely too tired to care.
+Get behind the counter and stay there.,Get behind the counter and stay there.
+Get through a whole night without being wrong about anybody.,Get through a whole night without being wrong about anybody.
+Gone. You hear it land.,Gone. You hear it land.
+"Gone: %d in cash, %d units.","Gone: %d in cash, %d units."
+Got any tickets going?,Got any tickets going?
+Got dropped off. My shift finishes at the depot and someone runs me down as far as the corner.,Got dropped off. My shift finishes at the depot and someone runs me down as far as the corner.
+"Got my bag lifted on the tram. Took them a month to send a new one, and they charged me for it.","Got my bag lifted on the tram. Took them a month to send a new one, and they charged me for it."
+"Got paid an hour ago, cash in hand. It's all twenties till I break one.","Got paid an hour ago, cash in hand. It's all twenties till I break one."
+HEAT,HEAT
+HOW ANY OF THIS WORKS,HOW ANY OF THIS WORKS
+Habit. Doesn't everyone?,Habit. Doesn't everyone?
+Had the money out before they got to the counter.,Had the money out before they got to the counter.
+Half that block is council. My mum's had that flat since before they took the rest of it.,Half that block is council. My mum's had that flat since before they took the rest of it.
+Handling stolen goods,Handling stolen goods
+Hands free.,Hands free.
+Hasn't asked for anything. Waiting for you to offer.,Hasn't asked for anything. Waiting for you to offer.
+Hatch Bars,Hatch Bars
+Have I? News to me.,Have I? News to me.
+Haven't got one. I don't drive.,Haven't got one. I don't drive.
+He doesn't say what it is on the phone and neither do you.,He doesn't say what it is on the phone and neither do you.
+Hearing aid. I've worn one since I was nine. Do you want to see the battery?,Hearing aid. I've worn one since I was nine. Do you want to see the battery?
+Hearing loss on the medical file since childhood.,Hearing loss on the medical file since childhood.
+Hearing loss on the medical file. Left side.,Hearing loss on the medical file. Left side.
+"Heart monitor. Had a scare in March, they make me wear it for a year. You want to see it?","Heart monitor. Had a scare in March, they make me wear it for a year. You want to see it?"
+Hints,Hints
+Hints reset.,Hints reset.
+Home address sits inside the block the department leases.,Home address sits inside the block the department leases.
+I buy the same four things every night of my life. I could do it in my sleep.,I buy the same four things every night of my life. I could do it in my sleep.
+I didn't catch your name.,I didn't catch your name.
+"I do the meat counter at Aldermann's. I take a box home every week, everyone does.","I do the meat counter at Aldermann's. I take a box home every week, everyone does."
+"I don't drive and I don't drink. It's not a talent, it's just a boring life.","I don't drive and I don't drink. It's not a talent, it's just a boring life."
+I don't drive. Walked.,I don't drive. Walked.
+I don't know how the bills work. I just live there.,I don't know how the bills work. I just live there.
+I don't know what to tell you. I've always been here.,I don't know what to tell you. I've always been here.
+I don't need a bag. It's fine as it is. Just give it to me.,I don't need a bag. It's fine as it is. Just give it to me.
+I drive for the city. Refuse collection. They let us take them home on nights.,I drive for the city. Refuse collection. They let us take them home on nights.
+I got done over in the Kestrel last winter. I look at doors now. You would.,I got done over in the Kestrel last winter. I look at doors now. You would.
+I got jumped on this street in February. I stand where I can see the door now. No offence.,I got jumped on this street in February. I stand where I can see the door now. No offence.
+I guessed. It was a good guess.,I guessed. It was a good guess.
+I have been stood here ten minutes.,I have been stood here ten minutes.
+"I lived abroad. Came back in the spring. It's all in the other country's system, not yours.","I lived abroad. Came back in the spring. It's all in the other country's system, not yours."
+"I lose things. Ask my wife. That's four replacements and a bill each time, thanks.","I lose things. Ask my wife. That's four replacements and a bill each time, thanks."
+I thought someone was coming through it. You've got a light on behind there.,I thought someone was coming through it. You've got a light on behind there.
+I thought you'd know what I'm here for.,I thought you'd know what I'm here for.
+I walked. I'm just not cold. Some people aren't cold.,I walked. I'm just not cold. Some people aren't cold.
+"I was drinking then. I stopped. That's what two years off it does, and I'll take that as a compliment.","I was drinking then. I stopped. That's what two years off it does, and I'll take that as a compliment."
+I was reading the sign. There's a sign next to it.,I was reading the sign. There's a sign next to it.
+I wasn't looking at anything. I was looking round.,I wasn't looking at anything. I was looking round.
+"I'll be quicker than you, mate.","I'll be quicker than you, mate."
+I'm comfortable. Are you going to serve me?,I'm comfortable. Are you going to serve me?
+I'm forty-six. I'm going to call it what I called it when I started.,I'm forty-six. I'm going to call it what I called it when I started.
+I'm not carrying anything. ...It's a belt buckle. Your machine's broken.,I'm not carrying anything. ...It's a belt buckle. Your machine's broken.
+I'm not just here for crisps.,I'm not just here for crisps.
+I'm only after the one thing.,I'm only after the one thing.
+"I've been awake for twenty hours. Charge me double, I don't care.","I've been awake for twenty hours. Charge me double, I don't care."
+I've been here years.,I've been here years.
+I've been up since five. I'm not doing this.,I've been up since five. I'm not doing this.
+I've got one in my pocket. I'm not paying you for a bag when I'm carrying a bag.,I've got one in my pocket. I'm not paying you for a bag when I'm carrying a bag.
+I've only got the two things.,I've only got the two things.
+IDENT-7  ·  CIVIL REGISTRY  ·  TERMINAL 04,IDENT-7  ·  CIVIL REGISTRY  ·  TERMINAL 04
+IDENTITY NO.,IDENTITY NO.
+ISSUED,ISSUED
+Identity card issued in the last three weeks.,Identity card issued in the last three weeks.
+Images on file: %d,Images on file: %d
+In hand,In hand
+In no hurry whatsoever once the money was away.,In no hurry whatsoever once the money was away.
+"In your hand, out of sight.","In your hand, out of sight."
+"Inside. Eight months, out in seven for good behaviour. It's on there, isn't it? It should be on there.","Inside. Eight months, out in seven for good behaviour. It's on there, isn't it? It should be on there."
+"Insulin pump. ...Diabetes. It's private, alright?","Insulin pump. ...Diabetes. It's private, alright?"
+Is it always like this?,Is it always like this?
+Is that a problem? I'd have thought a clean record was the good outcome.,Is that a problem? I'd have thought a clean record was the good outcome.
+Is that necessary?,Is that necessary?
+Is this a shop or a storage unit?,Is this a shop or a storage unit?
+Is this a shop or an interview?,Is this a shop or an interview?
+It is below freezing and their hands aren't even red.,It is below freezing and their hands aren't even red.
+"It is, in fairness, raining.","It is, in fairness, raining."
+It's a diary. It's private. You don't get to read my diary.,It's a diary. It's private. You don't get to read my diary.
+It's a hip flask. Look — it's a flask. Are we doing this or not?,It's a hip flask. Look — it's a flask. Are we doing this or not?
+It's a thick jumper. It's cold. Are we finished?,It's a thick jumper. It's cold. Are we finished?
+It's just a block of flats. I don't know who owns it. Who owns yours?,It's just a block of flats. I don't know who owns it. Who owns yours?
+It's just money. Does it matter where money comes from in a place like this?,It's just money. Does it matter where money comes from in a place like this?
+"It's my brother-in-law's. It's two vans and a lock-up, it's not exactly a corporation.","It's my brother-in-law's. It's two vans and a lock-up, it's not exactly a corporation."
+It's my sister's flat. I pay her. I'm not going to start putting my name on her meter.,It's my sister's flat. I pay her. I'm not going to start putting my name on her meter.
+It's quiet. You are still standing.,It's quiet. You are still standing.
+"It's the shop tag, they never took it out. Cost me forty quid and it beeps at me in every doorway in the city.","It's the shop tag, they never took it out. Cost me forty quid and it beeps at me in every doorway in the city."
+January,January
+July,July
+Jump,Jump
+June,June
+Just being efficient.,Just being efficient.
+KIOSK AT MIDNIGHT,KIOSK AT MIDNIGHT
+Keep it.,Keep it.
+Keeps finding the camera in the corner. Twice now.,Keeps finding the camera in the corner. Twice now.
+Learned the word somewhere other than this street.,Learned the word somewhere other than this street.
+Left,Left
+Left the moment they were asked why they were still there.,Left the moment they were asked why they were still there.
+Lighter,Lighter
+Line cook,Line cook
+Lives in department housing and would not say so.,Lives in department housing and would not say so.
+Long night?,Long night?
+Looked at your back door before they looked at you.,Looked at your back door before they looked at you.
+Looking for a bit of the brown sugar.,Looking for a bit of the brown sugar.
+MOUSE 1 — use it,MOUSE 1 — use it
+Made The Rent,Made The Rent
+March,March
+Master Of Master,Master Of Master
+May,May
+Mechanic,Mechanic
+"Medical device on file, dated March. Consistent.","Medical device on file, dated March. Consistent."
+"Metal signature at the right hip. Holstered, under the coat.","Metal signature at the right hip. Holstered, under the coat."
+"Meter cupboard. I'm the caretaker for the Halloway blocks, I've got about forty of them.","Meter cupboard. I'm the caretaker for the Halloway blocks, I've got about forty of them."
+More coming.,More coming.
+More of them than last time.,More of them than last time.
+More questions,More questions
+Mouse sensitivity,Mouse sensitivity
+"Moved down in January after the yard shut. Everything's new — bank, flat, all of it.","Moved down in January after the yard shut. Everything's new — bank, flat, all of it."
+Music,Music
+"My brother. He's been on my sofa since March and he pays me in beer, so no, he's not on the gas bill.","My brother. He's been on my sofa since March and he pays me in beer, so no, he's not on the gas bill."
+My brother. Why? What's it say?,My brother. Why? What's it say?
+NAME,NAME
+NEXT OF KIN,NEXT OF KIN
+NIGHT %d,NIGHT %d
+NIGHT 1,NIGHT 1
+NO SUBJECT AT THE WINDOW.,NO SUBJECT AT THE WINDOW.
+NOTEPAD,NOTEPAD
+Name,Name
+Named a brother. The number is a departmental switchboard.,Named a brother. The number is a departmental switchboard.
+Named a brother. There is a brother on file.,Named a brother. There is a brother on file.
+Named a medical device that is not in their medical file.,Named a medical device that is not in their medical file.
+Named a padlock. It is not a padlock key.,Named a padlock. It is not a padlock key.
+Named a school that exists and closed the year they say.,Named a school that exists and closed the year they say.
+Named an earphone that is receiving on no consumer band.,Named an earphone that is receiving on no consumer band.
+New in the city?,New in the city?
+"New number, no closed account behind it. It came from nowhere.","New number, no closed account behind it. It came from nowhere."
+Next of kin is admitted. Ward 9.,Next of kin is admitted. Ward 9.
+Night %d. Rent is %d by five.,Night %d. Rent is %d by five.
+Night porter,Night porter
+No accounts at this address in this name,No accounts at this address in this name
+No badge. No wire. Nothing. You just shot a customer.,No badge. No wire. Nothing. You just shot a customer.
+"No bags. The supplier sells them, and you should have thought of that.","No bags. The supplier sells them, and you should have thought of that."
+"No connection on file to the city, but drives its car.","No connection on file to the city, but drives its car."
+No education or training record before age 26.,No education or training record before age 26.
+"No hearing note, and they only repeat the numbers.","No hearing note, and they only repeat the numbers."
+"No licence, no vehicle. A clean sheet makes sense.","No licence, no vehicle. A clean sheet makes sense."
+No machine on this street gives out only these.,No machine on this street gives out only these.
+No prior matters. Not unusual for this age bracket.,No prior matters. Not unusual for this age bracket.
+"No record of any kind. Not a fine, not a caution, not a parking ticket.","No record of any kind. Not a fine, not a caution, not a parking ticket."
+"No school, no college, no training. The file starts at twenty-six.","No school, no college, no training. The file starts at twenty-six."
+"No, I came on the tram.","No, I came on the tram."
+"No. No, I'm going.","No. No, I'm going."
+Nobody at the window.,Nobody at the window.
+Nobody has lived at that address under that name.,Nobody has lived at that address under that name.
+Nobody walks this street in February with warm hands.,Nobody walks this street in February with warm hands.
+Nobody's called it that since I was at school.,Nobody's called it that since I was at school.
+"Nobody, at the minute. I'm looking.","Nobody, at the minute. I'm looking."
+Nobody. I live on my own.,Nobody. I live on my own.
+None left in the back. Call the supplier.,None left in the back. Call the supplier.
+None of the bills at your place are yours.,None of the bills at your place are yours.
+None on file.,None on file.
+None registered,None registered
+Not put to them yet.,Not put to them yet.
+Not spending their own money.,Not spending their own money.
+Not working at the minute.,Not working at the minute.
+Notepad,Notepad
+Notes in the wallet run in sequence. Straight from a bank strap.,Notes in the wallet run in sequence. Straight from a bank strap.
+Nothing Else For A Mile,Nothing Else For A Mile
+"Nothing at that address is in their name. No power, no water, nothing.","Nothing at that address is in their name. No power, no water, nothing."
+Nothing else down here.,Nothing else down here.
+"Nothing else for a mile, is there?","Nothing else for a mile, is there?"
+Nothing explains the clothes or the hour.,Nothing explains the clothes or the hour.
+Nothing in the file accounts for the face.,Nothing in the file accounts for the face.
+Nothing left to ask.,Nothing left to ask.
+Nothing left under there.,Nothing left under there.
+Nothing on them.,Nothing on them.
+Nothing written down yet.,Nothing written down yet.
+Nothing. Empties. I collect them.,Nothing. Empties. I collect them.
+November,November
+Numbers get changed. People change numbers all the time.,Numbers get changed. People change numbers all the time.
+OCCUPATION,OCCUPATION
+OPEN UP AGAIN,OPEN UP AGAIN
+Occupational back injury logged with the employer.,Occupational back injury logged with the employer.
+October,October
+Off,Off
+Officers dealt with: %d,Officers dealt with: %d
+Oi. I was here.,Oi. I was here.
+Old card had four years left. Nothing prompted a reissue.,Old card had four years left. Nothing prompted a reissue.
+Old enough for the old word. Checks out.,Old enough for the old word. Checks out.
+On,On
+On hand: %d,On hand: %d
+"One account, opened this year, and the salary is the only thing in it.","One account, opened this year, and the salary is the only thing in it."
+One or two odd things.,One or two odd things.
+One photograph on file. Taken this year. Nothing before it.,One photograph on file. Taken this year. Nothing before it.
+One's dead. Old one. I keep meaning to bin it.,One's dead. Old one. I keep meaning to bin it.
+Ordered normally the moment they were prompted.,Ordered normally the moment they were prompted.
+Out into the alley.,Out into the alley.
+"Out onto the pavement, in full view.","Out onto the pavement, in full view."
+Over the counter,Over the counter
+Over your shoulder. Get to the manhole.,Over your shoulder. Get to the manhole.
+Owed for tonight,Owed for tonight
+PAUSED,PAUSED
+PRESENTATION,PRESENTATION
+PRIOR MATTERS,PRIOR MATTERS
+Padlock. On my shed.,Padlock. On my shed.
+"Paid in cash, on file, this week.","Paid in cash, on file, this week."
+"Paid, and then didn't leave.","Paid, and then didn't leave."
+Past the door it is genuinely dark. [T] is the torch.,Past the door it is genuinely dark. [T] is the torch.
+Patience,Patience
+Patience %d/%d,Patience %d/%d
+"Pay the rent on shelf trade alone, with nothing sold under the counter.","Pay the rent on shelf trade alone, with nothing sold under the counter."
+People you were wrong about,People you were wrong about
+"Photograph on file dated 2022, not retaken","Photograph on file dated 2022, not retaken"
+Plate returns to a municipal pool vehicle.,Plate returns to a municipal pool vehicle.
+Point it at someone.,Point it at someone.
+"Possession, minor","Possession, minor"
+Pot Noodles,Pot Noodles
+Print operator,Print operator
+"Produced their own bag, with some satisfaction.","Produced their own bag, with some satisfaction."
+"Provider switch logged, with the old account closed the same week.","Provider switch logged, with the old account closed the same week."
+Public urination,Public urination
+Pump Shotgun,Pump Shotgun
+Q — refill the shelf you're looking at,Q — refill the shelf you're looking at
+Quiet down here. For now.,Quiet down here. For now.
+Quit,Quit
+REGISTRY PHOTOGRAPH,REGISTRY PHOTOGRAPH
+Rain's not letting up.,Rain's not letting up.
+"Ravensmoor, then nowhere. I left at fifteen and went on the boats, it's all cash and nobody writes it down.","Ravensmoor, then nowhere. I left at fifteen and went on the boats, it's all cash and nobody writes it down."
+Re-entry stamp in the spring. The gap is real.,Re-entry stamp in the spring. The gap is real.
+"Record is internally consistent. Employment, address and identity documents agree with one another and with the issuing authority.","Record is internally consistent. Employment, address and identity documents agree with one another and with the issuing authority."
+"Record shows a treatment order, ended two years ago.","Record shows a treatment order, ended two years ago."
+Refill shelf,Refill shelf
+Refuse loader,Refuse loader
+Refused to hand over a coat that is answering a ping.,Refused to hand over a coat that is answering a ping.
+Refused to open a pocket the scanner reads metal in.,Refused to open a pocket the scanner reads metal in.
+Regular Hours,Regular Hours
+Reload,Reload
+Rent,Rent
+Rent due,Rent due
+Restocked the shelves (+%d).,Restocked the shelves (+%d).
+Retro geometry,Retro geometry
+Right,Right
+"Right, lovely. Thanks.","Right, lovely. Thanks."
+Right. I'm going to put these back.,Right. I'm going to put these back.
+Right. Worth asking.,Right. Worth asking.
+Roofer,Roofer
+"Roth Street. That's department housing, isn't it?","Roth Street. That's department housing, isn't it?"
+"Round here. Local school, you wouldn't know it.","Round here. Local school, you wouldn't know it."
+Run,Run
+SETTINGS,SETTINGS
+SHELF STOCK,SHELF STOCK
+SHIFT %d,SHIFT %d
+SOUND AND INPUT,SOUND AND INPUT
+SUPPLIER  ·  ORDER LINE,SUPPLIER  ·  ORDER LINE
+Said gloves were for warmth. They are surgical gloves.,Said gloves were for warmth. They are surgical gloves.
+Says they live alone. Somebody else is registered there.,Says they live alone. Somebody else is registered there.
+"Says your price back to you. Out loud, every time.","Says your price back to you. Out loud, every time."
+"Scanlines, grain and colour fringing. Set to zero for a clean image.","Scanlines, grain and colour fringing. Set to zero for a clean image."
+Scanner down.,Scanner down.
+Scanner in hand. [F] to sweep.,Scanner in hand. [F] to sweep.
+Scanner's on the counter — [E] picks it up. [F] sweeps whoever you are looking at.,Scanner's on the counter — [E] picks it up. [F] sweeps whoever you are looking at.
+Screen effect,Screen effect
+Screenshot saved: %s,Screenshot saved: %s
+"Sealed containers in the bag. Sterile, unopened.","Sealed containers in the bag. Sterile, unopened."
+"Second handset is on no network at all, live or dead.","Second handset is on no network at all, live or dead."
+Second number registered to their employer.,Second number registered to their employer.
+Security guard,Security guard
+Sell them what's in your hand (%d),Sell them what's in your hand (%d)
+September,September
+Served,Served
+Seven months last year with nothing in the file at all.,Seven months last year with nothing in the file at all.
+Seven months that neither the file nor the man will account for.,Seven months that neither the file nor the man will account for.
+"Seven-month gap, 2025. Unaccounted for.","Seven-month gap, 2025. Unaccounted for."
+"Shelves are bare, mate.","Shelves are bare, mate."
+Shop Door Barricade,Shop Door Barricade
+"Shopping. My memory's gone, I write everything down or I come home with nothing.","Shopping. My memory's gone, I write everything down or I come home with nothing."
+"Short rubber aerial, left hip. Not a phone antenna.","Short rubber aerial, left hip. Not a phone antenna."
+Show the hints again,Show the hints again
+Showed the flask. Shape matches the reading.,Showed the flask. Shape matches the reading.
+"Showed the page. It was, in fact, shopping.","Showed the page. It was, in fact, shopping."
+Shuts the serving hatch. They all have to come through the door.,Shuts the serving hatch. They all have to come through the door.
+Shuts the shop door. They all have to come through the hatch.,Shuts the shop door. They all have to come through the hatch.
+Shutter down. Nobody's buying anything now.,Shutter down. Nobody's buying anything now.
+Shutter up.,Shutter up.
+Shutter's gone. Something lands on the floor.,Shutter's gone. Something lands on the floor.
+"Single account, opened %s 2026. Salary credits only.","Single account, opened %s 2026. Salary credits only."
+"Sister listed at the same address, bills in her name.","Sister listed at the same address, bills in her name."
+"Site radio. I'm night security on the Corn Exchange — I'm on it till six, listen.","Site radio. I'm night security on the Corn Exchange — I'm on it till six, listen."
+Size,Size
+"Small family firm. Thin, but real.","Small family firm. Thin, but real."
+Small flat key on the ring. Barrel type. Opens nothing domestic.,Small flat key on the ring. Barrel type. Opens nothing domestic.
+"Some of the people who come to the window are police, and they are here to buy from you once.","Some of the people who come to the window are police, and they are here to buy from you once."
+Somebody walked in on a body on your floor.,Somebody walked in on a body on your floor.
+"Somebody's stash, under a board. %d.","Somebody's stash, under a board. %d."
+Someone said you keep something under there.,Someone said you keep something under there.
+Someone walked away tonight who shouldn't have.,Someone walked away tonight who shouldn't have.
+Something in the coat seam answering a ping. It isn't a card.,Something in the coat seam answering a ping. It isn't a card.
+Something interesting up there?,Something interesting up there?
+Something is down here with you.,Something is down here with you.
+Something very small in the left ear. It is receiving.,Something very small in the left ear. It is receiving.
+Sorry — miles away. Twenty of the blue and whatever that is behind you.,Sorry — miles away. Twenty of the blue and whatever that is behind you.
+Spotless,Spotless
+"Stands square-on to you, both hands free, back to the wall.","Stands square-on to you, both hands free, back to the wall."
+Step back,Step back
+Still Open,Still Open
+Still on the floor at five,Still on the floor at five
+"Still open, then.","Still open, then."
+Street Camera,Street Camera
+Student,Student
+Subtitles,Subtitles
+Survive a raid without going down the manhole.,Survive a raid without going down the manhole.
+Survive five nights.,Survive five nights.
+Survive ten nights.,Survive ten nights.
+Survive your first shift and make the rent.,Survive your first shift and make the rent.
+Sweep clean. Nothing on them.,Sweep clean. Nothing on them.
+Sweep returned nothing carried.,Sweep returned nothing carried.
+Sweep with scanner,Sweep with scanner
+Swept,Swept
+Synced with Steam.,Synced with Steam.
+T — torch,T — torch
+TAB — this pad,TAB — this pad
+TELEPHONE,TELEPHONE
+THE LIGHTS GO OUT,THE LIGHTS GO OUT
+THEY'RE COMING BACK,THEY'RE COMING BACK
+TONIGHT,TONIGHT
+Take the coat off a second.,Take the coat off a second.
+Take your time.,Take your time.
+"Takes the first one through, whichever way that is.","Takes the first one through, whichever way that is."
+Takings tonight: %d. Rent: %d.,Takings tonight: %d. Rent: %d.
+Taxi driver,Taxi driver
+Tell them to move on,Tell them to move on
+Tell them you don't do that here,Tell them you don't do that here
+Tenancy predates the department's lease by nine years.,Tenancy predates the department's lease by nine years.
+That door doesn't go anywhere you need.,That door doesn't go anywhere you need.
+That is a tell — something that needs explaining. Talk to them and it unlocks a question about it.,That is a tell — something that needs explaining. Talk to them and it unlocks a question about it.
+That key is already doing something else.,That key is already doing something else.
+That number's brand new.,That number's brand new.
+That plate's a city motor.,That plate's a city motor.
+That run is empty. [Q] while looking at a shelf restocks it from the back.,That run is empty. [Q] while looking at a shelf restocks it from the back.
+That your car out front?,That your car out front?
+That's a lot of gloves for a Tuesday.,That's a lot of gloves for a Tuesday.
+That's everything. Thanks.,That's everything. Thanks.
+That's my phone. Everyone's got a phone.,That's my phone. Everyone's got a phone.
+That's what came out of the machine.,That's what came out of the machine.
+That's what it's called. That's what everyone calls it.,That's what it's called. That's what everyone calls it.
+That's — no. I'm not answering that.,That's — no. I'm not answering that.
+The %s. Why?,The %s. Why?
+The Shutter Held,The Shutter Held
+The care home. My mother's in Alder House and that's their front desk — she can't hold a phone.,The care home. My mother's in Alder House and that's their front desk — she can't hold a phone.
+The one on the door is moving up.,The one on the door is moving up.
+The person at the window,The person at the window
+The photograph on file is four years old. They have not aged four years.,The photograph on file is four years old. They have not aged four years.
+The price is the price. I'm not going to argue with you about it.,The price is the price. I'm not going to argue with you about it.
+The radio behind you stops playing music and starts playing nothing.,The radio behind you stops playing music and starts playing nothing.
+The shutter will hold for a few seconds. Not many.,The shutter will hold for a few seconds. Not many.
+The trap takes the first one through.,The trap takes the first one through.
+"The tunnels get worse every time you use them, and they never get better.","The tunnels get worse every time you use them, and they never get better."
+Theft reported to the tram operator. Replacement fee logged.,Theft reported to the tram operator. Replacement fee logged.
+"Theft, retail","Theft, retail"
+Their shopping is on the counter. [E] on each item rings it up; the till will not take payment until they all are.,Their shopping is on the counter. [E] on each item rings it up; the till will not take payment until they all are.
+Their telephone number was issued this month.,Their telephone number was issued this month.
+There are %d of them forming up at the end of the street.,There are %d of them forming up at the end of the street.
+"There is a last bus, and it is in four minutes.","There is a last bus, and it is in four minutes."
+There is a light on behind that door. Fair.,There is a light on behind that door. Fair.
+"There is a security tag in the seam, unremoved.","There is a security tag in the seam, unremoved."
+"There is an assault on file, at the Kestrel, last winter.","There is an assault on file, at the Kestrel, last winter."
+There is no sign next to the camera.,There is no sign next to the camera.
+There is one of me and one of you. How is this hard?,There is one of me and one of you. How is this hard?
+There's nothing in my coat. Are you going to serve me or not?,There's nothing in my coat. Are you going to serve me or not?
+"There's nothing in that pocket. Just ring it up, will you?","There's nothing in that pocket. Just ring it up, will you?"
+There's nothing on you from before this year.,There's nothing on you from before this year.
+These may each have an ordinary explanation. Ask.,These may each have an ordinary explanation. Ask.
+They are done answering questions.,They are done answering questions.
+They came through the door and you were still holding a bag of crisps.,They came through the door and you were still holding a bag of crisps.
+They came to the counter with nothing. Fill the shelves.,They came to the counter with nothing. Fill the shelves.
+They do smell faintly of a meat counter.,They do smell faintly of a meat counter.
+They expire. You renew them. That's how it works.,They expire. You renew them. That's how it works.
+They left their shopping on the counter.,They left their shopping on the counter.
+They put it straight in their pocket. They didn't even look at it.,They put it straight in their pocket. They didn't even look at it.
+"They want what is under the counter. Sweep them, pull their file on the terminal, and talk to them before you decide.","They want what is under the counter. Sweep them, pull their file on the terminal, and talk to them before you decide."
+They're already going.,They're already going.
+They're asking. Decide.,They're asking. Decide.
+They're on the floor. Anyone who walks in will see that.,They're on the floor. Anyone who walks in will see that.
+They're on the shutter.,They're on the shutter.
+They're still shopping.,They're still shopping.
+They've had enough of the questions.,They've had enough of the questions.
+This card's three weeks old.,This card's three weeks old.
+This does not add up.,This does not add up.
+This is a police officer.,This is a police officer.
+This picture doesn't look like you.,This picture doesn't look like you.
+"Three of the four are logged as replacements, with fees paid.","Three of the four are logged as replacements, with fees paid."
+Tidy,Tidy
+Tip: %d,Tip: %d
+Tips and finds,Tips and finds
+Tips and loose cash,Tips and loose cash
+Took the first price without a flicker. Nobody does that.,Took the first price without a flicker. Nobody does that.
+Torch,Torch
+Torch off.,Torch off.
+Torch on.,Torch on.
+"Trained stance, and no reason on file to have one.","Trained stance, and no reason on file to have one."
+Trespass,Trespass
+Tunnel Rat,Tunnel Rat
+"Turned it on. It is a site channel, and it is dull.","Turned it on. It is a site channel, and it is dull."
+Two handsets. One of them isn't on any network.,Two handsets. One of them isn't on any network.
+Two of them. One's holding the door.,Two of them. One's holding the door.
+Two phones?,Two phones?
+UNDER THE COUNTER,UNDER THE COUNTER
+UTILITIES,UTILITIES
+Under it,Under it
+Under the counter,Under the counter
+"Under the counter. That's the phrase, isn't it?","Under the counter. That's the phrase, isn't it?"
+Unemployed,Unemployed
+Unlimited,Unlimited
+Unpaid fines,Unpaid fines
+"Urine sample pots. I'm on a programme. Twice a week I have to go and fill one. It's humiliating, thanks for asking.","Urine sample pots. I'm on a programme. Twice a week I have to go and fill one. It's humiliating, thanks for asking."
+Use / scan / talk,Use / scan / talk
+VEHICLE,VEHICLE
+"Vertex jitter and texture warping. Set to zero for stable, modern rendering.","Vertex jitter and texture warping. Set to zero for stable, modern rendering."
+Vertical sync,Vertical sync
+"Victim of assault, licensed premises (2025)","Victim of assault, licensed premises (2025)"
+Volume,Volume
+WHAT YOU HAVE,WHAT YOU HAVE
+"Wage payment on file, Friday, matching amount.","Wage payment on file, Friday, matching amount."
+Waiting for the rain to give up. I'll stand outside if I'm in the way.,Waiting for the rain to give up. I'll stand outside if I'm in the way.
+Wallet is all one denomination. Nothing smaller anywhere on them.,Wallet is all one denomination. Nothing smaller anywhere on them.
+Wanted you to name it first. Nobody does that by accident.,Wanted you to name it first. Nobody does that by accident.
+Warehouse picker,Warehouse picker
+Warns you a few seconds before the breach.,Warns you a few seconds before the breach.
+Was there something else?,Was there something else?
+We're a contractor. We work on-site. There's nothing to have an address for.,We're a contractor. We work on-site. There's nothing to have an address for.
+Wearing armour and would not say so.,Wearing armour and would not say so.
+Welder,Welder
+What are you writing down?,What are you writing down?
+What is it you do?,What is it you do?
+What is that thing?,What is that thing?
+What year were you born?,What year were you born?
+What's a number for you?,What's a number for you?
+What's in the tubes?,What's in the tubes?
+What's in your ear?,What's in your ear?
+What's the aerial on your belt?,What's the aerial on your belt?
+What's the box under your shirt?,What's the box under your shirt?
+What's the little flat key for?,What's the little flat key for?
+What's the registration?,What's the registration?
+Where were you for seven months last year?,Where were you for seven months last year?
+Where'd the cash come from?,Where'd the cash come from?
+Where'd you go to school?,Where'd you go to school?
+"Whereabouts, then?","Whereabouts, then?"
+"Who is it you work for, exactly?","Who is it you work for, exactly?"
+Who's at the house with you?,Who's at the house with you?
+Who's the number down as your next of kin?,Who's the number down as your next of kin?
+Why are you asking me that? Nobody else asks me that.,Why are you asking me that? Nobody else asks me that.
+Why do you keep saying it back?,Why do you keep saying it back?
+Window,Window
+Windowed,Windowed
+"Work gives me one. I'm not putting the depot's number on my own line, am I?","Work gives me one. I'm not putting the depot's number on my own line, am I?"
+Work out who they are before you decide what to sell them.,Work out who they are before you decide what to sell them.
+Would not say where a bank-strapped bundle came from.,Would not say where a bank-strapped bundle came from.
+Wouldn't take a bag. Wanted it handed over loose.,Wouldn't take a bag. Wanted it handed over loose.
+X — change what's in your hands,X — change what's in your hands
+"YOU ARE THE
+MASTER OF MASTER
+%s","YOU ARE THE
+MASTER OF MASTER
+%s"
+YOU ARE THE MASTER OF MASTER %s,YOU ARE THE MASTER OF MASTER %s
+"Yeah. Licensed, it's on the card. I unload trucks on Vane Street till four in the morning — you'd carry too.","Yeah. Licensed, it's on the card. I unload trucks on Vane Street till four in the morning — you'd carry too."
+"You also keep something under the counter, which is the only reason the rent gets paid.","You also keep something under the counter, which is the only reason the rent gets paid."
+"You are out of body bags. The supplier sells them, and you cannot bag anybody without one.","You are out of body bags. The supplier sells them, and you cannot bag anybody without one."
+"You are short on the rent. He will want it tomorrow, with interest.","You are short on the rent. He will want it tomorrow, with interest."
+"You can put your bag down, you know.","You can put your bag down, you know."
+You closed up with %d of them still on the floor.,You closed up with %d of them still on the floor.
+You didn't even ask what it costs.,You didn't even ask what it costs.
+"You do the other business, don't you?","You do the other business, don't you?"
+"You don't mind, do you.","You don't mind, do you."
+You don't want a bag?,You don't want a bag?
+"You get the cover back over your head. Above you, they are taking the place apart.","You get the cover back over your head. Above you, they are taking the place apart."
+You going to tell me what you want?,You going to tell me what you want?
+You had a good look round on the way in.,You had a good look round on the way in.
+"You have a scanner, a registry terminal, and however many questions they will stand for.","You have a scanner, a registry terminal, and however many questions they will stand for."
+"You have enough to call the supplier. Weapons, fittings for the doors, and bags.","You have enough to call the supplier. Weapons, fittings for the doors, and bags."
+You holding any of the beige?,You holding any of the beige?
+You keep the shelves full and the lights on.,You keep the shelves full and the lights on.
+You knew the price before I said it.,You knew the price before I said it.
+You lasted %d night.,You lasted %d night.
+You lasted %d nights.,You lasted %d nights.
+You live local?,You live local?
+You sold to an officer.,You sold to an officer.
+You threw out a regular. Word gets round.,You threw out a regular. Word gets round.
+You were quick with that.,You were quick with that.
+You're a lifesaver.,You're a lifesaver.
+You're carrying. What for?,You're carrying. What for?
+You're out of %s.,You're out of %s.
+You're the only light on.,You're the only light on.
+You're up late for that coat.,You're up late for that coat.
+You're wearing a vest.,You're wearing a vest.
+You've already got one.,You've already got one.
+"You've got it pointed at the till and not the door. Anyone comes in here, you'll have a lovely picture of your own hands.","You've got it pointed at the till and not the door. Anyone comes in here, you'll have a lovely picture of your own hands."
+You've got nothing. I'll try the garage.,You've got nothing. I'll try the garage.
+You've had a lot of licences.,You've had a lot of licences.
+You've not been out in this long.,You've not been out in this long.
+You've nothing smaller at all?,You've nothing smaller at all?
+Your firm doesn't seem to have an address.,Your firm doesn't seem to have an address.
+Your name,Your name
+Your name on the street,Your name on the street
+[1-9] choose   ·   [ESC] step back,[1-9] choose   ·   [ESC] step back
+[D-pad] move   ·   [A] choose   ·   [B] step back,[D-pad] move   ·   [A] choose   ·   [B] step back
+[ESC] back to the counter,[ESC] back to the counter
+[ESC] hang up,[ESC] hang up
+[E] %s — no bags left,[E] %s — no bags left
+[E] Back stock,[E] Back stock
+[E] Bag them (%d left),[E] Bag them (%d left)
+[E] Call the supplier,[E] Call the supplier
+[E] Pick them up,[E] Pick them up
+[E] Pick up cash,[E] Pick up cash
+[E] Pick up the scanner,[E] Pick up the scanner
+[E] Put the scanner down,[E] Put the scanner down
+[E] Shutter,[E] Shutter
+[E] Take %s  (%d left)   [Q] restock,[E] Take %s  (%d left)   [Q] restock
+[E] Talk,[E] Talk
+"[E] Talk  (%s, %d in line)","[E] Talk  (%s, %d in line)"
+[E] Terminal,[E] Terminal
+[E] Till — %d,[E] Till — %d
+[E] Under the counter  (%d),[E] Under the counter  (%d)
+[E] carry on from night %d,[E] carry on from night %d
+[E] next night,[E] next night
+[E] open up,[E] open up
+[E] or [ESC] step away from the terminal,[E] or [ESC] step away from the terminal
+[E] wait for them,[E] wait for them
+[R] start again from the first night,[R] start again from the first night
+[TAB] or [ESC] put it down,[TAB] or [ESC] put it down
+[color=#41854f]No documentary anomalies.[/color],[color=#41854f]No documentary anomalies.[/color]
+[color=#f55c57]Note: a file with this many discrepancies is more often a constructed identity than a badly kept one.[/color],[color=#f55c57]Note: a file with this many discrepancies is more often a constructed identity than a badly kept one.[/color]
+[color=#f5c252]%d anomaly in the record:[/color],[color=#f5c252]%d anomaly in the record:[/color]
+"[i]""%s""[/i]","[i]""%s""[/i]"
+[x],[x]
+back: %d  shelf: %d,back: %d  shelf: %d
+black,black
+brother,brother
+brown,brown
+damage %d · %s,damage %d · %s
+dark blue,dark blue
+daughter,daughter
+father,father
+firearm,firearm
+for the nights it goes badly,for the nights it goes badly
+green,green
+grey,grey
+have: %d,have: %d
+melee,melee
+mother,mother
+no file pulled,no file pulled
+not swept,not swept
+partner,partner
+press a key…,press a key…
+red,red
+rent %d   ·   tonight %d,rent %d   ·   tonight %d
+rent 110,rent 110
+scanner,scanner
+sells for %d each · %d margin on the case,sells for %d each · %d margin on the case
+sister,sister
+son,son
+the other thing,the other thing
+under the counter: %d,under the counter: %d
+white,white
+white Kolt panel van (%s),white Kolt panel van (%s)
+yes,yes
+"· Answer to ""%s"" contradicts the file.","· Answer to ""%s"" contradicts the file."
+· on the evidence,· on the evidence
+· page %d of %d,· page %d of %d
+· they haven't asked,· they haven't asked
+› %s,› %s
+→ %s,→ %s

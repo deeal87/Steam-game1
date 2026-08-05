@@ -66,7 +66,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				Audio.play("confirm", -16.0)
 			else:
 				Audio.play("deny", -14.0)
-				Signals.notice.emit("That key is already doing something else.", "warn")
+				Signals.notice.emit(Loc.t("That key is already doing something else."), "warn")
 			_rebuild()
 		return
 
@@ -85,10 +85,10 @@ func _rebuild() -> void:
 
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 8)
-	for conf: Array in [["settings", "SETTINGS"], ["keys", "CONTROLS"],
-			["awards", "ACHIEVEMENTS"]]:
+	for conf: Array in [["settings", Loc.t("SETTINGS")], ["keys", Loc.t("CONTROLS")],
+			["awards", Loc.t("ACHIEVEMENTS")]]:
 		var b := Button.new()
-		b.text = conf[1]
+		b.text = Loc.t(conf[1])
 		b.flat = true
 		b.add_theme_font_size_override("font_size", UIKit.FONT_S)
 		b.add_theme_color_override("font_color",
@@ -117,7 +117,8 @@ func _rebuild() -> void:
 	# Players run 1440p, ultrawides, 144Hz panels and handhelds. A game that
 	# offers none of this reads as unfinished before anybody has played a minute.
 	_body.add_child(UIKit.label("DISPLAY", UIKit.FONT_S, UIKit.GREEN_DIM))
-	_cycler("Window", ["Windowed", "Borderless", "Fullscreen"], Settings.window_mode,
+	_cycler(Loc.t("Window"), [Loc.t("Windowed"), Loc.t("Borderless"), Loc.t("Fullscreen")],
+		Settings.window_mode,
 		func(i: int) -> void:
 			Settings.window_mode = i
 			Settings.apply()
@@ -127,15 +128,15 @@ func _rebuild() -> void:
 	if Settings.window_mode == Settings.WindowMode.WINDOWED:
 		var sizes: Array[String] = []
 		for r: Vector2i in Settings.RESOLUTIONS:
-			sizes.append("%d x %d" % [r.x, r.y])
-		_cycler("Size", sizes, Settings.resolution_index,
+			sizes.append(Loc.done("%d x %d" % [r.x, r.y]))
+		_cycler(Loc.t("Size"), sizes, Settings.resolution_index,
 			func(i: int) -> void:
 				Settings.resolution_index = i
 				Settings.apply()
 				Settings.save_settings()
 				_rebuild())
 
-	_cycler("Vertical sync", ["Off", "On"], 1 if Settings.vsync else 0,
+	_cycler(Loc.t("Vertical sync"), [Loc.t("Off"), Loc.t("On")], 1 if Settings.vsync else 0,
 		func(i: int) -> void:
 			Settings.vsync = i == 1
 			Settings.apply()
@@ -144,35 +145,53 @@ func _rebuild() -> void:
 
 	var caps: Array[String] = []
 	for c: int in Settings.FPS_CAPS:
-		caps.append("Unlimited" if c == 0 else "%d fps" % c)
+		caps.append(Loc.t("Unlimited") if c == 0 else Loc.f("%d fps", [c]))
 	var cap_index: int = maxi(0, Settings.FPS_CAPS.find(Settings.fps_cap))
-	_cycler("Frame limit", caps, cap_index,
+	_cycler(Loc.t("Frame limit"), caps, cap_index,
 		func(i: int) -> void:
 			Settings.fps_cap = Settings.FPS_CAPS[i]
 			Settings.apply()
 			Settings.save_settings()
 			_rebuild())
 
+	# Only worth a row once there is something to choose between. A shipped
+	# build with no translations beside the English shows nothing here rather
+	# than a chooser with one entry in it.
+	var codes := Loc.locales()
+	if codes.size() > 1:
+		var names: Array[String] = []
+		for code: String in codes:
+			names.append(Loc.locale_name(code))
+		var here: int = maxi(0, Array(codes).find(Loc.locale()))
+		_cycler("Language", names, here,
+			func(i: int) -> void:
+				Settings.locale = codes[clampi(i, 0, codes.size() - 1)]
+				Settings.apply()
+				Settings.save_settings()
+				# Every panel is built from strings, so the menu you are
+				# standing in has to be rebuilt in the language you just chose.
+				_rebuild())
+
 	_body.add_child(UIKit.spacer(8))
 	_body.add_child(UIKit.label("PRESENTATION", UIKit.FONT_S, UIKit.GREEN_DIM))
-	_slider("Screen effect", Settings.crt_intensity, 0.0, 1.0,
-		"Scanlines, grain and colour fringing. Set to zero for a clean image.",
+	_slider(Loc.t("Screen effect"), Settings.crt_intensity, 0.0, 1.0,
+		Loc.t("Scanlines, grain and colour fringing. Set to zero for a clean image."),
 		func(v: float) -> void: Settings.crt_intensity = v)
-	_slider("Retro geometry", Settings.retro_intensity, 0.0, 1.0,
-		"Vertex jitter and texture warping. Set to zero for stable, modern rendering.",
+	_slider(Loc.t("Retro geometry"), Settings.retro_intensity, 0.0, 1.0,
+		Loc.t("Vertex jitter and texture warping. Set to zero for stable, modern rendering."),
 		func(v: float) -> void: Settings.retro_intensity = v)
-	_slider("Field of view", Settings.field_of_view, 60.0, 100.0,
+	_slider(Loc.t("Field of view"), Settings.field_of_view, 60.0, 100.0,
 		"", func(v: float) -> void: Settings.field_of_view = v, 1.0)
 
 	_body.add_child(UIKit.spacer(8))
 	_body.add_child(UIKit.label("SOUND AND INPUT", UIKit.FONT_S, UIKit.GREEN_DIM))
-	_slider("Volume", Settings.master_volume, 0.0, 1.0, "",
+	_slider(Loc.t("Volume"), Settings.master_volume, 0.0, 1.0, "",
 		func(v: float) -> void: Settings.master_volume = v)
-	_slider("Music", Settings.music_volume, 0.0, 1.0, "",
+	_slider(Loc.t("Music"), Settings.music_volume, 0.0, 1.0, "",
 		func(v: float) -> void: Settings.music_volume = v)
-	_slider("Effects", Settings.sfx_volume, 0.0, 1.0, "",
+	_slider(Loc.t("Effects"), Settings.sfx_volume, 0.0, 1.0, "",
 		func(v: float) -> void: Settings.sfx_volume = v)
-	_slider("Mouse sensitivity", Settings.mouse_sensitivity, 0.25, 3.0, "",
+	_slider(Loc.t("Mouse sensitivity"), Settings.mouse_sensitivity, 0.25, 3.0, "",
 		func(v: float) -> void: Settings.mouse_sensitivity = v, 0.05)
 
 	# What the board at the end of the road calls you. Left blank it works it
@@ -196,7 +215,7 @@ func _rebuild() -> void:
 		UIKit.FONT_S, UIKit.GREEN_DIM))
 
 	var subs := CheckBox.new()
-	subs.text = "Subtitles"
+	subs.text = Loc.t("Subtitles")
 	subs.button_pressed = Settings.subtitles
 	subs.add_theme_font_size_override("font_size", UIKit.FONT_S)
 	subs.add_theme_color_override("font_color", UIKit.WHITE)
@@ -209,7 +228,7 @@ func _rebuild() -> void:
 	# Off for anyone who would rather work it out, and resettable for anyone who
 	# wants to be shown again.
 	var hints := CheckBox.new()
-	hints.text = "Hints"
+	hints.text = Loc.t("Hints")
 	hints.button_pressed = Tutor.enabled
 	hints.add_theme_font_size_override("font_size", UIKit.FONT_S)
 	hints.add_theme_color_override("font_color", UIKit.WHITE)
@@ -219,14 +238,14 @@ func _rebuild() -> void:
 	_body.add_child(hints)
 
 	var again := Button.new()
-	again.text = "Show the hints again"
+	again.text = Loc.t("Show the hints again")
 	again.flat = true
 	again.add_theme_font_size_override("font_size", UIKit.FONT_S)
 	again.add_theme_color_override("font_color", UIKit.GREEN_DIM)
 	again.pressed.connect(func() -> void:
 		Tutor.reset()
 		Audio.play("click", -20.0)
-		Signals.notice.emit("Hints reset.", "info"))
+		Signals.notice.emit(Loc.t("Hints reset."), "info"))
 	_body.add_child(again)
 
 	_build_footer()
@@ -238,7 +257,8 @@ func _rebuild() -> void:
 func _build_awards() -> void:
 	var listing := Achievements.listing()
 	var got := Achievements.earned_count()
-	_body.add_child(UIKit.label("%d of %d" % [got, listing.size()], UIKit.FONT_M, UIKit.GREEN))
+	_body.add_child(UIKit.label(Loc.f("%d of %d", [got, listing.size()]),
+		UIKit.FONT_M, UIKit.GREEN))
 	_body.add_child(UIKit.label(
 		"Synced with Steam." if Achievements.steam_connected()
 			else "Stored on this machine. No Steam client running.",
@@ -284,7 +304,7 @@ func _cycler(label: String, options: Array, index: int, on_change: Callable) -> 
 		on_change.call(wrapi(safe - 1, 0, options.size())))
 	row.add_child(back)
 
-	var value := UIKit.label(str(options[safe]) if not options.is_empty() else "—",
+	var value := UIKit.label(Loc.done(str(options[safe])) if not options.is_empty() else "—",
 		UIKit.FONT_S, UIKit.GREEN)
 	value.custom_minimum_size = Vector2(150, 0)
 	value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -322,13 +342,13 @@ func _build_keys() -> void:
 		var action: String = entry[0]
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 10)
-		var name_label := UIKit.label(str(entry[1]), UIKit.FONT_S, UIKit.WHITE)
+		var name_label := UIKit.label(Loc.t(str(entry[1])), UIKit.FONT_S, UIKit.WHITE)
 		name_label.custom_minimum_size = Vector2(280, 0)
 		row.add_child(name_label)
 
 		var b := Button.new()
 		var waiting := _listening == action
-		b.text = "press a key…" if waiting else InputSetup.binding_label(action)
+		b.text = Loc.t("press a key…") if waiting else InputSetup.binding_label(action)
 		b.custom_minimum_size = Vector2(170, 0)
 		b.add_theme_font_size_override("font_size", UIKit.FONT_S)
 		b.add_theme_color_override("font_color", UIKit.AMBER if waiting else UIKit.GREEN)
@@ -355,14 +375,14 @@ func _build_footer() -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
 	_body.add_child(row)
-	row.add_child(_button("Back to the counter", func() -> void: close()))
-	row.add_child(_button("Defaults", func() -> void:
+	row.add_child(_button(Loc.t("Back to the counter"), func() -> void: close()))
+	row.add_child(_button(Loc.t("Defaults"), func() -> void:
 		Settings.reset()
 		_rebuild()))
-	row.add_child(_button("Abandon the run", func() -> void:
+	row.add_child(_button(Loc.t("Abandon the run"), func() -> void:
 		close()
 		restart_requested.emit()))
-	row.add_child(_button("Quit", func() -> void:
+	row.add_child(_button(Loc.t("Quit"), func() -> void:
 		get_tree().paused = false
 		get_tree().quit()))
 
@@ -387,7 +407,7 @@ func _slider(label: String, value: float, lo: float, hi: float, note: String,
 	slider.custom_minimum_size = Vector2(280, 18)
 	row.add_child(slider)
 
-	var readout := UIKit.label(_format(value, lo, hi), UIKit.FONT_S, UIKit.GREEN)
+	var readout := UIKit.label(Loc.done(_format(value, lo, hi)), UIKit.FONT_S, UIKit.GREEN)
 	readout.custom_minimum_size = Vector2(60, 0)
 	row.add_child(readout)
 
@@ -398,7 +418,7 @@ func _slider(label: String, value: float, lo: float, hi: float, note: String,
 
 	_body.add_child(row)
 	if not note.is_empty():
-		var n := UIKit.label("    " + note, UIKit.FONT_S, UIKit.GREEN_DIM)
+		var n := UIKit.label(Loc.f("    %s", [Loc.t(note)]), UIKit.FONT_S, UIKit.GREEN_DIM)
 		n.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		_body.add_child(n)
 
@@ -415,7 +435,7 @@ func _format(v: float, lo: float, hi: float) -> String:
 
 func _button(text: String, on_press: Callable) -> Button:
 	var b := Button.new()
-	b.text = text
+	b.text = Loc.t(text)
 	b.add_theme_font_size_override("font_size", UIKit.FONT_S)
 	b.pressed.connect(on_press)
 	return b

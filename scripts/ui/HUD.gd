@@ -168,23 +168,23 @@ func _refresh_player_bits() -> void:
 	_replace_meter(_health_box, _health_bar, _player.health, _player.max_health, UIKit.RED)
 	var bits: Array[String] = []
 	if _player.holding_scanner:
-		bits.append("scanner")
+		bits.append(Loc.t("scanner"))
 	if not _player.held_item.is_empty():
-		bits.append(str(GameState.ITEMS[_player.held_item]["name"]).to_lower())
+		bits.append(Loc.t(str(GameState.ITEMS[_player.held_item]["name"])).to_lower())
 	if _player.held_illicit > 0:
-		bits.append("%d under the counter" % _player.held_illicit)
+		bits.append(Loc.f("%d under the counter", [_player.held_illicit]))
 	if not _player.equipped.is_empty():
 		var w: Dictionary = GameState.WEAPONS[_player.equipped]
-		bits.append("%s %s" % [str(w["name"]).to_lower(),
-			"" if bool(w["melee"]) else "(%d)" % GameState.ammo_for(_player.equipped)])
+		bits.append(Loc.f("%s %s", [Loc.t(str(w["name"])).to_lower(),
+			"" if bool(w["melee"]) else "(%d)" % GameState.ammo_for(_player.equipped)]))
 	_hands.text = " · ".join(bits)
 
 
 func _refresh_stats() -> void:
-	_night_label.text = "NIGHT %d" % GameState.night
+	_night_label.text = Loc.f("NIGHT %d", [GameState.night])
 	_money_label.text = "%d" % GameState.money
 	var earned := GameState.takings + GameState.illicit_takings + GameState.tips
-	_quota_label.text = "rent %d   ·   tonight %d" % [GameState.rent_due(), earned]
+	_quota_label.text = Loc.f("rent %d   ·   tonight %d", [GameState.rent_due(), earned])
 	_quota_label.add_theme_color_override("font_color",
 		UIKit.GREEN if earned >= GameState.rent_due() else UIKit.GREEN_DIM)
 	_replace_meter(_heat_box, _heat_bar, GameState.heat, 100.0, UIKit.AMBER)
@@ -222,7 +222,7 @@ func _on_checkout(scanned: int, total_items: int, price: int) -> void:
 
 
 func _on_prompt(text: String) -> void:
-	_prompt.text = text
+	_prompt.text = Loc.t(text)
 
 
 func _on_clock(minutes_left: float) -> void:
@@ -240,13 +240,16 @@ func _on_clock(minutes_left: float) -> void:
 func _on_spoke(speaker: String, line: String) -> void:
 	if not Settings.subtitles:
 		return
-	_subtitle.text = "%s:  \"%s\"" % [speaker.split(" ")[0], line]
+	_subtitle.text = "%s:  \"%s\"" % [speaker.split(" ")[0], Loc.t(line)]
 	_subtitle_timer = 4.5
 	_subtitle.modulate.a = 1.0
 
 
 func _on_notice(text: String, tone: String) -> void:
-	var lbl := UIKit.label("› " + text, UIKit.FONT_S, UIKit.tone_colour(tone))
+	# Translated before the marker goes on, or the lookup would be asked for
+	# "› Torch on." and never find it. Notices that were composed at the emit
+	# site with `Loc.f()` are already in the player's language and simply miss.
+	var lbl := UIKit.label(Loc.f("› %s", [Loc.t(text)]), UIKit.FONT_S, UIKit.tone_colour(tone))
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	lbl.custom_minimum_size = Vector2(520, 0)
 	_notice_col.add_child(lbl)

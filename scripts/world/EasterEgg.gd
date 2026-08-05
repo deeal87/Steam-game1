@@ -49,7 +49,7 @@ func build_visuals(world: World) -> void:
 	const PIXEL_SIZE := 0.0012
 
 	_plaque = Label3D.new()
-	_plaque.text = "YOU ARE THE\nMASTER OF MASTER\n%s" % name_text
+	_plaque.text = Loc.f("YOU ARE THE\nMASTER OF MASTER\n%s", [name_text])
 	_plaque.font_size = 64
 	_plaque.outline_size = 14
 	_plaque.modulate = Color(1.0, 0.86, 0.42)

@@ -221,9 +221,9 @@ func _update_prompt() -> void:
 			_look_target = hit
 			text = _prompt_for(hit)
 	if carried_body != null and is_instance_valid(carried_body) and text.is_empty():
-		text = "Carrying a body. The manhole is in the stockroom."
+		text = Loc.t("Carrying a body. The manhole is in the stockroom.")
 	elif not held_item.is_empty() and text.is_empty():
-		text = "Carrying: %s" % GameState.ITEMS[held_item]["name"]
+		text = Loc.f("Carrying: %s", [Loc.t(str(GameState.ITEMS[held_item]["name"]))])
 	Signals.prompt_changed.emit(text)
 
 
@@ -237,17 +237,20 @@ func _prompt_for(hit: Object) -> String:
 		var item := id.substr(6)
 		var units := GameState.shelf_units(item)
 		if units <= 0:
-			return "%s — empty  [Q] restock" % GameState.ITEMS[item]["name"]
-		return "[E] Take %s  (%d left)   [Q] restock" % [GameState.ITEMS[item]["name"], units]
+			return Loc.f("%s — empty  [Q] restock",
+				[Loc.t(str(GameState.ITEMS[item]["name"]))])
+		return Loc.f("[E] Take %s  (%d left)   [Q] restock",
+			[Loc.t(str(GameState.ITEMS[item]["name"])), units])
 	match id:
-		"till": return "[E] Till — %d" % GameState.money
-		"terminal": return "[E] Terminal"
-		"stash": return "[E] Under the counter  (%d)" % GameState.drug_stock
-		"scanner": return "[E] Put the scanner down" if holding_scanner else "[E] Pick up the scanner"
-		"crates": return "[E] Back stock"
-		"shop": return "[E] Call the supplier"
-		"shutter_control": return "[E] Shutter"
-		"cash": return "[E] Pick up cash"
+		"till": return Loc.f("[E] Till — %d", [GameState.money])
+		"terminal": return Loc.t("[E] Terminal")
+		"stash": return Loc.f("[E] Under the counter  (%d)", [GameState.drug_stock])
+		"scanner": return Loc.t("[E] Put the scanner down") if holding_scanner \
+			else Loc.t("[E] Pick up the scanner")
+		"crates": return Loc.t("[E] Back stock")
+		"shop": return Loc.t("[E] Call the supplier")
+		"shutter_control": return Loc.t("[E] Shutter")
+		"cash": return Loc.t("[E] Pick up cash")
 		"body":
 			var b: Node = hit.get_meta("body_ref", null)
 			return str(b.call("prompt")) if b != null and is_instance_valid(b) else ""
@@ -299,7 +302,7 @@ func _interact() -> void:
 				world.refresh_shelves()
 		else:
 			Audio.play("deny", -14.0)
-			Signals.notice.emit("Empty. There's more in the back.", "warn")
+			Signals.notice.emit(Loc.t("Empty. There's more in the back."), "warn")
 		return
 
 	match id:
@@ -310,18 +313,19 @@ func _interact() -> void:
 		"scanner":
 			holding_scanner = not holding_scanner
 			Audio.play("beep", -16.0)
-			Signals.notice.emit("Scanner in hand. [F] to sweep." if holding_scanner else "Scanner down.", "info")
+			Signals.notice.emit(Loc.t("Scanner in hand. [F] to sweep.") if holding_scanner
+				else Loc.t("Scanner down."), "info")
 		"stash":
 			if GameState.drug_stock <= 0:
 				Audio.play("deny", -14.0)
-				Signals.notice.emit("Nothing left under there.", "warn")
+				Signals.notice.emit(Loc.t("Nothing left under there."), "warn")
 			else:
 				GameState.drug_stock -= 1
 				held_illicit += 1
 				held_item = ""
 				_show_in_hand("stash")
 				Audio.play("click", -18.0)
-				Signals.notice.emit("In your hand, out of sight.", "info")
+				Signals.notice.emit(Loc.t("In your hand, out of sight."), "info")
 		"goods":
 			if checkout != null:
 				checkout.scan(int(hit.get_meta("index", -1)))
@@ -330,8 +334,8 @@ func _interact() -> void:
 				checkout.take_payment()
 			else:
 				Audio.play("register", -12.0)
-				Signals.notice.emit("Takings tonight: %d. Rent: %d." %
-					[GameState.takings + GameState.illicit_takings, GameState.rent_due()], "info")
+				Signals.notice.emit(Loc.f("Takings tonight: %d. Rent: %d.",
+					[GameState.takings + GameState.illicit_takings, GameState.rent_due()]), "info")
 		"crates":
 			_restock_all()
 		"shutter_control":
@@ -340,7 +344,8 @@ func _interact() -> void:
 				world.anchors["shutter_is_closed"] = not closed
 				world.set_shutter_closed(not closed)
 				Audio.play("beep_low", -12.0)
-				Signals.notice.emit("Shutter down. Nobody's buying anything now." if not closed else "Shutter up.", "info")
+				Signals.notice.emit(Loc.t("Shutter down. Nobody's buying anything now.") if not closed
+				else Loc.t("Shutter up."), "info")
 		"manhole", "manhole_street", "manhole_mid", \
 		"ladder_up_stock", "ladder_up_street", "ladder_up_mid":
 			# With somebody over your shoulder the manhole is a place to put them
@@ -358,7 +363,7 @@ func _interact() -> void:
 			var value := int(hit.get_meta("value", 5))
 			GameState.add_money(value, "tips")
 			Audio.play("register", -18.0)
-			Signals.notice.emit("Found %d." % value, "good")
+			Signals.notice.emit(Loc.f("Found %d.", [value]), "good")
 			(hit as Node).queue_free()
 
 
@@ -370,12 +375,12 @@ func _handle_body(hit: Node) -> void:
 	if b == null or not is_instance_valid(b):
 		return
 	if carried_body != null and is_instance_valid(carried_body):
-		Signals.notice.emit("You've already got one.", "warn")
+		Signals.notice.emit(Loc.t("You've already got one."), "warn")
 		return
 	if not bool(b.get("bagged")):
 		if GameState.body_bags <= 0:
 			Audio.play("deny", -14.0)
-			Signals.notice.emit("No bags. The supplier sells them, and you should have thought of that.", "bad")
+			Signals.notice.emit(Loc.t("No bags. The supplier sells them, and you should have thought of that."), "bad")
 			return
 		b.call("bag")
 		return
@@ -385,7 +390,7 @@ func _handle_body(hit: Node) -> void:
 		clear_hands()
 		equipped = ""
 		holding_scanner = false
-		Signals.notice.emit("Over your shoulder. Get to the manhole.", "warn")
+		Signals.notice.emit(Loc.t("Over your shoulder. Get to the manhole."), "warn")
 
 
 ## Somebody's crate at the end of the spur. There is one, it is worth about a
@@ -393,10 +398,10 @@ func _handle_body(hit: Node) -> void:
 func _open_cache(hit: Node) -> void:
 	var amount := GameState.open_sewer_cache()
 	if amount <= 0:
-		Signals.notice.emit("Empty. You already had this.", "info")
+		Signals.notice.emit(Loc.t("Empty. You already had this."), "info")
 		return
 	Audio.play("register", -14.0)
-	Signals.notice.emit("Somebody's stash, under a board. %d." % amount, "good")
+	Signals.notice.emit(Loc.f("Somebody's stash, under a board. %d.", [amount]), "good")
 	Achievements.unlock("TUNNEL_RAT")
 	if hit is Node3D:
 		(hit as Node3D).queue_free()
@@ -413,22 +418,22 @@ func _travel(which: String) -> void:
 	match which:
 		"manhole":
 			destination = world.anchors.get("sewer_shaft_bottom", Vector3.ZERO)
-			label = "Down into the dark."
+			label = Loc.t("Down into the dark.")
 		"manhole_street":
 			destination = world.anchors.get("sewer_exit_bottom", Vector3.ZERO)
-			label = "Down into the dark."
+			label = Loc.t("Down into the dark.")
 		"manhole_mid":
 			destination = world.anchors.get("sewer_mid_bottom", Vector3.ZERO)
-			label = "Down into the dark."
+			label = Loc.t("Down into the dark.")
 		"ladder_up_stock":
 			destination = world.anchors.get("manhole", Vector3.ZERO) + Vector3(0, 0.2, -0.9)
-			label = "Back up into the stockroom."
+			label = Loc.t("Back up into the stockroom.")
 		"ladder_up_street":
 			destination = world.anchors.get("sewer_exit_top", Vector3.ZERO) + Vector3(0, 0.2, -1.0)
-			label = "Out into the alley."
+			label = Loc.t("Out into the alley.")
 		"ladder_up_mid":
 			destination = world.anchors.get("sewer_mid_top", Vector3.ZERO) + Vector3(0, 0.2, -1.0)
-			label = "Out onto the pavement, in full view."
+			label = Loc.t("Out onto the pavement, in full view.")
 	if destination == Vector3.ZERO:
 		return
 	# Going down from inside the kiosk is the escape route during a raid.
@@ -455,12 +460,13 @@ func _restock_looked_at() -> void:
 			moved += 1
 	if moved > 0:
 		Audio.play("click", -18.0)
-		Signals.notice.emit("Filled %s (+%d)." % [GameState.ITEMS[item]["name"], moved], "good")
+		Signals.notice.emit(Loc.f("Filled %s (+%d).",
+			[Loc.t(str(GameState.ITEMS[item]["name"])), moved]), "good")
 		if world != null:
 			world.refresh_shelves()
 	else:
 		Audio.play("deny", -16.0)
-		Signals.notice.emit("None left in the back. Call the supplier.", "warn")
+		Signals.notice.emit(Loc.t("None left in the back. Call the supplier."), "warn")
 
 
 func _restock_all() -> void:
@@ -470,12 +476,12 @@ func _restock_all() -> void:
 			moved += 1
 	if moved > 0:
 		Audio.play("click", -14.0)
-		Signals.notice.emit("Restocked the shelves (+%d)." % moved, "good")
+		Signals.notice.emit(Loc.f("Restocked the shelves (+%d).", [moved]), "good")
 		if world != null:
 			world.refresh_shelves()
 	else:
 		Audio.play("deny", -16.0)
-		Signals.notice.emit("Crates are empty.", "warn")
+		Signals.notice.emit(Loc.t("Crates are empty."), "warn")
 
 
 func clear_hands() -> void:
@@ -490,14 +496,14 @@ func toggle_torch() -> void:
 	torch_on = not torch_on
 	_torch.light_energy = 5.5 if torch_on else 0.0
 	Audio.play("click", -20.0)
-	Signals.notice.emit("Torch on." if torch_on else "Torch off.", "info")
+	Signals.notice.emit(Loc.t("Torch on.") if torch_on else Loc.t("Torch off."), "info")
 
 
 func _use_scanner() -> void:
 	var target := _look_target
 	if target == null or not target.has_method("on_scan"):
 		Audio.play("deny", -16.0)
-		Signals.notice.emit("Point it at someone.", "warn")
+		Signals.notice.emit(Loc.t("Point it at someone."), "warn")
 		return
 	Audio.play("scanner", -10.0)
 	target.call("on_scan", self)
@@ -512,10 +518,11 @@ func _cycle_weapon() -> void:
 	equipped = owned[(idx + 1) % owned.size()]
 	_show_in_hand("weapon" if not equipped.is_empty() else "")
 	if equipped.is_empty():
-		Signals.notice.emit("Hands free.", "info")
+		Signals.notice.emit(Loc.t("Hands free."), "info")
 	else:
 		var w: Dictionary = GameState.WEAPONS[equipped]
-		Signals.notice.emit("%s  (%s)" % [w["name"], "—" if w["melee"] else str(GameState.ammo_for(equipped))], "info")
+		Signals.notice.emit(Loc.f("%s  (%s)", [Loc.t(str(w["name"])),
+			"—" if w["melee"] else str(GameState.ammo_for(equipped))]), "info")
 	Audio.play("click", -18.0)
 
 

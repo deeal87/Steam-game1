@@ -94,28 +94,38 @@ func _rebuild() -> void:
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	columns.add_child(right)
 
-	right.add_child(UIKit.field("NAME", p.full_name, UIKit.WHITE))
-	right.add_child(UIKit.field("DATE OF BIRTH", "%s  (age %d)" % [p.dob, p.age]))
-	right.add_child(UIKit.field("IDENTITY NO.", p.id_number))
-	right.add_child(UIKit.field("ISSUED", p.id_issued, _flag_colour(p, "id_recent")))
-	right.add_child(UIKit.field("EXPIRES", p.id_expires))
+	# Names, numbers and streets are the setting, not the language. They are
+	# marked as already-done so nobody is ever asked to translate a person.
+	right.add_child(UIKit.field("NAME", Loc.done(p.full_name), UIKit.WHITE))
+	right.add_child(UIKit.field("DATE OF BIRTH", Loc.f("%s  (age %d)", [p.dob, p.age])))
+	right.add_child(UIKit.field("IDENTITY NO.", Loc.done(p.id_number)))
+	right.add_child(UIKit.field("ISSUED", Loc.done(p.id_issued), _flag_colour(p, "id_recent")))
+	right.add_child(UIKit.field("EXPIRES", Loc.done(p.id_expires)))
 	right.add_child(UIKit.spacer(4))
-	right.add_child(UIKit.field("ADDRESS", p.address_line(), _flag_colour(p, "address_precinct")))
-	right.add_child(UIKit.field("OCCUPATION", p.occupation))
-	right.add_child(UIKit.field("EMPLOYER", p.employer, _flag_colour(p, "employer_front")))
-	right.add_child(UIKit.field("VEHICLE", p.vehicle_desc, _flag_colour(p, "vehicle_fleet")))
+	right.add_child(UIKit.field("ADDRESS", p.address_line(),
+		_flag_colour(p, "address_precinct")))
+	right.add_child(UIKit.field("OCCUPATION", Loc.done(p.occupation)))
+	right.add_child(UIKit.field("EMPLOYER", Loc.done(p.employer),
+		_flag_colour(p, "employer_front")))
+	right.add_child(UIKit.field("VEHICLE", Loc.done(p.vehicle_desc),
+		_flag_colour(p, "vehicle_fleet")))
 	right.add_child(UIKit.spacer(4))
-	right.add_child(UIKit.field("TELEPHONE", "%s  (registered %s)" % [p.phone, p.phone_registered],
+	right.add_child(UIKit.field("TELEPHONE",
+		Loc.f("%s  (registered %s)", [p.phone, p.phone_registered]),
 		_flag_colour(p, "phone_new")))
-	right.add_child(UIKit.field("UTILITIES", p.utilities, _flag_colour(p, "no_utilities")))
-	right.add_child(UIKit.field("EMPLOYMENT", p.employment_note, _flag_colour(p, "employment_gap")))
-	right.add_child(UIKit.field("NEXT OF KIN", p.next_of_kin, _flag_colour(p, "kin_switchboard")))
+	right.add_child(UIKit.field("UTILITIES", Loc.done(p.utilities),
+		_flag_colour(p, "no_utilities")))
+	right.add_child(UIKit.field("EMPLOYMENT", Loc.done(p.employment_note),
+		_flag_colour(p, "employment_gap")))
+	right.add_child(UIKit.field("NEXT OF KIN", Loc.done(p.next_of_kin),
+		_flag_colour(p, "kin_switchboard")))
 	right.add_child(UIKit.spacer(4))
 
-	var record_text := "None on file."
+	var record_text := Loc.t("None on file.")
 	if not p.record.is_empty():
-		record_text = "\n".join(p.record)
-	right.add_child(UIKit.field("PRIOR MATTERS", record_text, _flag_colour(p, "record_scrubbed")))
+		record_text = Loc.done("\n".join(p.record))
+	right.add_child(UIKit.field("PRIOR MATTERS", Loc.done(record_text),
+		_flag_colour(p, "record_scrubbed")))
 
 	_body.add_child(UIKit.spacer(6))
 	_body.add_child(UIKit.rule())
@@ -151,7 +161,8 @@ func _photo_column(p: CustomerProfile) -> Control:
 	col.add_child(photo)
 
 	col.add_child(UIKit.label("REGISTRY PHOTOGRAPH", UIKit.FONT_S, UIKit.GREEN_DIM))
-	var history := "Images on file: %d" % (1 if p.has_tell("file_thin") else randi_range(2, 5))
+	var history := Loc.f("Images on file: %d",
+		[1 if p.has_tell("file_thin") else randi_range(2, 5)])
 	col.add_child(UIKit.label(history, UIKit.FONT_S,
 		UIKit.AMBER if p.has_tell("file_thin") and p.tell_state("file_thin").get("discovered", false) else UIKit.GREEN_DIM))
 	return col
@@ -168,31 +179,40 @@ func _compose_assessment(p: CustomerProfile) -> String:
 	var found := p.discovered_tells(Tells.CHANNEL_TERMINAL)
 
 	if found.is_empty():
-		lines.append("Record is internally consistent. Employment, address and identity documents agree with one another and with the issuing authority.")
+		lines.append(Loc.t("Record is internally consistent. Employment, address and identity documents agree with one another and with the issuing authority."))
 		if p.record.is_empty():
-			lines.append("No prior matters. Not unusual for this age bracket.")
-		lines.append("[color=#41854f]No documentary anomalies.[/color]")
+			lines.append(Loc.t("No prior matters. Not unusual for this age bracket."))
+		lines.append(Loc.t("[color=#41854f]No documentary anomalies.[/color]"))
 	else:
-		lines.append("[color=#f5c252]%d anomal%s in the record:[/color]" % [found.size(), "y" if found.size() == 1 else "ies"])
+		# One anomaly and several anomalies are two sentences. Splitting them
+		# here is the only way a translator can inflect either.
+		lines.append(Loc.f(
+			"[color=#f5c252]%d anomaly in the record:[/color]" if found.size() == 1
+				else "[color=#f5c252]%d anomalies in the record:[/color]", [found.size()]))
 		for id: String in found:
-			lines.append("  · " + str(Tells.get_tell(id)["label"]))
+			lines.append(Loc.f("  · %s", [Loc.t(str(Tells.get_tell(id)["label"]))]))
 		lines.append("")
-		lines.append("These may each have an ordinary explanation. Ask.")
+		lines.append(Loc.t("These may each have an ordinary explanation. Ask."))
 
 	# It flags the shape of a fabricated file without ever naming what it is.
 	if found.size() >= 3:
-		lines.append("[color=#f55c57]Note: a file with this many discrepancies is more often a constructed identity than a badly kept one.[/color]")
+		lines.append(Loc.t("[color=#f55c57]Note: a file with this many discrepancies is more often a constructed identity than a badly kept one.[/color]"))
 
 	if p.scanned:
 		var scan_found := p.discovered_tells(Tells.CHANNEL_SCANNER)
 		lines.append("")
 		if scan_found.is_empty():
-			lines.append("Sweep returned nothing carried.")
+			lines.append(Loc.t("Sweep returned nothing carried."))
 		else:
-			lines.append("Cross-reference with sweep: %d item%s on their person unaccounted for by the file." %
-				[scan_found.size(), "" if scan_found.size() == 1 else "s"])
+			lines.append(Loc.f(
+				"Cross-reference with sweep: %d item on their person unaccounted for by the file."
+					if scan_found.size() == 1
+					else "Cross-reference with sweep: %d items on their person unaccounted for by the file.",
+				[scan_found.size()]))
 
-	return "\n".join(lines)
+	# Already assembled out of translated parts; the label it goes into must not
+	# treat the whole paragraph as one more line to translate.
+	return Loc.done("\n".join(lines))
 
 
 func _footer() -> void:

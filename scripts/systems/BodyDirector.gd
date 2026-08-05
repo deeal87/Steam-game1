@@ -110,13 +110,14 @@ func _process(delta: float) -> void:
 
 
 func _witness(c: Customer) -> void:
-	Signals.customer_spoke.emit(c.profile.full_name, "...What is that. What is that on the floor.")
-	Signals.notice.emit("%s saw it. They're gone." % c.profile.full_name.split(" ")[0], "bad")
+	Signals.customer_spoke.emit(c.profile.full_name, Loc.t("...What is that. What is that on the floor."))
+	Signals.notice.emit(Loc.f("%s saw it. They're gone.",
+		[c.profile.full_name.split(" ")[0]]), "bad")
 	GameState.add_heat(WITNESS_HEAT)
 	GameState.add_reputation(-WITNESS_REPUTATION)
 	GameState.evidence_against_you += 1
 	if GameState.raid_reason.is_empty():
-		GameState.raid_reason = "Somebody walked in on a body on your floor."
+		GameState.raid_reason = Loc.t("Somebody walked in on a body on your floor.")
 	c._leave("witness")
 
 
@@ -138,6 +139,7 @@ func settle_night() -> Dictionary:
 		GameState.add_heat(heat)
 		GameState.evidence_against_you += civilians + officers
 		if GameState.raid_reason.is_empty():
-			GameState.raid_reason = "You closed up with %d of them still on the floor." % (
-				civilians + officers)
+			GameState.raid_reason = Loc.f(
+				"You closed up with %d of them still on the floor.",
+				[civilians + officers])
 	return {"civilians": civilians, "officers": officers, "heat": heat}

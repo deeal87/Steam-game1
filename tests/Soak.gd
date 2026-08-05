@@ -141,8 +141,12 @@ func _play_night(night: int) -> bool:
 		for v in _visits:
 			total += v
 			longest = maxf(longest, v)
-		_note("        a visit takes %.0fs on average, worst %.0fs — the shift budgets %ds each"
-			% [total / float(_visits.size()) * SPEED, longest * SPEED, 20])
+		# Read off the director rather than written here. The budget moved once
+		# already, from 20s to 35s, and this line went on reporting the old
+		# number — which made a healthy night look like a broken one.
+		_note("        a visit takes %.0fs on average, worst %.0fs — the shift budgets %.0fs each"
+			% [total / float(_visits.size()) * SPEED, longest * SPEED,
+				NightDirector.SECONDS_PER_CUSTOMER])
 
 	# A night is meant to deliver roughly the trade it promises — but only if
 	# there is trade to do. A shop with nothing on the shelves and nothing in the

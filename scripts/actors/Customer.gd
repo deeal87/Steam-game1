@@ -130,12 +130,12 @@ func interaction_prompt() -> String:
 	if state == State.DEAD:
 		return ""
 	if state == State.LEAVING:
-		return "%s — leaving" % profile.full_name.split(" ")[0]
+		return Loc.f("%s — leaving", [profile.full_name.split(" ")[0]])
 	if state == State.APPROACHING:
-		return "%s — shopping" % profile.full_name.split(" ")[0]
+		return Loc.f("%s — shopping", [profile.full_name.split(" ")[0]])
 	if state == State.QUEUEING:
-		return "[E] Talk  (%s, %d in line)" % [profile.full_name.split(" ")[0], queue_index]
-	return "[E] Talk"
+		return Loc.f("[E] Talk  (%s, %d in line)", [profile.full_name.split(" ")[0], queue_index])
+	return Loc.t("[E] Talk")
 
 
 func _physics_process(delta: float) -> void:
@@ -150,7 +150,8 @@ func _physics_process(delta: float) -> void:
 			_time_at_counter += delta
 			_idle_animation(delta)
 			if _time_at_counter > patience_seconds:
-				Signals.notice.emit("%s got tired of waiting." % profile.full_name.split(" ")[0], "warn")
+				Signals.notice.emit(Loc.f("%s got tired of waiting.",
+					[profile.full_name.split(" ")[0]]), "warn")
 				_leave("impatient")
 		State.LEAVING:
 			_follow_path(delta, FLEE_SPEED if outcome == "fled" else WALK_SPEED)
@@ -183,8 +184,8 @@ func _watch_for_getting_stuck(delta: float) -> void:
 	if _time_shopping < SHOPPING_LIMIT:
 		return
 	GameState.note_gave_up_waiting()
-	Signals.notice.emit("%s couldn't get round the shop and left." %
-		profile.full_name.split(" ")[0], "warn")
+	Signals.notice.emit(Loc.f("%s couldn't get round the shop and left.",
+		[profile.full_name.split(" ")[0]]), "warn")
 	_leave("stuck")
 
 
@@ -228,8 +229,9 @@ func _take_from_shelf(item_id: String) -> void:
 			world.refresh_shelves()
 	else:
 		Signals.customer_spoke.emit(profile.full_name,
-			"You're out of %s." % str(GameState.ITEMS[item_id]["name"]).to_lower())
-		Signals.notice.emit("Empty shelf cost you a sale.", "warn")
+			Loc.f("You're out of %s.",
+				[Loc.t(str(GameState.ITEMS[item_id]["name"])).to_lower()]))
+		Signals.notice.emit(Loc.t("Empty shelf cost you a sale."), "warn")
 
 
 ## Walks to their slot in the line and waits there. Once they are at the front
@@ -257,8 +259,8 @@ func _hold_position(delta: float) -> void:
 	_time_queued += delta
 	if _time_queued > patience_seconds * 1.4:
 		GameState.note_gave_up_waiting()
-		Signals.notice.emit("%s put their basket down and walked out." %
-			profile.full_name.split(" ")[0], "warn")
+		Signals.notice.emit(Loc.f("%s put their basket down and walked out.",
+			[profile.full_name.split(" ")[0]]), "warn")
 		_leave("impatient")
 
 
@@ -343,8 +345,8 @@ func ready_to_push(ahead: Customer) -> bool:
 	_push_pressure = 0.0
 	Signals.customer_spoke.emit(profile.full_name, PUSH_LINES[randi() % PUSH_LINES.size()])
 	ahead.on_pushed_past(self)
-	Signals.notice.emit("%s stepped in front of %s." %
-		[profile.full_name.split(" ")[0], ahead.profile.full_name.split(" ")[0]], "warn")
+	Signals.notice.emit(Loc.f("%s stepped in front of %s.",
+		[profile.full_name.split(" ")[0], ahead.profile.full_name.split(" ")[0]]), "warn")
 	Audio.play("click", -20.0)
 	return true
 
@@ -396,8 +398,8 @@ func _arrive() -> void:
 			get_tree().create_timer(1.5).timeout.connect(_ask_for_illicit)
 		else:
 			Signals.customer_spoke.emit(profile.full_name, _empty_handed())
-			Signals.notice.emit("%s found nothing worth buying." %
-				profile.full_name.split(" ")[0], "warn")
+			Signals.notice.emit(Loc.f("%s found nothing worth buying.",
+				[profile.full_name.split(" ")[0]]), "warn")
 			get_tree().create_timer(2.4).timeout.connect(
 				func() -> void: _leave("nothing_to_buy"))
 
@@ -423,7 +425,7 @@ func _reveal_behaviour() -> void:
 				"label": Tells.get_tell(id)["label"],
 				"source": "watching",
 			})
-			Signals.notice.emit(str(Tells.get_tell(id)["label"]), "watch")
+			Signals.notice.emit(Loc.t(str(Tells.get_tell(id)["label"])), "watch")
 
 
 ## Called by the checkout once the till has been rung.
@@ -444,8 +446,8 @@ func on_paid(total: int) -> void:
 			tip += rng.randi_range(3, 9)
 	if tip > 0:
 		GameState.add_money(tip, "tips")
-		Signals.notice.emit("Tip: %d" % tip, "good")
-	Signals.customer_spoke.emit(profile.full_name, "Keep it." if tip > 0 else "Ta.")
+		Signals.notice.emit(Loc.f("Tip: %d", [tip]), "good")
+	Signals.customer_spoke.emit(profile.full_name, Loc.t("Keep it.") if tip > 0 else "Ta.")
 
 	if profile.wants_illicit and not _asked_for_illicit:
 		get_tree().create_timer(1.5).timeout.connect(_ask_for_illicit)
@@ -458,7 +460,7 @@ func _ask_for_illicit() -> void:
 		return
 	_asked_for_illicit = true
 	Signals.customer_spoke.emit(profile.full_name, ProfileGenerator.illicit_line(profile))
-	Signals.notice.emit("They're asking. Decide.", "warn")
+	Signals.notice.emit(Loc.t("They're asking. Decide."), "warn")
 	Tutor.fire("asked")
 
 
@@ -474,10 +476,10 @@ func receive_illicit(units: int) -> void:
 	Audio.play("register", -10.0)
 
 	if profile.kind == CustomerProfile.Kind.UNDERCOVER:
-		Signals.customer_spoke.emit(profile.full_name, "That's everything. Thanks.")
-		Signals.notice.emit("They put it straight in their pocket. They didn't even look at it.", "bad")
+		Signals.customer_spoke.emit(profile.full_name, Loc.t("That's everything. Thanks."))
+		Signals.notice.emit(Loc.t("They put it straight in their pocket. They didn't even look at it."), "bad")
 	else:
-		Signals.customer_spoke.emit(profile.full_name, "You're a lifesaver.")
+		Signals.customer_spoke.emit(profile.full_name, Loc.t("You're a lifesaver."))
 	get_tree().create_timer(2.2).timeout.connect(func() -> void: _leave("sold"))
 
 
@@ -485,9 +487,9 @@ func refuse() -> void:
 	if state != State.AT_COUNTER:
 		return
 	if profile.kind == CustomerProfile.Kind.UNDERCOVER:
-		Signals.customer_spoke.emit(profile.full_name, "Fine. Have a good night.")
+		Signals.customer_spoke.emit(profile.full_name, Loc.t("Fine. Have a good night."))
 	else:
-		Signals.customer_spoke.emit(profile.full_name, "Right. Worth asking.")
+		Signals.customer_spoke.emit(profile.full_name, Loc.t("Right. Worth asking."))
 	get_tree().create_timer(1.6).timeout.connect(func() -> void: _leave("refused"))
 
 
@@ -498,10 +500,10 @@ func dismiss() -> void:
 		return
 	if profile.kind == CustomerProfile.Kind.CIVILIAN:
 		GameState.note_wrong_dismissal()
-		Signals.customer_spoke.emit(profile.full_name, "...You're joking. I come in here every night.")
-		Signals.notice.emit("You threw out a regular. Word gets round.", "bad")
+		Signals.customer_spoke.emit(profile.full_name, Loc.t("...You're joking. I come in here every night."))
+		Signals.notice.emit(Loc.t("You threw out a regular. Word gets round."), "bad")
 	else:
-		Signals.customer_spoke.emit(profile.full_name, "Alright, alright. I'm going.")
+		Signals.customer_spoke.emit(profile.full_name, Loc.t("Alright, alright. I'm going."))
 	_leave("dismissed")
 
 
@@ -511,10 +513,10 @@ func on_interact(_player: Node) -> void:
 	if state == State.DEAD:
 		return
 	if state == State.LEAVING:
-		Signals.notice.emit("They're already going.", "info")
+		Signals.notice.emit(Loc.t("They're already going."), "info")
 		return
 	if state == State.APPROACHING:
-		Signals.notice.emit("They're still shopping.", "info")
+		Signals.notice.emit(Loc.t("They're still shopping."), "info")
 		return
 	wants_conversation.emit(self)
 
@@ -532,13 +534,14 @@ func on_scan(_player: Node) -> void:
 				"tell": id, "label": Tells.get_tell(id)["label"], "source": "scanner"})
 	Signals.scan_completed.emit(findings)
 	if findings.is_empty():
-		Signals.notice.emit("Sweep clean. Nothing on them.", "info")
+		Signals.notice.emit(Loc.t("Sweep clean. Nothing on them."), "info")
 	else:
-		Signals.notice.emit("%d reading%s." % [findings.size(), "" if findings.size() == 1 else "s"], "bad")
+		Signals.notice.emit(Loc.f("%d reading." if findings.size() == 1 else "%d readings.",
+			[findings.size()]), "bad")
 		if profile.kind == CustomerProfile.Kind.UNDERCOVER:
-			Signals.customer_spoke.emit(profile.full_name, "Is that necessary?")
+			Signals.customer_spoke.emit(profile.full_name, Loc.t("Is that necessary?"))
 		else:
-			Signals.customer_spoke.emit(profile.full_name, "What is that thing?")
+			Signals.customer_spoke.emit(profile.full_name, Loc.t("What is that thing?"))
 		profile.patience -= 1
 		if profile.patience <= 0:
 			profile.aborted = true
@@ -563,7 +566,7 @@ func take_damage(amount: float, _source: Object = null) -> void:
 	health -= amount
 	if health > 0.0:
 		if state != State.LEAVING:
-			Signals.customer_spoke.emit(profile.full_name, "—!")
+			Signals.customer_spoke.emit(profile.full_name, Loc.t("—!"))
 			_leave("fled")
 		return
 	_die()
@@ -582,17 +585,17 @@ func _die() -> void:
 	if profile.kind == CustomerProfile.Kind.UNDERCOVER:
 		GameState.cops_identified += 1
 		GameState.add_heat(6.0)
-		Signals.notice.emit("A badge falls out of their coat. You were right.", "good")
+		Signals.notice.emit(Loc.t("A badge falls out of their coat. You were right."), "good")
 	else:
 		GameState.civilians_killed += 1
 		GameState.add_heat(22.0)
 		GameState.evidence_against_you += 1
 		GameState.note_wrong_killing()
-		Signals.notice.emit("No badge. No wire. Nothing. You just shot a customer.", "bad")
+		Signals.notice.emit(Loc.t("No badge. No wire. Nothing. You just shot a customer."), "bad")
 
 	# They stay where they fell. Bagging and getting rid of them is a job you
 	# have to do, with the queue still coming in — see Body.gd.
-	Signals.notice.emit("They're on the floor. Anyone who walks in will see that.", "bad")
+	Signals.notice.emit(Loc.t("They're on the floor. Anyone who walks in will see that."), "bad")
 	var corpse := Body.new()
 	corpse.setup(global_position, profile.kind == CustomerProfile.Kind.CIVILIAN,
 		profile.full_name.split(" ")[0], profile.seed_value)
@@ -614,10 +617,10 @@ func _leave(why: String) -> void:
 	if profile.kind == CustomerProfile.Kind.UNDERCOVER:
 		if profile.sold_illicit:
 			GameState.evidence_against_you += 2
-			GameState.raid_reason = "You sold to an officer."
+			GameState.raid_reason = Loc.t("You sold to an officer.")
 		else:
 			GameState.evidence_against_you += 1
-			GameState.raid_reason = "An officer left with suspicions but no buy."
+			GameState.raid_reason = Loc.t("An officer left with suspicions but no buy.")
 		GameState.add_heat(9.0)
 
 

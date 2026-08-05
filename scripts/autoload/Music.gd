@@ -62,6 +62,11 @@ const SILENT := -60.0
 ## two arrangements briefly playing at once — about half a bar to cross.
 const FADE_DB_PER_SEC := 24.0
 
+## The mixer bus every layer plays on, so the music slider moves all of them
+## together. An identifier, not a word on screen — the slider beside it in the
+## menu happens to be spelled the same and is not the same thing.
+const BUS := "Music"
+
 var _layers: Dictionary = {}     ## name -> {player, target, base, current}
 var _bus := -1
 var _playing := false
@@ -77,7 +82,7 @@ func _ready() -> void:
 	_make_bus()
 	for name: String in BASE:
 		var p := AudioStreamPlayer.new()
-		p.bus = "Music"
+		p.bus = BUS
 		p.stream = _build(name)
 		p.volume_db = SILENT
 		add_child(p)
@@ -88,7 +93,7 @@ func _ready() -> void:
 func _make_bus() -> void:
 	_bus = AudioServer.bus_count
 	AudioServer.add_bus(_bus)
-	AudioServer.set_bus_name(_bus, "Music")
+	AudioServer.set_bus_name(_bus, BUS)
 	AudioServer.set_bus_send(_bus, "Master")
 
 
