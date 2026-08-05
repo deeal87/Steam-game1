@@ -169,3 +169,13 @@ static func _far_end(world: World, street: Node3D, rng: RandomNumberGenerator) -
 	world.interact_zone(street, "manhole_street", exit_pos + Vector3(0, 0.5, 0), Vector3(1.1, 1.0, 1.1))
 	world.anchors["sewer_exit_top"] = exit_pos
 	world.anchors["sewer_exit_bottom"] = Vector3(exit_pos.x, World.SEWER_Y + 0.15, exit_pos.z)
+
+	# And the middle one, out in the open half way along. Same cover, much worse
+	# place to be seen climbing out of.
+	var mid_pos := World.SEWER_MID_EXIT
+	street.add_child(ProcMesh.cylinder(0.52, 0.06, mid_pos + Vector3(0, 0.03, 0),
+		world.mat("dark_steel"), 12))
+	street.add_child(ProcMesh.cylinder(0.44, 0.10, mid_pos + Vector3(0, -0.06, 0),
+		ProcMesh.mat(ProcTex.flat(Color(0.02, 0.02, 0.03))), 12))
+	world.interact_zone(street, "manhole_mid", mid_pos + Vector3(0, 0.5, 0), Vector3(1.1, 1.0, 1.1))
+	world.anchors["sewer_mid_top"] = mid_pos

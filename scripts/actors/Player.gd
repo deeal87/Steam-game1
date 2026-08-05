@@ -295,14 +295,30 @@ func _interact() -> void:
 				world.set_shutter_closed(not closed)
 				Audio.play("beep_low", -12.0)
 				Signals.notice.emit("Shutter down. Nobody's buying anything now." if not closed else "Shutter up.", "info")
-		"manhole", "manhole_street", "ladder_up_stock", "ladder_up_street":
+		"manhole", "manhole_street", "manhole_mid", \
+		"ladder_up_stock", "ladder_up_street", "ladder_up_mid":
 			_travel(id)
+		"sewer_cache":
+			_open_cache(hit)
 		"cash":
 			var value := int(hit.get_meta("value", 5))
 			GameState.add_money(value, "tips")
 			Audio.play("register", -18.0)
 			Signals.notice.emit("Found %d." % value, "good")
 			(hit as Node).queue_free()
+
+
+## Somebody's crate at the end of the spur. There is one, it is worth about a
+## night's rent, and once it is open it stays open for the rest of the run.
+func _open_cache(hit: Node) -> void:
+	var amount := GameState.open_sewer_cache()
+	if amount <= 0:
+		Signals.notice.emit("Empty. You already had this.", "info")
+		return
+	Audio.play("register", -14.0)
+	Signals.notice.emit("Somebody's stash, under a board. %d." % amount, "good")
+	if hit is Node3D:
+		(hit as Node3D).queue_free()
 
 
 ## Ladders move you rather than being climbed. Climbing is a physics problem
@@ -320,12 +336,18 @@ func _travel(which: String) -> void:
 		"manhole_street":
 			destination = world.anchors.get("sewer_exit_bottom", Vector3.ZERO)
 			label = "Down into the dark."
+		"manhole_mid":
+			destination = world.anchors.get("sewer_mid_bottom", Vector3.ZERO)
+			label = "Down into the dark."
 		"ladder_up_stock":
 			destination = world.anchors.get("manhole", Vector3.ZERO) + Vector3(0, 0.2, -0.9)
 			label = "Back up into the stockroom."
 		"ladder_up_street":
 			destination = world.anchors.get("sewer_exit_top", Vector3.ZERO) + Vector3(0, 0.2, -1.0)
 			label = "Out into the alley."
+		"ladder_up_mid":
+			destination = world.anchors.get("sewer_mid_top", Vector3.ZERO) + Vector3(0, 0.2, -1.0)
+			label = "Out onto the pavement, in full view."
 	if destination == Vector3.ZERO:
 		return
 	# Going down from inside the kiosk is the escape route during a raid.

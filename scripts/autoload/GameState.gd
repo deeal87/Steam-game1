@@ -19,6 +19,8 @@ var fled_through_sewer: bool = false
 ## Every trip down the ladder, counted for the whole run. The tunnels get worse
 ## and they never get better.
 var sewer_trips: int = 0
+## The crate at the end of the spur is there once and once only.
+var sewer_cache_taken: bool = false
 ## How the street sees you, 0-100. Being wrong about ordinary people is what
 ## takes it down, and it is slow to come back.
 var reputation: float = 100.0
@@ -90,6 +92,7 @@ func reset_run() -> void:
 	nights_survived = 0
 	fled_through_sewer = false
 	sewer_trips = 0
+	sewer_cache_taken = false
 	reputation = 100.0
 	drug_stock = 6
 	weapons = ["bat"]
@@ -209,6 +212,25 @@ func note_wrong_killing() -> void:
 func note_gave_up_waiting() -> void:
 	customers_gave_up += 1
 	add_reputation(-ABANDON_REPUTATION)
+
+
+## Whatever is in the crate at the end of the spur.
+##
+## Once per run, not once per trip. If it refilled, walking the tunnels would be
+## a job you could do all night instead of running a shop, and every trip you
+## take makes the next one worse — which only works as a cost if the reward does
+## not come back.
+##
+## Worth roughly a night's rent, so the detour is a real alternative to a risky
+## sale rather than pocket change.
+func open_sewer_cache() -> int:
+	if sewer_cache_taken:
+		return 0
+	sewer_cache_taken = true
+	var amount := 90 + randi() % 70
+	add_money(amount, "tips")
+	save_run()
+	return amount
 
 
 ## What tonight's mistakes cost, settled at the end of the shift alongside rent.
@@ -378,6 +400,7 @@ func save_run() -> void:
 	cfg.set_value("run", "nights_survived", nights_survived)
 	cfg.set_value("run", "found_easter_egg", found_easter_egg)
 	cfg.set_value("run", "sewer_trips", sewer_trips)
+	cfg.set_value("run", "sewer_cache_taken", sewer_cache_taken)
 	cfg.set_value("run", "reputation", reputation)
 	cfg.set_value("stock", "drugs", drug_stock)
 	cfg.set_value("stock", "shelf", shelf_stock)
@@ -399,6 +422,7 @@ func load_run() -> bool:
 	nights_survived = cfg.get_value("run", "nights_survived", 0)
 	found_easter_egg = cfg.get_value("run", "found_easter_egg", false)
 	sewer_trips = cfg.get_value("run", "sewer_trips", 0)
+	sewer_cache_taken = cfg.get_value("run", "sewer_cache_taken", false)
 	reputation = cfg.get_value("run", "reputation", 100.0)
 	drug_stock = cfg.get_value("stock", "drugs", 6)
 	shelf_stock = cfg.get_value("stock", "shelf", shelf_stock)

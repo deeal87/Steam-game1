@@ -22,9 +22,9 @@ checkout island with a customer side and a staff side, a **stockroom** behind
 holding every case you have not put out yet, and a **manhole** in its floor.
 
 Outside is about a hundred metres of street you can walk all of. The working
-lamps thin out as you go west until there are none. Underneath it all is a run
-of brick sewer from the stockroom to a ladder that comes up in the dark corner
-at the far end.
+lamps thin out as you go west until there are none. Underneath it all is a
+small network of brick sewer: a main run west from the stockroom, two ladders
+up to the street, and a spur that goes nowhere in particular.
 
 ```
            [hatch]         [shop door]
@@ -42,8 +42,8 @@ at the far end.
             +--------------------+        |
                                           v
      ==========================================  sewer, 55 m west
-                                          |
-                                   ladder up, far end of the street
+              |             |             |
+        far ladder    middle ladder   (spur, dead end)
 ```
 
 Carry the **torch** (`T`). The kiosk is the only lit room in the game, and once
@@ -196,6 +196,39 @@ across it is police. The till display shows `scanned / total` and the running
 price, and the till will not open until those match.
 
 Nothing stops you skipping an item. It just means you handed it over for free.
+
+## The tunnels
+
+Not a corridor with a ladder at each end. A main run of brick heads west from
+the stockroom manhole, and three things hang off it:
+
+```
+   stockroom manhole
+          |
+  ========+=====================+==========+=======  main run, west
+                                |          |
+                          [spur]|          |
+                          crate |          +-- dogleg south
+                                              to the FAR ladder
+                    +-- dogleg south
+                        to the MIDDLE ladder
+```
+
+That gives the trip a decision instead of a walk:
+
+- **The middle ladder** is much shorter, and puts you back on the open pavement
+  within sight of your own front door. Which is the last place you want to be
+  standing on the night you went down there to get away from it.
+- **The far ladder** is a long way past everything living down there, and comes
+  up in the dark corner at the end of the road where nobody is looking.
+- **The spur** goes nowhere. There is a crate at the end of it worth roughly a
+  night's rent, once per run, and from the third trip onward there is something
+  waiting between you and it.
+
+The crate is deliberately once per run rather than once per trip. If it
+refilled, walking the tunnels would be a job you could do instead of running a
+shop — and since every trip makes the next one worse, the cost only works if
+the reward does not come back.
 
 ## What is in the tunnels
 
@@ -534,8 +567,6 @@ the raid, the economy and the detective system all live and tuned.
 
 Known gaps, in rough priority order:
 
-- **The sewer has one route.** It is a corridor between two ladders rather than
-  a network.
 - **The raid still has no flanking or squad coordination.** It has pacing and
   line-of-sight now, but they do not work as a team.
 - **The body-bag mechanic is vestigial.** Bags auto-consume to reduce heat

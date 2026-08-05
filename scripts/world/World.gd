@@ -71,6 +71,14 @@ const MANHOLE := Vector3(-4.60, 0.0, 7.90)
 const SEWER_Y := -4.50
 const SEWER_HALF_W := 1.30
 const SEWER_EXIT := Vector3(-55.0, 0.0, 1.60)
+## A second way up, roughly half way along. Shorter, but it puts you back on the
+## pavement within sight of your own front door — which is the last place you
+## want to be standing on the night you went down there to get away from it.
+const SEWER_MID_EXIT := Vector3(-28.0, 0.0, 1.60)
+## A spur that goes nowhere, off the north side of the main run. There is
+## something at the end of it and something else usually standing in the way.
+const SEWER_SPUR_X := -40.0
+const SEWER_SPUR_END_Z := 14.5
 
 # --- Street ------------------------------------------------------------------
 const STREET_WEST := -72.0

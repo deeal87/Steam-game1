@@ -68,19 +68,31 @@ func _despawn() -> void:
 	_dwellers.clear()
 
 
-## Spawns along the main run, never right on top of the player.
+## Spread across the network, never right on top of the player.
+##
+## The spur gets one as soon as there is more than one to give, because the only
+## reason to walk down a dead end is the crate at the end of it and the crate
+## should not be free. Everything else is spaced along the main run, which is
+## the stretch you have to cross whichever ladder you are heading for.
 func _spawn(count: int, tier: int) -> void:
 	if count <= 0 or _world == null or _player == null:
 		return
+	var y: float = World.SEWER_Y + 0.2
+	var spots: Array[Vector3] = []
+
+	if count > 1:
+		spots.append(Vector3(World.SEWER_SPUR_X,
+			y, World.SEWER_SPUR_END_Z - randf_range(2.0, 4.0)))
+
 	var west: float = World.SEWER_EXIT.x + SPAWN_MARGIN
 	var east: float = World.MANHOLE.x - SPAWN_MARGIN
-	var z: float = World.MANHOLE.z
-	var y: float = World.SEWER_Y + 0.2
+	var along := count - spots.size()
+	for i in along:
+		var t := (float(i) + 0.5) / float(maxi(1, along))
+		spots.append(Vector3(lerpf(east, west, t), y,
+			World.MANHOLE.z + randf_range(-0.5, 0.5)))
 
-	for i in count:
-		var t := (float(i) + 0.5) / float(count)
-		var x := lerpf(east, west, t)
-		var pos := Vector3(x, y, z + randf_range(-0.5, 0.5))
+	for pos in spots:
 		# Never put one in the player's lap the moment they land.
 		if pos.distance_to(_player.global_position) < MIN_SPAWN_DISTANCE:
 			pos.x -= MIN_SPAWN_DISTANCE

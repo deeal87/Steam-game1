@@ -229,11 +229,20 @@ static func generate(seed_value: int, night: int, undercover_chance: float) -> C
 	#
 	# A separate stream cannot correlate with `kind` at all, which is a better
 	# guarantee than a difference that merely measures small today.
+	# It also has to be *stable*. Tell assignment consumes a different number of
+	# draws depending on which tells were picked, and which tells were picked
+	# comes off the global shuffle — so anything read from `rng` after that point
+	# moves around between runs for reasons that have nothing to do with it. A
+	# hashed stream is fixed for a given person no matter what else happened.
 	var visible := RandomNumberGenerator.new()
 	visible.seed = hash("visible-%d" % seed_value)
 	p.height_scale = visible.randf_range(0.90, 1.10)
 	p.bulk_scale = visible.randf_range(0.88, 1.18)
 	p.pushiness = visible.randf()
+	# Roughly one innocent person in six will not explain themselves, whatever
+	# you ask. They are the reason you can never convict on a single answer — so
+	# how rattled somebody is must not track whether they are police either.
+	p.nerves = visible.randf_range(0.10, 0.22)
 
 	# Which standing questions this person invites. On the same stream for the
 	# same reason: the menu is the first thing the player looks at, so if the
@@ -285,9 +294,6 @@ static func generate(seed_value: int, night: int, undercover_chance: float) -> C
 		p.cover_strength = clampf(0.16 + 0.038 * float(night - 1), 0.0, 0.52)
 	else:
 		p.cover_strength = 0.0
-	# Roughly one innocent person in six will not explain themselves, whatever
-	# you ask. They are the reason you can never convict on a single answer.
-	p.nerves = rng.randf_range(0.10, 0.22)
 
 	return p
 

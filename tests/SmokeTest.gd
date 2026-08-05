@@ -417,17 +417,50 @@ func test_sewer_is_traversable() -> void:
 	_check(blocked == 0, "the tunnel is clear along its whole length (%d of %d probes blocked)"
 		% [blocked, probes])
 
-	# And the dogleg up to the exit shaft.
-	var leg_blocked := 0
-	var z := World.MANHOLE.z
-	while z > World.SEWER_EXIT.z:
-		if not _point_is_clear(Vector3(World.SEWER_EXIT.x, bottom.y + 0.9, z), 0.28):
-			leg_blocked += 1
-		z -= 1.0
-	_check(leg_blocked == 0, "the dogleg to the exit is clear (%d blocked)" % leg_blocked)
+	# Every branch, end to end. A junction that looks fine in the code and is
+	# bricked up in the world is the failure mode this whole test exists for —
+	# the tunnels were a sealed box once already.
+	var mid_bottom: Vector3 = _world.anchors["sewer_mid_bottom"]
+	_check(_point_is_clear(mid_bottom + Vector3(0, 0.9, 0), 0.30),
+		"the middle ladder does not drop you inside a wall")
+
+	for branch: Array in [
+		["the dogleg to the far exit", World.SEWER_EXIT.x, World.SEWER_EXIT.z, -1.0],
+		["the dogleg to the middle ladder", World.SEWER_MID_EXIT.x, World.SEWER_MID_EXIT.z, -1.0],
+		["the spur off the north side", World.SEWER_SPUR_X, World.SEWER_SPUR_END_Z, 1.0],
+	]:
+		var at_x: float = branch[1]
+		var to_z: float = branch[2]
+		var step: float = branch[3]
+		var leg_blocked := 0
+		var probed := 0
+		var z: float = World.MANHOLE.z
+		while (z > to_z) if step < 0.0 else (z < to_z):
+			probed += 1
+			if not _point_is_clear(Vector3(at_x, bottom.y + 0.9, z), 0.28):
+				leg_blocked += 1
+			z += step
+		_check(leg_blocked == 0, "%s is clear (%d of %d blocked)"
+			% [str(branch[0]), leg_blocked, probed])
+
+	# The crate has to be reachable, or the reward for walking a dead end is a
+	# wall with a light on it.
+	var cache: Vector3 = _world.anchors["sewer_cache"]
+	_check(_point_is_clear(cache + Vector3(0, 0.9, -1.6), 0.30),
+		"there is somewhere to stand at the crate")
 
 	# You must also be able to stand up in it.
 	_check(_point_is_clear(bottom + Vector3(0, 1.5, 0), 0.25), "there is headroom down there")
+
+	# Each junction has to be open in both directions, not just along whichever
+	# axis the probe happened to walk.
+	var junctions: Array = _world.anchors.get("sewer_junctions", [])
+	var sealed := 0
+	for j: Vector3 in junctions:
+		if not _point_is_clear(j + Vector3(0, 0.9, 0), 0.30):
+			sealed += 1
+	_check(junctions.size() == 3, "all three junctions are registered (%d)" % junctions.size())
+	_check(sealed == 0, "and every one of them is open (%d bricked up)" % sealed)
 
 
 func test_identity_and_egg() -> void:
@@ -989,6 +1022,13 @@ func test_pushing_in() -> void:
 	# somebody is, how they behave in a queue — so any of them drifting with
 	# `kind` would be a free answer. `cover_strength` and `patience_max` are
 	# excluded on purpose: those *are* meant to differ, and neither is visible.
+	#
+	# Two standard errors would normally be a flaky threshold to hold four
+	# measurements to. It is not, here, because every one of these comes off a
+	# hashed per-person stream: the same seeds give the same numbers on every
+	# run, so this is a fixed measurement rather than a sample. A trait drawn
+	# from the main stream would move around between runs and eventually trip
+	# this — which is exactly how `nerves` was caught.
 	var stats := {}
 	for field: String in ["height_scale", "bulk_scale", "pushiness", "nerves"]:
 		stats[field] = {"cop": 0.0, "civ": 0.0, "cop_sq": 0.0, "civ_sq": 0.0}
@@ -1080,6 +1120,53 @@ func test_sewer_threat() -> void:
 	_check(int(ceil(tough.max_health / float(bat["damage"]))) >= 3,
 		"the bat stops being enough")
 	tough.free()
+
+	# The dead end has to be guarded, or the crate is a free hundred for anyone
+	# who knows where it is.
+	GameState.reset_run()
+	var director := SewerDirector.new()
+	director.setup(_world, _player)
+	add_child(director)
+	_player.global_position = _world.anchors["sewer_shaft_bottom"]
+
+	GameState.sewer_trips = 3
+	director._spawn(GameState.sewer_dweller_count(), GameState.sewer_tier())
+	var on_spur := 0
+	for d2 in director._dwellers:
+		if absf(d2.global_position.x - World.SEWER_SPUR_X) < 2.0 \
+				and d2.global_position.z > World.MANHOLE.z + 2.0:
+			on_spur += 1
+	print("   trip 3: %d of %d are waiting down the spur" % [on_spur, director._dwellers.size()])
+	_check(director._dwellers.size() > 1, "a later trip sends more than one")
+	_check(on_spur >= 1, "and one of them is between you and the crate")
+	director._despawn()
+
+	# One dweller and there is nothing on the spur — the whole tunnel is the
+	# threat on an early trip, and the crate is the reward for going early.
+	GameState.sewer_trips = 1
+	director._spawn(GameState.sewer_dweller_count(), GameState.sewer_tier())
+	var early_spur := 0
+	for d3 in director._dwellers:
+		if absf(d3.global_position.x - World.SEWER_SPUR_X) < 2.0 \
+				and d3.global_position.z > World.MANHOLE.z + 2.0:
+			early_spur += 1
+	_check(early_spur == 0, "the first trip leaves the spur clear")
+	director._despawn()
+	director.queue_free()
+
+	# The crate itself: worth going for, and there exactly once.
+	GameState.reset_run()
+	var before := GameState.money
+	var first := GameState.open_sewer_cache()
+	print("   the crate paid %d (a night 1 rent is %d)" % [first, GameState.rent_due()])
+	_check(first > 0, "the crate has something in it")
+	_check(GameState.money == before + first, "and it reaches your pocket")
+	_check(first >= int(float(GameState.rent_due()) * 0.6),
+		"worth enough to be an alternative to a risky sale")
+	_check(GameState.open_sewer_cache() == 0, "and it is empty the second time")
+	_check(GameState.money == before + first, "so the tunnels are not a money printer")
+	GameState.reset_run()
+	_check(not GameState.sewer_cache_taken, "a fresh run restocks it")
 
 
 func test_illicit_and_departure() -> void:

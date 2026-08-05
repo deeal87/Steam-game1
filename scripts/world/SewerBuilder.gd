@@ -2,9 +2,18 @@ class_name SewerBuilder
 extends RefCounted
 ## The tunnels under the street.
 ##
-## One run of brick from the manhole in the stockroom, west, to a ladder that
-## comes up in the dark corner at the end of the road. Two things use it: it is
-## the quiet way to the far end, and it is the way out when the door goes.
+## Not a corridor — a small network, and the shape of it is the point.
+##
+## A main run of brick from the manhole in the stockroom heading west, with
+## three things hanging off it: a dogleg at the far end to the ladder in the
+## dark corner of the road, a second dogleg half way along to a manhole on the
+## open pavement, and a spur off the north side that goes nowhere at all.
+##
+## That gives the trip a decision instead of a walk. The middle ladder is much
+## shorter but it puts you back on the street within sight of your own front
+## door. The far ladder is a long way past everything living down there, and
+## comes up where nobody is looking. The spur is a detour with something worth
+## having at the end of it, which you pay for in the time you spend down there.
 ##
 ## Ladders are handled as an interaction that moves you rather than as climbable
 ## geometry. Climbing is a whole physics problem for no gameplay, and a hatch
@@ -34,36 +43,82 @@ static func build(world: World) -> void:
 	var stock := Vector2(World.MANHOLE.x, World.MANHOLE.z)
 	var street := Vector2(World.SEWER_EXIT.x, World.SEWER_EXIT.z)
 
-	# Main run: west along the stockroom's Z, then a dogleg south to the exit.
+	var mid := Vector2(World.SEWER_MID_EXIT.x, World.SEWER_MID_EXIT.z)
+
+	# Main run: west along the stockroom's Z, with everything else hanging off it.
 	#
-	# The corner is the fiddly part. The main run has to lose a slice of its
-	# south wall where the dogleg joins, and neither piece may cap the end that
-	# faces the other, or the junction is bricked up.
+	# The junctions are the fiddly part. Wherever a branch joins, the main run
+	# has to lose a slice of the wall on that side, and neither piece may cap the
+	# end that faces the other, or the junction is bricked up. South side for the
+	# two doglegs down to the street, north side for the spur.
 	var main_a := Vector3(street.x - World.SEWER_HALF_W, y, stock.y)
 	var main_b := Vector3(stock.x + OVERRUN, y, stock.y)
-	_tunnel(world, sewer, main_a, main_b, [stock.x], {-1: [street.x]}, false, true)
+	_tunnel(world, sewer, main_a, main_b, [stock.x],
+		{-1: [street.x, mid.x], 1: [World.SEWER_SPUR_X]}, false, true)
 
-	var leg_a := Vector3(street.x, y, street.y - OVERRUN)
-	var leg_b := Vector3(street.x, y, stock.y)
-	_tunnel(world, sewer, leg_a, leg_b, [street.y], {}, true, false)
+	# Far dogleg, to the ladder in the dark corner.
+	_tunnel(world, sewer, Vector3(street.x, y, street.y - OVERRUN),
+		Vector3(street.x, y, stock.y), [street.y], {}, true, false)
+
+	# Middle dogleg, to the manhole on the open pavement.
+	_tunnel(world, sewer, Vector3(mid.x, y, mid.y - OVERRUN),
+		Vector3(mid.x, y, stock.y), [mid.y], {}, true, false)
+
+	# The spur. No shaft at the end of it, which is the whole idea.
+	_tunnel(world, sewer, Vector3(World.SEWER_SPUR_X, y, stock.y),
+		Vector3(World.SEWER_SPUR_X, y, World.SEWER_SPUR_END_Z), [], {}, false, true)
 
 	# Shafts sit in the holes left in the roof and go up to ground level.
 	_shaft(world, sewer, Vector3(stock.x, 0, stock.y), roof_y)
 	_shaft(world, sewer, Vector3(street.x, 0, street.y), roof_y)
+	_shaft(world, sewer, Vector3(mid.x, 0, mid.y), roof_y)
 
 	# Where the ladders put you. Offset clear of the shaft walls so nobody ever
 	# lands inside a brick.
-	var stock_bottom := Vector3(stock.x - SHAFT_HALF - 0.7, y + 0.2, stock.y)
-	var street_bottom := Vector3(street.x, y + 0.2, street.y - SHAFT_HALF - 0.7)
-	world.anchors["sewer_shaft_bottom"] = stock_bottom
-	world.anchors["sewer_exit_bottom"] = street_bottom
+	world.anchors["sewer_shaft_bottom"] = Vector3(stock.x - SHAFT_HALF - 0.7, y + 0.2, stock.y)
+	world.anchors["sewer_exit_bottom"] = Vector3(street.x, y + 0.2, street.y - SHAFT_HALF - 0.7)
+	world.anchors["sewer_mid_bottom"] = Vector3(mid.x, y + 0.2, mid.y - SHAFT_HALF - 0.7)
 
 	world.interact_zone(sewer, "ladder_up_stock",
 		Vector3(stock.x, y + 1.0, stock.y), Vector3(1.6, 2.0, 1.6))
 	world.interact_zone(sewer, "ladder_up_street",
 		Vector3(street.x, y + 1.0, street.y), Vector3(1.6, 2.0, 1.6))
+	world.interact_zone(sewer, "ladder_up_mid",
+		Vector3(mid.x, y + 1.0, mid.y), Vector3(1.6, 2.0, 1.6))
+
+	_dead_end(world, sewer, y)
 
 	world.anchors["sewer_y"] = y
+	world.anchors["sewer_junctions"] = [
+		Vector3(street.x, y + 0.2, stock.y),
+		Vector3(mid.x, y + 0.2, stock.y),
+		Vector3(World.SEWER_SPUR_X, y + 0.2, stock.y),
+	]
+
+
+## The end of the spur: a bricked-up chamber with somebody's cache in it.
+##
+## Left as an interact zone rather than a pickup so the amount can be decided
+## when it is opened — see GameState.open_sewer_cache. It is once per run, which
+## is what stops the tunnels being a money printer for anyone willing to walk
+## back and forth all night.
+static func _dead_end(world: World, parent: Node3D, y: float) -> void:
+	var at := Vector3(World.SEWER_SPUR_X, y, World.SEWER_SPUR_END_Z - 1.1)
+
+	parent.add_child(ProcMesh.solid_box(Vector3(0.9, 0.7, 0.55),
+		at + Vector3(0.28, 0.35, 0), world.mat("cardboard"), "CacheCrate"))
+	parent.add_child(ProcMesh.box(Vector3(0.5, 0.34, 0.4),
+		at + Vector3(-0.42, 0.17, 0.1), world.mat("cardboard"), "CacheBox"))
+
+	var glow := OmniLight3D.new()
+	glow.position = at + Vector3(0, 1.1, 0)
+	glow.light_color = Color(0.85, 0.72, 0.42)
+	glow.light_energy = 1.6
+	glow.omni_range = 5.0
+	parent.add_child(glow)
+
+	world.interact_zone(parent, "sewer_cache", at + Vector3(0, 0.6, 0), Vector3(1.6, 1.4, 1.4))
+	world.anchors["sewer_cache"] = at
 
 
 ## Decorative brick shaft between the tunnel roof and the street. The player is
