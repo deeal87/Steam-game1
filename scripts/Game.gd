@@ -145,6 +145,8 @@ func _run_self_test(path: String) -> void:
 	# The translation table is a loose file rather than an imported resource, so
 	# whether it survived the export is a real question and not one a rendered
 	# frame answers. Reading it back out of the packed build is the only proof.
+	print("[selftest] build %s" % ProjectSettings.get_setting(
+		"application/config/version", "unversioned"))
 	print("[selftest] language %s · %d in the table · offered: %s" % [
 		Loc.locale(), Loc.template_keys().size(), ", ".join(Loc.locales())])
 	get_tree().quit(0)

@@ -9,6 +9,10 @@ config_version=5
 
 config/name="Kiosk At Midnight"
 config/description="A lonely kiosk. A dark street. Some customers are not customers."
+; Reported in the log header and by --selftest. The first question on every bug
+; report is which build the player is on, and Godot's own version does not
+; answer it.
+config/version="0.9.0"
 run/main_scene="res://scenes/Boot.tscn"
 config/features=PackedStringArray("4.3", "GL Compatibility")
 boot_splash/show_image=false

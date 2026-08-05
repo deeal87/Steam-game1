@@ -2317,6 +2317,21 @@ func test_panels() -> void:
 	Signals.heat_changed.emit(40.0)
 	_check(true, "HUD absorbs every signal it listens for")
 
+	# The meters are built once and moved in place. They used to be thrown away
+	# and rebuilt on every change, which cost two node allocations a frame for
+	# the health bar; if that ever comes back, the bar the test is holding stops
+	# being the bar on screen and this notices.
+	var bar := hud._health_bar
+	var fill := bar.get_child(0) as ColorRect
+	var full := fill.size.x
+	_player.health = _player.max_health * 0.25
+	hud._refresh_player_bits()
+	_check(hud._health_bar == bar, "the health meter is the same node after a change")
+	_check(fill.size.x < full * 0.5, "and its fill actually moved (%.0f -> %.0f)" % [full, fill.size.x])
+	_player.health = _player.max_health
+	hud._refresh_player_bits()
+	_check(is_equal_approx(fill.size.x, full), "and comes back when health does")
+
 	c.queue_free()
 
 

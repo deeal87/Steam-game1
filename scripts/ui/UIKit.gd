@@ -164,7 +164,13 @@ static func field(key: String, value: String, value_colour: Color = WHITE) -> HB
 	return row
 
 
-## Horizontal bar used for heat and health.
+## Horizontal bar used for heat, health and your name on the street.
+##
+## Build it once with `meter()` and move it with `set_meter()`. It used to be
+## rebuilt on every change, which was fine for the two that change on a signal
+## and very much not fine for health, which the HUD refreshes every frame — that
+## was two ColorRects allocated and a two-node subtree queued for freeing, sixty
+## times a second, to redraw a bar that moves twice a night.
 static func meter(value: float, maximum: float, width: int, colour: Color) -> Control:
 	var back := ColorRect.new()
 	back.color = Color(0.08, 0.14, 0.09, 0.85)
@@ -179,3 +185,23 @@ static func meter(value: float, maximum: float, width: int, colour: Color) -> Co
 	fill.custom_minimum_size = Vector2(filled, 6)
 	back.add_child(fill)
 	return back
+
+
+## Moves an existing meter. Cheap enough to call every frame: it writes a size
+## and a colour on a node that is already in the tree and touches nothing else.
+static func set_meter(bar: Control, value: float, maximum: float, colour: Color) -> void:
+	if bar == null or not is_instance_valid(bar) or bar.get_child_count() == 0:
+		return
+	var fill := bar.get_child(0) as ColorRect
+	if fill == null:
+		return
+	var width: float = bar.custom_minimum_size.x
+	var filled: float = width * clampf(value / maxf(maximum, 0.001), 0.0, 1.0)
+	if not is_equal_approx(fill.size.x, filled):
+		# Minimum first. A Control clamps `size` up to whatever its minimum
+		# currently is, so writing the size before the minimum leaves a bar that
+		# can grow and never shrink.
+		fill.custom_minimum_size = Vector2(filled, 6)
+		fill.size = Vector2(filled, 6)
+	if fill.color != colour:
+		fill.color = colour

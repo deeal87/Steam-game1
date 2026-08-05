@@ -12,11 +12,8 @@ var _money_label: Label
 var _night_label: Label
 var _quota_label: Label
 var _heat_bar: Control
-var _heat_box: HBoxContainer
 var _health_bar: Control
-var _health_box: HBoxContainer
 var _rep_bar: Control
-var _rep_box: HBoxContainer
 var _prompt: Label
 var _notice_col: VBoxContainer
 var _subtitle: Label
@@ -74,21 +71,21 @@ func _build() -> void:
 	tr.add_theme_constant_override("separation", 4)
 	root.add_child(tr)
 
-	_heat_box = HBoxContainer.new()
+	var _heat_box := HBoxContainer.new()
 	_heat_box.add_theme_constant_override("separation", 6)
 	_heat_box.add_child(UIKit.label("HEAT", UIKit.FONT_S, UIKit.GREEN_DIM))
 	_heat_bar = UIKit.meter(0, 100, METER_W, UIKit.AMBER)
 	_heat_box.add_child(_heat_bar)
 	tr.add_child(_heat_box)
 
-	_health_box = HBoxContainer.new()
+	var _health_box := HBoxContainer.new()
 	_health_box.add_theme_constant_override("separation", 6)
 	_health_box.add_child(UIKit.label("BODY", UIKit.FONT_S, UIKit.GREEN_DIM))
 	_health_bar = UIKit.meter(100, 100, METER_W, UIKit.RED)
 	_health_box.add_child(_health_bar)
 	tr.add_child(_health_box)
 
-	_rep_box = HBoxContainer.new()
+	var _rep_box := HBoxContainer.new()
 	_rep_box.add_theme_constant_override("separation", 6)
 	_rep_box.add_child(UIKit.label("NAME", UIKit.FONT_S, UIKit.GREEN_DIM))
 	_rep_bar = UIKit.meter(100, 100, METER_W, UIKit.GREEN)
@@ -165,7 +162,7 @@ func _process(delta: float) -> void:
 
 
 func _refresh_player_bits() -> void:
-	_replace_meter(_health_box, _health_bar, _player.health, _player.max_health, UIKit.RED)
+	UIKit.set_meter(_health_bar, _player.health, _player.max_health, UIKit.RED)
 	var bits: Array[String] = []
 	if _player.holding_scanner:
 		bits.append(Loc.t("scanner"))
@@ -177,7 +174,12 @@ func _refresh_player_bits() -> void:
 		var w: Dictionary = GameState.WEAPONS[_player.equipped]
 		bits.append(Loc.f("%s %s", [Loc.t(str(w["name"])).to_lower(),
 			"" if bool(w["melee"]) else "(%d)" % GameState.ammo_for(_player.equipped)]))
-	_hands.text = " · ".join(bits)
+	# Assigning Label.text reshapes the line in the text server whether or not
+	# it changed, and what is in your hands changes a few times a night rather
+	# than sixty times a second.
+	var hands := " · ".join(bits)
+	if hands != _hands.text:
+		_hands.text = hands
 
 
 func _refresh_stats() -> void:
@@ -187,27 +189,9 @@ func _refresh_stats() -> void:
 	_quota_label.text = Loc.f("rent %d   ·   tonight %d", [GameState.rent_due(), earned])
 	_quota_label.add_theme_color_override("font_color",
 		UIKit.GREEN if earned >= GameState.rent_due() else UIKit.GREEN_DIM)
-	_replace_meter(_heat_box, _heat_bar, GameState.heat, 100.0, UIKit.AMBER)
-	_replace_meter(_rep_box, _rep_bar, GameState.reputation, 100.0,
+	UIKit.set_meter(_heat_bar, GameState.heat, 100.0, UIKit.AMBER)
+	UIKit.set_meter(_rep_bar, GameState.reputation, 100.0,
 		UIKit.GREEN if GameState.reputation > 60.0 else UIKit.RED)
-
-
-## Meters are plain ColorRects, so changing one means rebuilding it.
-func _replace_meter(box: HBoxContainer, old: Control, value: float, maximum: float, colour: Color) -> void:
-	if old == null or not is_instance_valid(old):
-		return
-	var idx := old.get_index()
-	var fresh := UIKit.meter(value, maximum, METER_W, colour)
-	box.remove_child(old)
-	old.queue_free()
-	box.add_child(fresh)
-	box.move_child(fresh, idx)
-	if box == _heat_box:
-		_heat_bar = fresh
-	elif box == _rep_box:
-		_rep_bar = fresh
-	else:
-		_health_bar = fresh
 
 
 ## Scanned count and running total, exactly like the display a customer can

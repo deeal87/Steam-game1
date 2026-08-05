@@ -717,8 +717,16 @@ It also reports a **frame-time baseline** per night — mean, median, p99, worst
 and the live object count — so that optimising has something to aim at. Headless,
 so it measures CPU and script cost with nothing being drawn: the right tool for
 finding a script-side hotspot and the wrong one for judging fill rate. The
-current shape is a healthy ~7ms mean against occasional 40-75ms spikes, which is
-where an optimisation pass should start looking.
+current shape is a healthy ~6.9ms mean with a ~8ms p99 and occasional 20-30ms
+spikes at night boundaries, where the world is being rebuilt.
+
+It is also how an optimisation gets checked rather than asserted. The HUD used
+to throw its health meter away and build a new one every frame — two `ColorRect`
+allocations and a two-node subtree queued for freeing, sixty times a second, to
+redraw a bar that moves twice a night. Meters are now built once and moved in
+place, and the p99 came down from 9.9ms to 8.0ms with the worst case down from
+26ms to 21ms. The mean did not move, because at this scale the mean is the
+harness's own pacing floor; the tail is the part that was real.
 
 It earned its keep immediately. Four bugs, none of which any unit test in this
 repository could have found:
@@ -828,7 +836,16 @@ real title screen, plays a few seconds, writes a frame to disk and exits 0:
 ./build/linux/KioskAtMidnight.x86_64 --selftest=/tmp/shot.png
 # [selftest] wrote /tmp/shot.png (1280x720)
 # [selftest] night 1 · money 85 · in shop 4 · in line 1 · at the till: yes
+# [selftest] score section 1 · playing: bed, pulse
+# [selftest] build 0.9.0
+# [selftest] language en · 798 in the table · offered: en
 ```
+
+The last two lines are there because a rendered frame cannot vouch for
+everything. The score reports which section the arrangement reached and what is
+audible; the translation table is a loose file rather than an imported resource,
+so reading it back out of the packed build is the only proof it survived the
+export.
 
 This exists because "it didn't crash" proves very little, and a headless test
 cannot tell you the exported build renders at all. It is how the table above

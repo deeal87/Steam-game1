@@ -55,7 +55,9 @@ func _rotate() -> void:
 ## down to one of these being different from the reporter's.
 func _header() -> void:
 	var v := Engine.get_version_info()
-	info("Kiosk At Midnight — %s" % Time.get_datetime_string_from_system(true, true))
+	info("Kiosk At Midnight %s — %s" % [
+		ProjectSettings.get_setting("application/config/version", "unversioned"),
+		Time.get_datetime_string_from_system(true, true)])
 	info("godot %s.%s.%s %s · %s %s" % [v["major"], v["minor"], v["patch"], v["status"],
 		OS.get_name(), OS.get_distribution_name()])
 	info("renderer: %s · display: %s" % [
