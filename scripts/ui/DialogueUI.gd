@@ -25,6 +25,10 @@ var _last_answer: String = ""
 var _last_note: String = ""
 var _last_tone: String = ""
 var _question_page: int = 0
+## Which row the gamepad cursor is on. Ignored entirely on a keyboard, where the
+## number beside each row is faster than any cursor.
+var _cursor: int = 0
+var _pad_active: bool = false
 
 
 func _ready() -> void:
@@ -38,6 +42,10 @@ func show_for(customer: Customer, player: Player) -> void:
 	_last_answer = ""
 	_last_note = ""
 	_question_page = 0
+	_cursor = 0
+	# The cursor only appears once somebody actually uses a pad, so a keyboard
+	# player never sees a selection they did not ask for.
+	_pad_active = not Input.get_connected_joypads().is_empty()
 	open = true
 	visible = true
 	_rebuild()
@@ -57,6 +65,23 @@ func _unhandled_input(event: InputEvent) -> void:
 		close()
 		get_viewport().set_input_as_handled()
 		return
+	# Gamepad: a cursor stepped with the d-pad and taken with the south button.
+	if event.is_action_pressed("choice_next") or event.is_action_pressed("choice_prev"):
+		if _options.is_empty():
+			return
+		_pad_active = true
+		var step := 1 if event.is_action_pressed("choice_next") else -1
+		_cursor = wrapi(_cursor + step, 0, _options.size())
+		Audio.play("click", -26.0)
+		_rebuild()
+		get_viewport().set_input_as_handled()
+		return
+	if _pad_active and event.is_action_pressed("choice_take"):
+		if _cursor >= 0 and _cursor < _options.size():
+			_choose(_options[_cursor])
+			get_viewport().set_input_as_handled()
+		return
+
 	var pick := InputSetup.choice_pressed()
 	if pick > 0 and pick <= _options.size():
 		_choose(_options[pick - 1])
@@ -67,6 +92,10 @@ func _rebuild() -> void:
 	for child in get_children():
 		child.queue_free()
 	_options.clear()
+	# Asking a question removes it from the menu, so the row under the cursor
+	# moves. Clamped after the rebuild below; clamped here too so the first pass
+	# never indexes past the end.
+	_cursor = maxi(0, _cursor)
 
 	if _customer == null or _customer.profile == null:
 		close()
@@ -155,8 +184,16 @@ func _rebuild() -> void:
 			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			_body.add_child(l)
 
+	# Asking a question takes it off the menu, so the list shrinks under the
+	# cursor. Clamped here, after the rows exist, so the next press lands on a
+	# row that is really there rather than off the end of the list.
+	_cursor = clampi(_cursor, 0, maxi(0, _options.size() - 1))
+
 	_body.add_child(UIKit.spacer(6))
-	_body.add_child(UIKit.label("[1-9] choose   ·   [ESC] step back", UIKit.FONT_S, UIKit.GREEN_DIM))
+	_body.add_child(UIKit.label(
+		"[D-pad] move   ·   [A] choose   ·   [B] step back" if _pad_active
+			else "[1-9] choose   ·   [ESC] step back",
+		UIKit.FONT_S, UIKit.GREEN_DIM))
 
 
 func _read_colour(p: CustomerProfile) -> Color:
@@ -182,7 +219,8 @@ func _action_count() -> int:
 
 func _add_option(data: Dictionary, text: String, enabled: bool, note: String = "") -> void:
 	_options.append({"data": data, "enabled": enabled})
-	_body.add_child(UIKit.option_row(_options.size(), text, enabled, note))
+	_body.add_child(UIKit.option_row(_options.size(), text, enabled, note,
+		_pad_active and _options.size() - 1 == _cursor))
 
 
 func _choose(option: Dictionary) -> void:

@@ -458,6 +458,35 @@ What has to happen outside the code, when there is an app ID:
    `~/Library/Application Support/Godot/app_userdata/Kiosk At Midnight` on
    macOS.
 
+## Controller
+
+Fully playable on a gamepad, which matters more than it sounds: this is a
+seated, slow, reading-heavy game in one small room, which is exactly what a
+handheld is for. Without a pad it could not be played on a Steam Deck at all.
+
+| | |
+|---|---|
+| Left stick / right stick | Walk / look |
+| A · B | Use, scan, talk · Back |
+| X · Y | Refill shelf · Torch |
+| Triggers | Fire · Aim |
+| Bumpers | Run · Sweep with the scanner |
+| D-pad ↑↓ | Change hands · Reload |
+| Back · Start | Notepad · Pause |
+
+Right-stick look is squared rather than linear, so small pushes stay small —
+this game asks you to settle on somebody's face and read it, and a linear stick
+makes that a fight.
+
+Dialogue and the supplier are numbered lists, and a pad has no number keys, so
+it gets a cursor instead: the d-pad steps it, `A` takes the highlighted row. The
+cursor only appears once a pad is actually connected — a keyboard player never
+sees a selection they did not ask for.
+
+The pad is bound **alongside** the keyboard rather than instead of it, so you
+can put the controller down mid-shift and carry on. Rebinding a key leaves the
+controller alone.
+
 ## Settings
 
 `Esc` opens a pause menu that actually freezes the game, on three pages.

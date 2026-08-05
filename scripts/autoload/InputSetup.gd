@@ -28,6 +28,58 @@ const MOUSE_BINDINGS := {
 	"aim": MOUSE_BUTTON_RIGHT,
 }
 
+## Gamepad, laid out the way a first-person game on a pad is expected to be.
+##
+## Not an afterthought: this game is a strong fit for a handheld — it is a
+## seated, slow, reading-heavy game in a small room — and without a pad it
+## simply cannot be played on a Steam Deck at all. The face buttons follow the
+## platform convention (south confirms, east cancels) so nobody has to learn
+## them, and the two triggers do what triggers do.
+const PAD_BINDINGS := {
+	"interact": [JOY_BUTTON_A],
+	"cancel": [JOY_BUTTON_B, JOY_BUTTON_START],
+	"restock": [JOY_BUTTON_X],
+	"torch": [JOY_BUTTON_Y],
+	"notebook": [JOY_BUTTON_BACK],
+	"crouch": [JOY_BUTTON_LEFT_STICK],
+	"sprint": [JOY_BUTTON_LEFT_SHOULDER],
+	"scanner": [JOY_BUTTON_RIGHT_SHOULDER],
+	"holster": [JOY_BUTTON_DPAD_UP],
+	"reload": [JOY_BUTTON_DPAD_DOWN],
+	"jump": [JOY_BUTTON_DPAD_LEFT],
+}
+
+## Triggers are axes, not buttons, so they bind separately.
+const PAD_TRIGGERS := {
+	"fire": JOY_AXIS_TRIGGER_RIGHT,
+	"aim": JOY_AXIS_TRIGGER_LEFT,
+}
+
+## The left stick walks, the right stick looks. Each entry is [axis, direction].
+const PAD_MOVEMENT := {
+	"move_left": [JOY_AXIS_LEFT_X, -1.0],
+	"move_right": [JOY_AXIS_LEFT_X, 1.0],
+	"move_forward": [JOY_AXIS_LEFT_Y, -1.0],
+	"move_back": [JOY_AXIS_LEFT_Y, 1.0],
+	"look_left": [JOY_AXIS_RIGHT_X, -1.0],
+	"look_right": [JOY_AXIS_RIGHT_X, 1.0],
+	"look_up": [JOY_AXIS_RIGHT_Y, -1.0],
+	"look_down": [JOY_AXIS_RIGHT_Y, 1.0],
+}
+
+## Numbered choices — dialogue options, shop rows — are picked with the number
+## keys on a keyboard, which a pad does not have. So the pad gets a cursor: the
+## d-pad steps it and the south button takes whatever is highlighted. The panels
+## draw the highlight; these are just the stepping.
+const PAD_UI := {
+	"choice_next": [JOY_BUTTON_DPAD_DOWN],
+	"choice_prev": [JOY_BUTTON_DPAD_UP],
+	"choice_take": [JOY_BUTTON_A],
+}
+
+## Below this the right stick is treated as noise rather than as looking around.
+const STICK_DEADZONE := 0.18
+
 ## What each action is called in the rebinding menu, and the order they appear
 ## in. Anything not listed here is not rebindable — the number keys pick
 ## dialogue options and are needed to navigate the menu itself.
@@ -76,7 +128,53 @@ func _ready() -> void:
 		ev.physical_keycode = CHOICE_KEYS[i]
 		InputMap.action_add_event(action, ev)
 
+	_bind_gamepad()
 	load_overrides()
+
+
+## Adds the pad on top of the keyboard rather than instead of it, so both are
+## live at once and a player can put the pad down mid-shift and keep going.
+func _bind_gamepad() -> void:
+	for action: String in PAD_BINDINGS:
+		_ensure_action_exists(action)
+		for button: int in PAD_BINDINGS[action]:
+			var ev := InputEventJoypadButton.new()
+			ev.button_index = button
+			InputMap.action_add_event(action, ev)
+
+	for action: String in PAD_TRIGGERS:
+		_ensure_action_exists(action)
+		var ev := InputEventJoypadMotion.new()
+		ev.axis = PAD_TRIGGERS[action]
+		ev.axis_value = 1.0
+		InputMap.action_add_event(action, ev)
+
+	for action: String in PAD_MOVEMENT:
+		_ensure_action_exists(action)
+		var conf: Array = PAD_MOVEMENT[action]
+		var ev := InputEventJoypadMotion.new()
+		ev.axis = conf[0]
+		ev.axis_value = conf[1]
+		InputMap.action_add_event(action, ev)
+
+	for action: String in PAD_UI:
+		_ensure_action_exists(action)
+		for button: int in PAD_UI[action]:
+			var ev := InputEventJoypadButton.new()
+			ev.button_index = button
+			InputMap.action_add_event(action, ev)
+
+	# Deadzones on the sticks, so a worn thumbstick does not walk you into the
+	# street while you are reading somebody's file.
+	for action: String in PAD_MOVEMENT:
+		InputMap.action_set_deadzone(action, STICK_DEADZONE)
+
+
+## Like `_ensure_action` but never wipes what is already bound — the gamepad is
+## added alongside the keyboard, not in place of it.
+func _ensure_action_exists(action: String) -> void:
+	if not InputMap.has_action(action):
+		InputMap.add_action(action)
 
 
 func _ensure_action(action: String) -> void:
@@ -84,6 +182,23 @@ func _ensure_action(action: String) -> void:
 		InputMap.action_erase_events(action)
 	else:
 		InputMap.add_action(action)
+
+
+## Clears the keyboard and mouse events on an action and leaves the gamepad
+## alone.
+##
+## Rebinding used to call `action_erase_events`, which was right when a key was
+## the only thing an action could carry. Now that every action also has a pad
+## button, wiping the lot means changing one key silently unbinds the whole
+## controller — and so did loading saved overrides at boot, and so did pressing
+## "reset to defaults". A player on a Deck who ever touched the controls menu
+## would have found the pad simply stopped working, with nothing to explain it.
+static func _erase_manual_events(action: String) -> void:
+	if not InputMap.has_action(action):
+		return
+	for ev: InputEvent in InputMap.action_get_events(action):
+		if ev is InputEventKey or ev is InputEventMouseButton:
+			InputMap.action_erase_event(action, ev)
 
 
 ## Replaces every binding on an action with a single event.
@@ -106,7 +221,7 @@ func rebind(action: String, event: InputEvent) -> bool:
 	if event is InputEventKey and (event as InputEventKey).physical_keycode == KEY_ESCAPE:
 		return false
 
-	InputMap.action_erase_events(action)
+	_erase_manual_events(action)
 	InputMap.action_add_event(action, event)
 	save_overrides()
 	return true
@@ -154,7 +269,7 @@ func load_overrides() -> void:
 			continue
 		var ev := InputEventKey.new()
 		ev.physical_keycode = code
-		InputMap.action_erase_events(action)
+		_erase_manual_events(action)
 		InputMap.action_add_event(action, ev)
 
 
@@ -164,7 +279,7 @@ func reset_bindings() -> void:
 		var action: String = entry[0]
 		if not BINDINGS.has(action):
 			continue
-		_ensure_action(action)
+		_erase_manual_events(action)
 		for code: int in BINDINGS[action]:
 			var ev := InputEventKey.new()
 			ev.physical_keycode = code

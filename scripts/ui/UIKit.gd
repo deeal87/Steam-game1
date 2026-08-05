@@ -123,13 +123,21 @@ static func spacer(h: int = 6) -> Control:
 
 ## A selectable line in a menu. Number-keyed, because the whole game is played
 ## without ever letting go of the mouse.
-static func option_row(index: int, text: String, enabled: bool = true, note: String = "") -> HBoxContainer:
+## One selectable line. `selected` draws the gamepad cursor — a keyboard player
+## never sees it, because the number beside every row is already the fastest way
+## to choose and a cursor would only be one more thing moving on screen.
+static func option_row(index: int, text: String, enabled: bool = true, note: String = "",
+		selected: bool = false) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
+	var marker := label("›" if selected else " ", FONT_M, GREEN)
+	marker.custom_minimum_size = Vector2(14, 0)
+	row.add_child(marker)
 	var key := label("[%d]" % index, FONT_M, GREEN if enabled else GREEN_DIM)
 	key.custom_minimum_size = Vector2(34, 0)
 	row.add_child(key)
-	var body := label(text, FONT_M, WHITE if enabled else GREEN_DIM)
+	var body := label(text, FONT_M,
+		(WHITE if enabled else GREEN_DIM) if not selected else GREEN)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(body)

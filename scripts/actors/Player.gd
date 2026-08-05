@@ -21,6 +21,8 @@ const MOUSE_SENS := 0.0022
 const STAND_HEIGHT := 1.62
 const CROUCH_HEIGHT := 0.95
 const REACH := 2.4
+## Radians a second at full stick deflection, before the sensitivity setting.
+const PAD_LOOK_SPEED := 2.6
 
 var camera: Camera3D
 var health: float = 100.0
@@ -123,6 +125,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _physics_process(delta: float) -> void:
 	if dead:
 		return
+	_look_with_stick(delta)
 	_fire_cooldown = maxf(0.0, _fire_cooldown - delta)
 	_muzzle_flash.light_energy = maxf(0.0, _muzzle_flash.light_energy - delta * 34.0)
 
@@ -176,6 +179,28 @@ func _move(delta: float) -> void:
 	var bob_x := cos(_bob * 0.5) * 0.014
 	camera.position.y = lerpf(camera.position.y, _target_height + bob_y, delta * 12.0)
 	camera.position.x = lerpf(camera.position.x, bob_x, delta * 12.0)
+
+
+## Looking around with the right stick.
+##
+## A stick is not a mouse: it reports a held position rather than a movement, so
+## it has to be integrated over time instead of consumed as an event. Squaring
+## the magnitude keeps small pushes genuinely small, which is what makes it
+## possible to settle on somebody's face rather than sweeping past it — this
+## game asks you to look at a person and read them, and a linear stick makes
+## that a fight.
+func _look_with_stick(delta: float) -> void:
+	if ui_locked or Input.get_connected_joypads().is_empty():
+		return
+	var look := Input.get_vector("look_left", "look_right", "look_up", "look_down")
+	if look.length() < 0.01:
+		return
+	var curve := look.length()
+	look = look.normalized() * curve * curve
+	var speed := PAD_LOOK_SPEED * Settings.mouse_sensitivity * delta
+	rotate_y(-look.x * speed)
+	camera.rotate_x(-look.y * speed)
+	camera.rotation.x = clampf(camera.rotation.x, -1.35, 1.35)
 
 
 # --- Interaction -------------------------------------------------------------

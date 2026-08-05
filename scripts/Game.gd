@@ -96,6 +96,11 @@ func _maybe_self_test() -> void:
 
 
 func _run_self_test(path: String) -> void:
+	# Always from a clean slate. Now that a run carries over, a leftover save
+	# would have the check opening on night nine with a wrecked reputation and
+	# no stock, and the frame it captures would prove nothing repeatable.
+	GameState.clear_save()
+	GameState.reset_run()
 	print("[selftest] opening up")
 	for i in 40:
 		await get_tree().process_frame

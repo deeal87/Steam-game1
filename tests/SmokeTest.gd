@@ -170,6 +170,17 @@ func test_resource_sharing() -> void:
 	_check(each < 8.0, "a customer can be built without dropping a frame (%.2fms)" % each)
 
 
+## How many gamepad events an action carries, for the rebinding checks.
+func _pad_event_count(action: String) -> int:
+	if not InputMap.has_action(action):
+		return 0
+	var n := 0
+	for ev: InputEvent in InputMap.action_get_events(action):
+		if ev is InputEventJoypadButton or ev is InputEventJoypadMotion:
+			n += 1
+	return n
+
+
 func _count_class(n: Node, cls: String) -> int:
 	var c := 1 if n.is_class(cls) else 0
 	for ch in n.get_children():
@@ -574,6 +585,33 @@ func _test_dialogue_fits() -> void:
 	print("   a full menu offers %d questions; paging reached %d" % [wanted, seen.size()])
 	_check(seen.size() == wanted, "every question is reachable by paging (%d of %d)"
 		% [seen.size(), wanted])
+
+	# Gamepad navigation. A pad has no number keys, so the same list has to be
+	# reachable with a cursor — and a Steam Deck is exactly the machine this game
+	# suits, so this is not a nicety.
+	dialogue._pad_active = true
+	dialogue._cursor = 0
+	dialogue._rebuild()
+	var rows := dialogue._options.size()
+	_check(rows > 1, "there is a list to move through (%d rows)" % rows)
+
+	dialogue._cursor = rows - 1
+	dialogue._cursor = wrapi(dialogue._cursor + 1, 0, rows)
+	_check(dialogue._cursor == 0, "the cursor wraps round the bottom")
+	dialogue._cursor = wrapi(dialogue._cursor - 1, 0, rows)
+	_check(dialogue._cursor == rows - 1, "and round the top")
+
+	# The list shrinks as questions get asked. The cursor must never be left
+	# pointing past the end of it.
+	dialogue._cursor = dialogue._options.size() - 1
+	var last: Dictionary = dialogue._options[dialogue._cursor]
+	if str(last["data"]["type"]) == "ask":
+		dialogue._choose(last)
+	dialogue._cursor = 9999
+	dialogue._rebuild()
+	_check(dialogue._cursor < maxi(1, dialogue._options.size()),
+		"and is pulled back inside the list when the list gets shorter (%d of %d)"
+			% [dialogue._cursor, dialogue._options.size()])
 
 	_player.held_illicit = 0
 	dialogue.close()
@@ -1132,6 +1170,74 @@ func test_rebinding() -> void:
 
 	InputSetup.reset_bindings()
 	_check(InputSetup.binding_label("interact") == "E", "left as it was found")
+
+	# --- The gamepad ---
+	#
+	# This game is a good fit for a handheld: seated, slow, reading-heavy, one
+	# small room. Without a pad it cannot be played on a Steam Deck at all, so
+	# every action a player needs during a shift has to be reachable without
+	# touching a keyboard. Checked as a list rather than by eye, because a new
+	# action added later would otherwise be keyboard-only and nobody would notice
+	# until a review said so.
+	print("   the gamepad:")
+	var needed := ["move_forward", "move_back", "move_left", "move_right",
+		"look_left", "look_right", "look_up", "look_down",
+		"interact", "cancel", "scanner", "torch", "restock", "notebook",
+		"crouch", "sprint", "jump", "holster", "reload", "fire", "aim",
+		"choice_next", "choice_prev", "choice_take"]
+	var unreachable: Array[String] = []
+	for action: String in needed:
+		if not InputMap.has_action(action):
+			unreachable.append(action + " (no such action)")
+			continue
+		var on_pad := false
+		for ev: InputEvent in InputMap.action_get_events(action):
+			if ev is InputEventJoypadButton or ev is InputEventJoypadMotion:
+				on_pad = true
+		if not on_pad:
+			unreachable.append(action)
+	_check(unreachable.is_empty(), "every action a shift needs is on the pad%s" %
+		("" if unreachable.is_empty() else " — keyboard only: %s" % ", ".join(unreachable)))
+
+	# The pad is added alongside the keyboard, never instead of it, so somebody
+	# can put the controller down mid-shift and carry on.
+	var lost_keyboard: Array[String] = []
+	for action: String in InputSetup.BINDINGS:
+		var on_keys := false
+		for ev: InputEvent in InputMap.action_get_events(action):
+			if ev is InputEventKey:
+				on_keys = true
+		if not on_keys:
+			lost_keyboard.append(action)
+	_check(lost_keyboard.is_empty(), "and the keyboard still works%s" %
+		("" if lost_keyboard.is_empty() else " — lost: %s" % ", ".join(lost_keyboard)))
+
+	# Sticks need a deadzone or a worn thumbstick walks you into the street
+	# while you are reading somebody's file.
+	var no_deadzone: Array[String] = []
+	for action: String in InputSetup.PAD_MOVEMENT:
+		if InputMap.action_get_deadzone(action) < 0.05:
+			no_deadzone.append(action)
+	_check(no_deadzone.is_empty(), "and the sticks have a deadzone%s" %
+		("" if no_deadzone.is_empty() else " — missing: %s" % ", ".join(no_deadzone)))
+
+	# Rebinding a key must not touch the controller. This one was real: rebinding,
+	# loading saved overrides at boot, and "reset to defaults" all called
+	# `action_erase_events`, which was correct when a key was the only thing an
+	# action carried. A player on a Deck who ever opened the controls menu would
+	# have found the pad had stopped working, with nothing on screen to say why.
+	var pad_before := _pad_event_count("interact")
+	var swap := InputEventKey.new()
+	swap.physical_keycode = KEY_J
+	InputSetup.rebind("interact", swap)
+	_check(_pad_event_count("interact") == pad_before,
+		"rebinding a key leaves the pad button alone (%d before, %d after)"
+			% [pad_before, _pad_event_count("interact")])
+	InputSetup.load_overrides()
+	_check(_pad_event_count("interact") == pad_before, "and so does loading saved overrides")
+	InputSetup.reset_bindings()
+	_check(_pad_event_count("interact") == pad_before, "and so does resetting to defaults")
+	_check(InputSetup.binding_label("interact") == "E", "which still restores the key")
 
 
 func test_score() -> void:
