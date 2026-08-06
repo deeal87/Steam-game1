@@ -246,8 +246,16 @@ static func generate(seed_value: int, night: int, undercover_chance: float) -> C
 	# hashed stream is fixed for a given person no matter what else happened.
 	var visible := RandomNumberGenerator.new()
 	visible.seed = hash("visible-%d" % seed_value)
-	p.height_scale = visible.randf_range(0.90, 1.10)
-	p.bulk_scale = visible.randf_range(0.88, 1.18)
+	# Snapped to a step rather than left continuous, and the reason is downstream
+	# rather than aesthetic. Every box a person is built from is scaled by these
+	# two numbers, and the mesh cache is keyed on the size that comes out — so
+	# continuous values meant no two people ever shared a shape, the cache never
+	# hit for any of it, and it grew for the length of the run. Seventeen heights
+	# and sixteen builds is 272 body types, which no player will ever run out of,
+	# and it turns an unbounded set of meshes into one that repeats all night.
+	# Snapping consumes no extra draws, so the stream stays where it was.
+	p.height_scale = snappedf(visible.randf_range(0.90, 1.10), 0.0125)
+	p.bulk_scale = snappedf(visible.randf_range(0.88, 1.18), 0.02)
 	p.pushiness = visible.randf()
 	# Roughly one innocent person in six will not explain themselves, whatever
 	# you ask. They are the reason you can never convict on a single answer — so

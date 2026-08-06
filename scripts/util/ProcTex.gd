@@ -40,12 +40,27 @@ static func clear_cache() -> void:
 	_cache.clear()
 
 
+## A ceiling on the textures held at once.
+##
+## Most generators here take a small fixed set of arguments and their entries
+## are worth keeping for the whole run. Faces are not: they are keyed on a
+## person's own seed, so each one is used by exactly one customer and then never
+## asked for again. Left unbounded that is one texture and one image per person
+## served, for as long as somebody keeps playing.
+const CACHE_MAX := 96
+
+
 static func _cached(key: String, painter: Callable) -> ImageTexture:
 	var hit: Variant = _cache.get(key)
 	if hit != null:
 		return hit
 	var made: ImageTexture = painter.call()
 	_cache[key] = made
+	# Oldest out once over the ceiling. Anything still being drawn holds its own
+	# reference, so dropping it here only means the next request for that exact
+	# picture pays to draw it again.
+	while _cache.size() > CACHE_MAX:
+		_cache.erase(_cache.keys()[0])
 	return made
 
 

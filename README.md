@@ -760,8 +760,35 @@ place, and the p99 came down from 9.9ms to 8.0ms with the worst case down from
 26ms to 21ms. The mean did not move, because at this scale the mean is the
 harness's own pacing floor; the tail is the part that was real.
 
-It earned its keep immediately. Four bugs, none of which any unit test in this
-repository could have found:
+It found a fifth later, and this one needed the *length* of the run rather than
+the fact of it. Object count was climbing by about 285 a night, dead linear
+across six nights, and by night six the p99 had gone from 7.9ms to 20ms. Nodes
+stayed flat the whole time and not one node was ever orphaned — so nothing was
+failing to be freed, and every instinct about a missing `queue_free` was wrong.
+
+It was the caches, which is to say it was the optimisation pass. Generated
+textures, materials and meshes are keyed on what they were asked for, which is
+correct right up until the thing being asked for is unique to one person: their
+face, the material built from it, the eleven boxes scaled to their own height
+and build. Keyed that finely, nothing is ever reused *and* nothing is ever
+dropped. The cache had stopped being a cache and become a list of everyone who
+had ever come to the window.
+
+Three changes. Mesh sizes snap to five millimetres instead of a tenth of one,
+because a tenth of a millimetre on a person is not a distinction anybody can see
+and it meant no two customers ever shared a shape. Body proportions snap to a
+grid of 272 types, for the same reason and with the same invisibility. And every
+cache has a ceiling, dropping the oldest entry past it — a mesh in use is held
+by the node drawing it, so eviction only costs a rebuild if that exact shape is
+asked for again.
+
+Object count now settles at about 3,690 instead of climbing past 4,576 and
+going, and the night-six p99 is 7.96ms rather than 20. The soak checks the shape
+of the curve on every run: caches may fill for two nights, and after that a jump
+of more than sixty in one night fails the run and says what to look for.
+
+It earned its keep immediately. Four bugs found on the first day, none of which
+any unit test in this repository could have found:
 
 - **The night could never end.** If the clock ran out while customers were
   still due to arrive, arrivals stopped below last orders and the exit

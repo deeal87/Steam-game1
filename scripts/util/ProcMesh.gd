@@ -36,6 +36,38 @@ static func cache_sizes() -> Dictionary:
 	}
 
 
+## A ceiling on the materials held at once.
+##
+## Materials are keyed on the identity of the texture they were built from, and
+## a face texture belongs to one person, so every person who has ever come to
+## the window left one behind. Comfortably more than can be on screen and in the
+## terminal at the same time, so nothing in use is ever thrown away.
+const MAT_CACHE_MAX := 192
+
+## A ceiling on geometry held at once.
+##
+## Snapping sizes to five millimetres and body types to a fixed grid bounds this
+## set in principle — but eleven boxes per person across two hundred and seventy
+## body types is still a few thousand shapes, which is bounded far too late to
+## be worth anything. What is actually in use at one moment is the shop's
+## fittings and the half-dozen people in it: under a hundred. This leaves room
+## for three times that and drops the rest.
+##
+## Evicting costs nothing that is still on screen. A mesh in use is held by the
+## node drawing it; leaving the cache only means the next request for that exact
+## shape builds it again.
+const MESH_CACHE_MAX := 256
+
+
+## Inserts, and drops the oldest entry once the cache is over its ceiling.
+## GDScript dictionaries keep insertion order, so the first key is the one that
+## has gone longest without being written.
+static func _bounded_put(cache: Dictionary, key: String, value: Variant, cap: int) -> void:
+	cache[key] = value
+	while cache.size() > cap:
+		cache.erase(cache.keys()[0])
+
+
 static func clear_caches() -> void:
 	_box_cache.clear()
 	_cyl_cache.clear()
@@ -50,20 +82,42 @@ static func shader() -> Shader:
 	return _shader_cache
 
 
-## Rounded to a tenth of a millimetre before it becomes a key, so sizes that
-## differ only by floating-point noise still share one resource.
+## The grid every mesh size is snapped to before it becomes a key.
+##
+## This was a tenth of a millimetre, which sounds harmlessly precise and was
+## the whole problem. Everybody who walks in is built from boxes scaled by their
+## own height and build — continuous numbers — so at that resolution no two
+## people ever shared a mesh, the cache never hit for any of it, and it grew by
+## a hundred-odd BoxMesh resources every night for as long as the run lasted.
+##
+## Five millimetres on a person is not visible. It is the difference between a
+## cache that holds a few dozen shapes and reuses them all night, and one that
+## holds every shape the game has ever drawn.
+const SIZE_STEP := 0.005
+
+
+## Never smaller than one step, so a deliberately thin panel does not round away
+## to nothing.
+static func _quantise(v: Vector3) -> Vector3:
+	return Vector3(
+		maxf(SIZE_STEP, snappedf(v.x, SIZE_STEP)),
+		maxf(SIZE_STEP, snappedf(v.y, SIZE_STEP)),
+		maxf(SIZE_STEP, snappedf(v.z, SIZE_STEP)))
+
+
 static func _size_key(v: Vector3) -> String:
-	return "%.4f,%.4f,%.4f" % [v.x, v.y, v.z]
+	return "%.3f,%.3f,%.3f" % [v.x, v.y, v.z]
 
 
 static func box_mesh(size: Vector3) -> BoxMesh:
-	var key := _size_key(size)
+	var snapped_size := _quantise(size)
+	var key := _size_key(snapped_size)
 	var hit: Variant = _box_cache.get(key)
 	if hit != null:
 		return hit
 	var mesh := BoxMesh.new()
-	mesh.size = size
-	_box_cache[key] = mesh
+	mesh.size = snapped_size
+	_bounded_put(_box_cache, key, mesh, MESH_CACHE_MAX)
 	return mesh
 
 
@@ -101,7 +155,7 @@ static func mat(
 	m.set_shader_parameter("snap_strength", snap)
 	m.set_shader_parameter("affine_strength", affine)
 	m.set_shader_parameter("snap_grid", 110.0)
-	_mat_cache[key] = m
+	_bounded_put(_mat_cache, key, m, MAT_CACHE_MAX)
 	return m
 
 
@@ -121,16 +175,20 @@ static func box(size: Vector3, pos: Vector3, material: Material, name: String = 
 
 
 static func cylinder(radius: float, height: float, pos: Vector3, material: Material, sides: int = 8) -> MeshInstance3D:
-	var key := "%.4f,%.4f,%d" % [radius, height, sides]
+	# Snapped for the same reason boxes are: a radius that came out of somebody's
+	# build is a continuous number and would never be asked for twice.
+	var r := maxf(SIZE_STEP, snappedf(radius, SIZE_STEP))
+	var h := maxf(SIZE_STEP, snappedf(height, SIZE_STEP))
+	var key := "%.3f,%.3f,%d" % [r, h, sides]
 	var mesh: CylinderMesh = _cyl_cache.get(key)
 	if mesh == null:
 		mesh = CylinderMesh.new()
-		mesh.top_radius = radius
-		mesh.bottom_radius = radius
-		mesh.height = height
+		mesh.top_radius = r
+		mesh.bottom_radius = r
+		mesh.height = h
 		mesh.radial_segments = sides
 		mesh.rings = 1
-		_cyl_cache[key] = mesh
+		_bounded_put(_cyl_cache, key, mesh, MESH_CACHE_MAX)
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
 	mi.material_override = material
@@ -139,12 +197,15 @@ static func cylinder(radius: float, height: float, pos: Vector3, material: Mater
 
 
 static func quad(size: Vector2, pos: Vector3, material: Material) -> MeshInstance3D:
-	var key := "%.4f,%.4f" % [size.x, size.y]
+	var snapped_size := Vector2(
+		maxf(SIZE_STEP, snappedf(size.x, SIZE_STEP)),
+		maxf(SIZE_STEP, snappedf(size.y, SIZE_STEP)))
+	var key := "%.3f,%.3f" % [snapped_size.x, snapped_size.y]
 	var mesh: QuadMesh = _quad_cache.get(key)
 	if mesh == null:
 		mesh = QuadMesh.new()
-		mesh.size = size
-		_quad_cache[key] = mesh
+		mesh.size = snapped_size
+		_bounded_put(_quad_cache, key, mesh, MESH_CACHE_MAX)
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
 	mi.material_override = material
@@ -176,7 +237,7 @@ static func box_shape(size: Vector3) -> BoxShape3D:
 		return hit
 	var bs := BoxShape3D.new()
 	bs.size = size
-	_shape_cache[key] = bs
+	_bounded_put(_shape_cache, key, bs, MESH_CACHE_MAX)
 	return bs
 
 

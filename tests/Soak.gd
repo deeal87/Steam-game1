@@ -37,6 +37,17 @@ var _log: Array[String] = []
 var _due_at_start: int = 0
 var _visit_starts: Dictionary = {}
 var _visits: Array[float] = []
+## Total generated resources held after the previous night, for the growth check.
+var _cache_last: int = 0
+var _cache_samples: int = 0
+
+## Nights allowed for the caches to reach their ceilings before growth counts.
+const CACHE_WARMUP_NIGHTS := 2
+
+## How much the caches may grow between two consecutive nights. Bounded caches
+## settle within the first night or two and then move by a handful; an unbounded
+## one was adding two to three hundred every night.
+const CACHE_GROWTH_LIMIT := 60
 
 
 func _on_arrived(c: Customer) -> void:
@@ -58,6 +69,14 @@ func _ready() -> void:
 
 	print("\n=== KIOSK AT MIDNIGHT · soak ===\n")
 	print("Playing %d nights at %dx.\n" % [nights_wanted, int(SPEED)])
+
+	# From a clean slate, always. A run carries over now, so without this each
+	# soak resumes the wreckage of the last one — opening on night seventeen with
+	# no stock and a rent nobody could make — and the numbers stop being
+	# comparable between runs. It cost a set of measurements before it was
+	# noticed, because the failure looks like the game being unwinnable.
+	GameState.clear_save()
+	GameState.reset_run()
 
 	Engine.time_scale = SPEED
 	game = BOOT.instantiate()
@@ -313,6 +332,24 @@ func _report_frames() -> void:
 	# The 99th percentile matters more than the mean: a game that averages well
 	# and hitches once a second feels worse than one that is steadily slower.
 	var p99: float = sorted[mini(sorted.size() - 1, int(float(sorted.size()) * 0.99))]
+	# Objects on their own only say "something is accumulating". Nodes and
+	# orphans say what kind: an orphan is a node that was taken out of the tree
+	# and never freed, which is the leak you get from forgetting a queue_free,
+	# and it is the number that grew.
+	_note("        objects %d · nodes %d · orphaned %d · resources %d" % [
+		Performance.get_monitor(Performance.OBJECT_COUNT),
+		Performance.get_monitor(Performance.OBJECT_NODE_COUNT),
+		Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT),
+		Performance.get_monitor(Performance.OBJECT_RESOURCE_COUNT)])
+	# The caches that made spawning cheap. Anything keyed on something unique to
+	# a person grows for the whole run, which is what a single night never shows.
+	var meshes: Dictionary = ProcMesh.cache_sizes()
+	var held := ProcTex.cache_size() + int(meshes["material"]) + int(meshes["box"]) \
+		+ int(meshes["cylinder"]) + int(meshes["quad"])
+	_note("        cached: %d textures · %d materials · %d box · %d cylinder · %d quad" % [
+		ProcTex.cache_size(), int(meshes["material"]), int(meshes["box"]),
+		int(meshes["cylinder"]), int(meshes["quad"])])
+	_check_caches(held)
 	_note("        frame %.2fms mean · %.2fms median · %.2fms p99 · worst %.2fms · %d objects"
 		% [mean, sorted[sorted.size() / 2], p99, sorted[-1],
 			Performance.get_monitor(Performance.OBJECT_COUNT)])
@@ -351,6 +388,33 @@ func _note(line: String) -> void:
 func _fail(line: String) -> void:
 	print("  FAIL  " + line)
 	_failures.append(line)
+
+
+## The caches exist to make a night cheap. They must not make a *run* expensive.
+##
+## Everything generated here is keyed on what it was asked for, which is right
+## until the thing being asked for is unique to one person: their face, the
+## material built from it, the boxes scaled to their own height and build. Keyed
+## that finely, nothing is ever reused and nothing is ever dropped, so the caches
+## grew by a few hundred resources a night for as long as somebody kept playing.
+## Nodes stayed flat the whole time and no node was ever orphaned, which is why
+## this went unseen — it was never a missing `queue_free`.
+##
+## What is checked is the shape of the curve, not a number. A cache that is
+## bounded settles; one that is not keeps climbing at the same rate. Comparing
+## the last two nights catches that whatever the ceilings are set to.
+func _check_caches(held: int) -> void:
+	var growth := held - _cache_last
+	_cache_last = held
+	# The first two nights are the caches filling to their ceilings, which is
+	# what they are for. Only what happens after that says whether they settle.
+	_cache_samples += 1
+	if _cache_samples <= CACHE_WARMUP_NIGHTS:
+		return
+	if growth > CACHE_GROWTH_LIMIT:
+		_fail("the generated-resource caches grew by %d on night %d (%d held) — "
+			% [growth, _cache_samples, held]
+			+ "something is being keyed on a value unique to one customer")
 
 
 func _report() -> void:
