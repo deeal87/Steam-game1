@@ -170,6 +170,33 @@ static func _shaft(world: World, parent: Node3D, top: Vector3, from_y: float,
 	parent.add_child(glow)
 
 
+## Which of the tunnel's four wall surfaces a given stretch is built from.
+##
+## The pack has brick, wet brick, moss and bare concrete for down here, and the
+## main run is nearly a hundred metres long. Built out of one of them it is the
+## same six feet of wall a hundred times over, which is exactly how a tunnel
+## stops being somewhere and starts being a corridor in a game.
+##
+## Chosen from the position rather than at random, so the walls are the same
+## every night — a player who learns that the moss starts where the water gets
+## deeper is learning something true about the place, and a shuffle each launch
+## would take that away for no gain at all.
+static func _face(along: float, side: int) -> String:
+	var faces := ["sewer_brick", "sewer_wet", "sewer_mossy", "sewer_plain",
+		"sewer_tile", "sewer_broken"]
+	var band := int(floor(absf(along) / 7.0)) + (1 if side > 0 else 0)
+	return faces[band % faces.size()]
+
+
+## And what a given run is floored with. Same idea, one run at a time rather
+## than banded, because a floor changing under you every seven metres reads as a
+## mistake where a wall changing reads as a different stretch of tunnel.
+static func _underfoot(along_x: bool, mid: Vector3) -> String:
+	var floors := ["sewer_floor", "sewer_floor_wet", "sewer_floor_grate", "sewer_floor_brick"]
+	var pick := int(absf(mid.x) + absf(mid.z)) / 9
+	return floors[(pick + (0 if along_x else 2)) % floors.size()]
+
+
 ## A straight run between two points. `roof_gaps` lists positions along the run
 ## where the roof is left open for a shaft to drop through.
 static func _tunnel(world: World, parent: Node3D, a: Vector3, b: Vector3,
@@ -184,7 +211,7 @@ static func _tunnel(world: World, parent: Node3D, a: Vector3, b: Vector3,
 
 	var floor_size := Vector3(length, 0.3, half_w * 2) if along_x else Vector3(half_w * 2, 0.3, length)
 	parent.add_child(ProcMesh.solid_box(floor_size, mid + Vector3(0, -0.15, 0),
-		world.mat("sewer_floor"), "TunnelFloor"))
+		world.mat(_underfoot(along_x, mid)), "TunnelFloor"))
 
 	var water := Vector3(length, 0.06, half_w * 0.9) if along_x else Vector3(half_w * 0.9, 0.06, length)
 	parent.add_child(ProcMesh.box(water, mid + Vector3(0, 0.03, 0), world.mat("water"), "Water"))
@@ -201,7 +228,8 @@ static func _tunnel(world: World, parent: Node3D, a: Vector3, b: Vector3,
 			var wall := Vector3(seg, TUNNEL_H, 0.3) if along_x else Vector3(0.3, TUNNEL_H, seg)
 			var pos := (Vector3(centre, a.y + TUNNEL_H * 0.5, cross + side * half_w) if along_x
 				else Vector3(cross + side * half_w, a.y + TUNNEL_H * 0.5, centre))
-			parent.add_child(ProcMesh.solid_box(wall, pos, world.mat("sewer_brick"), "TunnelWall"))
+			parent.add_child(ProcMesh.solid_box(wall, pos, world.mat(_face(centre, side)),
+				"TunnelWall"))
 
 	# End caps, so a run does not simply stop in mid-air. The end that meets
 	# another run is left open.
@@ -226,9 +254,10 @@ static func _tunnel(world: World, parent: Node3D, a: Vector3, b: Vector3,
 		l.light_energy = 3.2
 		l.omni_range = 13.0
 		parent.add_child(l)
-		parent.add_child(ProcMesh.box(Vector3(0.18, 0.08, 0.18), pos + Vector3(0, 0.16, 0),
-			ProcMesh.mat(ProcTex.flat(Color(0.85, 0.95, 0.8)), 1.0, Color(0.78, 0.9, 0.72), 1.2),
-			"TunnelBulb"))
+		# Big enough to see the fitting on. A bulkhead lamp on an eighteen
+		# centimetre box is a bright dot; at thirty-two it is a lamp.
+		parent.add_child(ProcMesh.box(Vector3(0.32, 0.30, 0.10), pos + Vector3(0, 0.04, 0),
+			world.mat("tunnel_bulb"), "TunnelBulb"))
 
 
 ## Builds the roof as a run of segments, skipping the footprint of each shaft.

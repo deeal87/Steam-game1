@@ -1074,17 +1074,26 @@ on a surface:
 godot --headless --path . tools/CutTextures.tscn
 ```
 
-Three things it does that are worth knowing. It trims the border the sheet draws
+Four things it does that are worth knowing. It trims the border the sheet draws
 around every swatch by finding it rather than assuming it, so a crop rectangle
-estimated by eye self-corrects. It backs off the normal map that sits to the
-right of every albedo, found by its colour — tangent-space blue is a signature
-nothing real has — because a crop estimated by eye lands wide about half the
-time and a strip of that baked into a wall is unmistakable. And it mirrors each
-cut into a tile, because a swatch off a contact sheet does not tile and a wall
-that does not tile shows a seam every few metres. Mirroring is crude next to a
-proper heal, and it is the right crude: it cannot produce a seam, it keeps the
-grain and colour exactly, and at this resolution in this light the symmetry does
-not read.
+estimated by eye self-corrects. It removes the caption printed above each swatch
+— every one of them has its pixel size written a few pixels clear of the picture,
+and a crop that catches it gets mirrored into all four corners, which is how the
+shop floor came to be tiled six times across with the words 512x512 written on
+it. It backs off the normal map that sits to the right of every albedo, found by
+its colour — tangent-space blue is a signature nothing real has — because a crop
+estimated by eye lands wide about half the time and a strip of that baked into a
+wall is unmistakable. And it mirrors each cut into a tile, because a swatch off a
+contact sheet does not tile and a wall that does not tile shows a seam every few
+metres. Mirroring is crude next to a proper heal, and it is the right crude: it
+cannot produce a seam, it keeps the grain and colour exactly, and at this
+resolution in this light the symmetry does not read.
+
+The caption test and the border test are deliberately different questions. A
+border is dark and flat; a caption is dark with something *white* in it. That
+distinction is what keeps either of them off the photographs — the darkest
+surfaces in the pack, the sewer walls and a stack of tyres, are dark all the way
+across and never contain a pixel anywhere near white.
 
 Normal and roughness maps are ignored on purpose. The world is lit per vertex
 with roughness pinned at 1.0, which is a large part of why it looks like the era
@@ -1096,13 +1105,31 @@ the locale CSV is. Left alone, Godot compiles each PNG to a `.ctex` and the raw
 file never reaches the build — and because the code falls back to the generator
 when a file is missing, the exported game came out looking exactly as it had
 before the pack existed, with nothing failing and nothing to see. The log says
-which it is: `textures: 24 painted surfaces loaded`.
+which it is: `textures: 122 painted surfaces loaded`.
 
-Not every sheet in the pack is a source of surfaces. Two are lighting and
-post-process reference — renders showing what the game should look like rather
-than textures to put on anything — and the decal sheet is overlays, which need a
-decal system this game does not have: every surface here is one flat texture on
-a box. They are left uncut on purpose rather than forgotten.
+Two sheets look like reference and are not, quite. The lighting and post-process
+sheet is mostly renders of what the engine ought to produce, which the engine has
+to produce for itself — but four things on it are real textures: the night sky,
+the warning signs, a caged bulkhead lamp and a monitor with something on it. The
+sky is the one that changed the game. The street had no lid, so looking up gave
+you the environment's clear colour and the whole place read as a room with no
+ceiling; one panel of cloud above the roof line is the difference between that
+and being outside at night.
+
+The decal sheet is built for a decal projector, which this game does not have and
+does not need to use half of the sheet. Corroded metal is just metal, and the
+large pieces — the tags, the flyposted bills — go on a panel standing a
+centimetre off a wall, which is what a decal looks like from any distance you
+would ever see one from. The blood is left where it is. It is the best art on the
+sheet and there is nowhere honest to put it: a handprint painted into the world
+is on the wall of a shop on night one, before anything has happened, telling the
+player a story that is not theirs.
+
+Cutting a texture is only half of it. For a long time this pack was a hundred
+swatches on disk, loaded at launch and drawn nowhere, while the bin in the street
+wore a photograph of a drainpipe — the world named about twenty of them and the
+rest were dead weight in memory. If a cut is not in `World._build_materials()`
+under a name something actually asks for, it may as well not exist.
 
 A cut can also land on the wrong thing. The crop rectangles are read off the
 sheets by eye, and two of them came back holding the object next door — a chain

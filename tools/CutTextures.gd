@@ -139,11 +139,63 @@ const CUTS := {
 		["steel", 20, 694, 100, 106],
 		["grate", 585, 694, 96, 106],
 	],
+	# The decals sheet is built for a decal projector, which this game does not
+	# have and does not need one to use half of it. Two kinds of thing on it work
+	# as ordinary textures: surfaces that happen to be described as damage —
+	# corroded metal is just metal — and the large pieces in row 11, which go on
+	# a panel standing a centimetre off a wall and read as exactly what they are.
+	#
+	# The blood is left where it is. It is the best art on the sheet and the game
+	# has nowhere honest to put it: a handprint painted into the world is on the
+	# wall of a shop on night one, before anything has happened, which tells the
+	# player a story that is not theirs.
+	"decals.png": [
+		["metal_corroded", 363, 606, 109, 83],
+		["rust_patches", 253, 606, 102, 83],
+		# Tags and flyposting. Objects, so they are never folded: half a word
+		# mirrored back at itself is not graffiti, it is wallpaper.
+		["graffiti_large_a", 20, 755, 167, 99, true],
+		["graffiti_large_b", 192, 755, 100, 99, true],
+		["poster_a", 300, 755, 90, 99, true],
+		["poster_b", 397, 755, 88, 99, true],
+		["poster_torn", 491, 755, 91, 99, true],
+	],
+	# The lighting sheet is mostly reference — pictures of what the engine ought
+	# to make, which the engine has to make for itself. Four things on it are
+	# real textures a surface can wear, and they are four of the most useful in
+	# the pack: the sky, the warning signs, a caged tunnel lamp and a monitor
+	# with something on it.
+	"lighting.png": [
+		# Sky. Tiled, because it goes on one very large panel above the street.
+		["sky_clear", 18, 746, 106, 88],
+		["sky_cloudy", 132, 746, 109, 88],
+		# The signs a place like this is covered in. Cleaner and far more
+		# readable than the ones on the signage sheet, which are photographs of
+		# signs on a wall rather than the signs themselves.
+		["warn_no_smoking", 608, 894, 62, 102, true],
+		["warn_wet_floor", 676, 894, 63, 102, true],
+		["warn_staff_only", 746, 894, 62, 102, true],
+		["warn_no_entry", 814, 894, 62, 102, true],
+		["warn_danger_electric", 883, 894, 62, 102, true],
+		# A caged bulkhead lamp for the tunnels, and the green box over a fire
+		# door. Both cropped tight to the fitting: the panels they sit in are
+		# mostly the wall behind them.
+		["light_bulkhead", 495, 152, 52, 98, true],
+		["sign_emergency", 587, 167, 78, 73, true],
+		# Screens with something on them.
+		["screen_no_signal", 258, 904, 82, 88, true],
+		["screen_cctv", 356, 907, 63, 70, true],
+	],
 	"kiosk.png": [
 		["floor", 26, 112, 190, 190],
 		["floor_worn", 790, 112, 190, 190],
 		["wall", 1160, 112, 90, 150],
-		["wall_painted", 26, 364, 185, 150],
+		# The wall only. This used to run from 364 to 514, which caught the
+		# caption above the swatch at one end and the skirting board and a strip
+		# of floor at the other — so the shop's walls had a dark rail through
+		# them at eye height, mirrored, which is the seam behind the counter that
+		# would not go away however the repeat was tuned.
+		["wall_painted", 28, 374, 182, 128],
 		["shelf_wood", 790, 364, 185, 150],
 		["shelf_metal", 1160, 364, 150, 150],
 		["counter_front", 26, 592, 185, 150],
@@ -152,6 +204,11 @@ const CUTS := {
 		["fridge", 1160, 592, 150, 150],
 		["stock_floor", 26, 812, 160, 180],
 		["ceiling", 330, 812, 185, 180],
+		# The lit fitting from the presentation render rather than the swatch
+		# under it. The swatch is the tube seen from the side and is nearly black;
+		# this is the fitting seen from below, lit, which is the only angle a
+		# player ever sees a ceiling light from.
+		["light_strip", 663, 881, 250, 42, true],
 	],
 }
 
@@ -218,9 +275,9 @@ func _cut(sheet: Image, x: int, y: int, w: int, h: int) -> Image:
 	var r := piece.get_width() - 1
 	var t := 0
 	var b := piece.get_height() - 1
-	while l < r and _edge_is_border(piece, l, true):
+	while l < r and _is_furniture(piece, l, true):
 		l += 1
-	while r > l and _edge_is_border(piece, r, true):
+	while r > l and _is_furniture(piece, r, true):
 		r -= 1
 	# And back off the normal map, which sits immediately to the right of every
 	# albedo on these sheets. A crop estimated by eye lands a little wide about
@@ -229,19 +286,66 @@ func _cut(sheet: Image, x: int, y: int, w: int, h: int) -> Image:
 	# signature nothing real has, so they can be found rather than avoided.
 	while r > l and _is_normal_map(piece, r):
 		r -= 1
-	while r > l and _edge_is_border(piece, r, true):
+	while r > l and _is_furniture(piece, r, true):
 		r -= 1
-	while t < b and _edge_is_border(piece, t, false):
+	while t < b and _is_furniture(piece, t, false):
 		t += 1
-	while b > t and _edge_is_border(piece, b, false):
+	while b > t and _is_furniture(piece, b, false):
 		b -= 1
 	if r - l < 8 or b - t < 8:
 		return piece
 	return piece.get_region(Rect2i(l, t, r - l + 1, b - t + 1))
 
 
-## A border row or column is nearly uniform and nearly black — the sheets draw a
-## thin dark rule around every swatch.
+## Anything at the edge of a crop that is part of the sheet rather than part of
+## the picture: the rule drawn around each swatch, and the caption printed above
+## it.
+##
+## The caption is the one that mattered. Every swatch on these sheets has its
+## pixel size printed a few pixels above it — "512x512", "256x256" — and a crop
+## estimated by eye lands on it about half the time. The rule test alone could
+## not remove those, because it was written to *spare* rows with light pixels in
+## them so it would stop at the top of a bright photograph rather than eat into
+## it. So the caption survived, got mirrored by `_tileable` into all four
+## corners, and the shop floor was tiled six times across with the words 512x512
+## written on it. That shipped, and it is exactly the kind of thing that gets a
+## pack called garbage.
+func _is_furniture(img: Image, at: int, vertical: bool) -> bool:
+	return _edge_is_border(img, at, vertical) or _edge_is_caption(img, at, vertical)
+
+
+## A caption row: mostly the sheet's black background, with something white in
+## it. That is text, and on these sheets text at the edge of a crop is always
+## the swatch's pixel size printed above it.
+##
+## The white is what makes this safe. The darkest photographs in the pack — the
+## sewer walls, a stack of tyres — are dark all the way across and never contain
+## a pixel anywhere near white; the brightest thing in a row of tyres is about a
+## fifth of the way up. So "70% black and something at 1.2 out of 3" cannot
+## match a photograph, and matches every caption on every sheet.
+func _edge_is_caption(img: Image, at: int, vertical: bool) -> bool:
+	var n: int = img.get_height() if vertical else img.get_width()
+	if n <= 0:
+		return false
+	var black := 0
+	var lightest := 0.0
+	for i in n:
+		var c: Color = img.get_pixel(at, i) if vertical else img.get_pixel(i, at)
+		var l := c.r + c.g + c.b
+		if l < 0.20:
+			black += 1
+		lightest = maxf(lightest, l)
+	return float(black) / float(n) > 0.70 and lightest > 1.2
+
+
+## A border row or column: dark, and flat.
+##
+## Two tests rather than one because the gap between a caption and the swatch
+## below it is not quite as black as the rule around the swatch, and the first
+## test was written for the rule. The second is looser about the average and
+## much stricter about the brightest pixel, which is the pair of conditions that
+## separates a strip of empty card from a very dark photograph: the card has
+## nothing in it, and the photograph always has something.
 func _edge_is_border(img: Image, at: int, vertical: bool) -> bool:
 	var n: int = img.get_height() if vertical else img.get_width()
 	var total := 0.0
@@ -252,7 +356,7 @@ func _edge_is_border(img: Image, at: int, vertical: bool) -> bool:
 		total += l
 		lightest = maxf(lightest, l)
 	var mean := total / float(maxi(1, n / 2))
-	return mean < 0.16 and lightest < 0.45
+	return (mean < 0.16 and lightest < 0.45) or (mean < 0.22 and lightest < 0.30)
 
 
 ## Whether a column is part of a normal map: blue well ahead of red and green,

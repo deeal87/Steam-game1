@@ -23,6 +23,7 @@ static func build(world: World) -> void:
 	_terrace(world, street, rng)
 	_lamps(world, street)
 	_clutter(world, street, rng)
+	_writing_on_the_walls(world, street, rng)
 	_far_end(world, street, rng)
 
 	world.set_breach_points([
@@ -43,7 +44,7 @@ static func _ground(world: World, street: Node3D) -> void:
 	street.add_child(ProcMesh.solid_box(Vector3(length, 0.4, PAVEMENT_Z_MAX - PAVEMENT_Z_MIN),
 		Vector3(mid, -0.2, (PAVEMENT_Z_MIN + PAVEMENT_Z_MAX) * 0.5), world.mat("pavement"), "Pavement"))
 	street.add_child(ProcMesh.box(Vector3(length, 0.14, 0.24),
-		Vector3(mid, 0.05, PAVEMENT_Z_MIN), world.mat("pavement"), "Kerb"))
+		Vector3(mid, 0.05, PAVEMENT_Z_MIN), world.mat("kerb"), "Kerb"))
 
 	# Walls closing the street at both ends, so you cannot walk off the world.
 	street.add_child(ProcMesh.solid_box(Vector3(0.6, 14.0, 30.0),
@@ -52,6 +53,17 @@ static func _ground(world: World, street: Node3D) -> void:
 		Vector3(World.STREET_EAST, 7.0, -3.0), world.mat("brick_far"), "EastEnd"))
 	street.add_child(ProcMesh.solid_box(Vector3(World.STREET_EAST - World.STREET_WEST, 14.0, 0.6),
 		Vector3(mid, 7.0, PAVEMENT_Z_MAX), world.mat("brick_far"), "BackFence"))
+
+	# A lid on the street.
+	#
+	# Looking up gave you the environment's clear colour, which is very nearly
+	# black, so the street read as a room with no ceiling rather than as outside
+	# at night. One panel of cloud above the roof line fixes that for the cost of
+	# a single quad. High enough to clear the tallest terrace block, which tops
+	# out at fifteen metres, and wide enough that its edges are never in frame
+	# from the pavement.
+	street.add_child(ProcMesh.box(Vector3(length + 40.0, 0.4, 60.0),
+		Vector3(mid, 24.0, -3.0), world.mat("sky"), "Sky"))
 
 	# And the far side of the road, which had nothing.
 	#
@@ -115,11 +127,14 @@ static func _lamps(world: World, street: Node3D) -> void:
 
 
 static func _lamp_post(world: World, parent: Node3D, pos: Vector3, working: bool) -> void:
-	parent.add_child(ProcMesh.cylinder(0.09, 5.4, pos + Vector3(0, 2.7, 0), world.mat("dark_steel"), 6))
+	parent.add_child(ProcMesh.cylinder(0.09, 5.4, pos + Vector3(0, 2.7, 0),
+		world.mat("lamp_post"), 6))
 	parent.add_child(ProcMesh.box(Vector3(0.9, 0.10, 0.30), pos + Vector3(0.4, 5.35, 0),
-		world.mat("dark_steel"), "Arm"))
+		world.mat("lamp_post"), "Arm"))
+	# A lit head is a flat emissive box, because it is the light. A dead one is
+	# the pack's photograph of a lamp head, which is a thing you can look at.
 	parent.add_child(ProcMesh.box(Vector3(0.5, 0.14, 0.28), pos + Vector3(0.78, 5.26, 0),
-		world.mat("lamp") if working else world.mat("dark_steel"), "Head"))
+		world.mat("lamp") if working else world.mat("lamp_head_off"), "Head"))
 	if working:
 		var l := OmniLight3D.new()
 		l.position = pos + Vector3(0.78, 5.1, 0)
@@ -152,19 +167,131 @@ static func _lamp_post(world: World, parent: Node3D, pos: Vector3, working: bool
 
 static func _clutter(world: World, street: Node3D, rng: RandomNumberGenerator) -> void:
 	street.add_child(ProcMesh.solid_box(Vector3(0.7, 1.1, 0.7), Vector3(-4.6, 0.75, -3.4),
-		world.mat("dark_steel"), "Bin"))
+		world.mat("bin"), "Bin"))
+	# The car has been there long enough that nobody remembers whose it is.
 	street.add_child(ProcMesh.solid_box(Vector3(2.0, 0.8, 4.4), Vector3(10.5, 0.60, -9.0),
-		world.mat("dark_steel"), "DeadCarBody"))
+		world.mat("rusted"), "DeadCarBody"))
 	street.add_child(ProcMesh.box(Vector3(1.8, 0.6, 2.1), Vector3(10.5, 1.30, -9.3),
 		world.mat("glass"), "DeadCarCab"))
 	street.add_child(ProcMesh.solid_box(Vector3(2.4, 1.3, 1.6), Vector3(-19.0, 0.85, -3.2),
-		world.mat("dark_steel"), "Skip"))
+		world.mat("skip"), "Skip"))
 
+	# Scraps of newspaper rather than chips of pavement. Same sixty pieces of
+	# litter, but you can now tell what they are when you walk over one.
 	for i in 60:
 		street.add_child(ProcMesh.box(Vector3(0.18, 0.02, 0.24),
 			Vector3(rng.randf_range(World.STREET_WEST + 2.0, World.STREET_EAST - 2.0), 0.22,
 				rng.randf_range(-11.0, 4.0)),
-			world.mat("pavement"), "Litter%d" % i))
+			world.mat("litter"), "Litter%d" % i))
+
+	_yards(world, street, rng)
+
+
+## What is stacked against the walls between the kiosk and the far end.
+##
+## The street was a hundred metres of empty pavement with a bin, a skip and a
+## dead car on it, which is a very long way to walk past nothing. These are the
+## things a back street actually has — bins, drums, pallets, stacked crates,
+## tyres, bags nobody collected — and every one of them is wearing a photograph
+## from the pack rather than the grey metal everything used to share.
+##
+## Laid out from a fixed seed against the buildings on both sides, so it dresses
+## the street without ever standing where somebody walks: the pavement in front
+## of the kiosk and the two manhole covers are left clear on purpose.
+static func _yards(world: World, street: Node3D, rng: RandomNumberGenerator) -> void:
+	var kinds := [
+		["drum", Vector3(0.58, 0.88, 0.58)],
+		["crate_wood", Vector3(0.72, 0.56, 0.72)],
+		["crate_plastic", Vector3(0.60, 0.42, 0.60)],
+		["crate_milk", Vector3(0.44, 0.36, 0.44)],
+		["bin_bag", Vector3(0.62, 0.52, 0.62)],
+		["pallet", Vector3(1.15, 0.14, 0.95)],
+		["tyres", Vector3(0.74, 0.26, 0.74)],
+		["bucket", Vector3(0.34, 0.36, 0.34)],
+		["board", Vector3(0.16, 1.45, 1.10)],
+	]
+
+	var x := World.STREET_WEST + 6.0
+	var n := 0
+	while x < World.STREET_EAST - 6.0:
+		x += rng.randf_range(3.5, 9.0)
+		# Clear of the shop front, and clear of both ways out of the sewer.
+		if absf(x) < World.SHOP_HALF_X + 3.5 \
+				or absf(x - World.SEWER_EXIT.x) < 2.5 \
+				or absf(x - World.SEWER_MID_EXIT.x) < 2.5:
+			continue
+		# Against the buildings, north side or south side. The north figure stops
+		# well short of PAVEMENT_Z_MAX: the fence that closes the street is at
+		# 9.0 and the buildings behind it start at 8.0, so anything past about
+		# 7.6 is standing inside a wall.
+		var north := rng.randf() < 0.5
+		var z := (PAVEMENT_Z_MAX - rng.randf_range(1.4, 2.6)) if north \
+			else (ROAD_Z_MIN + rng.randf_range(1.4, 2.6))
+		var stack := rng.randi_range(1, 3)
+		var y := 0.0
+		for s in stack:
+			var kind: Array = kinds[rng.randi() % kinds.size()]
+			var size: Vector3 = kind[1]
+			# Nothing balances on a pallet or a board, so those end a stack.
+			if s > 0 and (str(kind[0]) == "pallet" or str(kind[0]) == "board"):
+				break
+			var piece := ProcMesh.solid_box(size,
+				Vector3(x + rng.randf_range(-0.4, 0.4), y + size.y * 0.5,
+					z + rng.randf_range(-0.3, 0.3)),
+				world.mat(str(kind[0])), "Yard%d_%s" % [n, kind[0]])
+			piece.rotation_degrees = Vector3(0, rng.randf_range(-18.0, 18.0), 0)
+			street.add_child(piece)
+			y += size.y
+			n += 1
+
+
+## Graffiti and gutter drains along the street.
+##
+## Flat panels a centimetre off the brick rather than decals — the game draws
+## everything with one texture per surface and has no second UV channel to put a
+## decal in, and a quad standing slightly proud of a wall is what a decal looks
+## like from any distance you would ever see one of these from. No collision on
+## any of it: they are paint, and walking into paint should do nothing.
+##
+## The drains are on the road, flat, at the kerb line where a real one is.
+static func _writing_on_the_walls(world: World, street: Node3D, rng: RandomNumberGenerator) -> void:
+	var tags := ["graffiti_large_a", "graffiti_large_b", "graffiti_c"]
+	var bills := ["poster_a", "poster_b", "poster_torn"]
+	var x := World.STREET_WEST + 8.0
+	var i := 0
+	while x < World.STREET_EAST - 8.0:
+		x += rng.randf_range(7.0, 16.0)
+		if absf(x) < World.SHOP_HALF_X + 2.0:
+			continue
+		# On the terrace across the road, facing back at the pavement.
+		var w := rng.randf_range(1.8, 3.4)
+		var h := w * rng.randf_range(0.5, 0.8)
+		street.add_child(ProcMesh.box(Vector3(w, h, 0.06),
+			Vector3(x, rng.randf_range(1.2, 2.6), ROAD_Z_MIN + 0.65),
+			world.mat(tags[i % tags.size()]), "Tag%d" % i))
+		# And a bill flyposted next to it, more often than not. Portrait, at
+		# reading height, the way they are actually pasted up.
+		if rng.randf() < 0.7:
+			street.add_child(ProcMesh.box(Vector3(0.62, 0.88, 0.06),
+				Vector3(x + rng.randf_range(2.0, 3.4), rng.randf_range(1.4, 2.1),
+					ROAD_Z_MIN + 0.65),
+				world.mat(bills[i % bills.size()]), "Bill%d" % i))
+		i += 1
+
+	# And a couple on the shop's own end walls, which is where anybody standing
+	# at the hatch is actually looking.
+	for side: int in [-1, 1]:
+		street.add_child(ProcMesh.box(Vector3(0.06, 1.3, 2.2),
+			Vector3(side * (World.SHOP_HALF_X + 0.26), 1.7, 1.2),
+			world.mat(tags[(side + 1) % tags.size()]), "ShopTag%d" % side))
+		street.add_child(ProcMesh.box(Vector3(0.05, 0.88, 0.62),
+			Vector3(side * (World.SHOP_HALF_X + 0.27), 1.6, -1.9),
+			world.mat(bills[(side + 1) % bills.size()]), "ShopBill%d" % side))
+
+	# Gutter drains, at the kerb, where the rain goes.
+	for at: float in [6.0, -9.0, -21.0, -36.0]:
+		street.add_child(ProcMesh.box(Vector3(0.62, 0.04, 0.34),
+			Vector3(at, 0.02, PAVEMENT_Z_MIN - 0.45), world.mat("drain"), "Drain%d" % int(at)))
 
 
 ## The last twenty metres. No lamps, an alcove between two blocks, and the
@@ -183,11 +310,12 @@ static func _far_end(world: World, street: Node3D, rng: RandomNumberGenerator) -
 	# A skip pushed across the mouth of it, so the board is not visible until
 	# you have walked round the obstacle rather than past it.
 	street.add_child(ProcMesh.solid_box(Vector3(3.4, 1.6, 1.5),
-		Vector3(ex + 0.6, 1.0, 2.1), world.mat("dark_steel"), "AlcoveSkip"))
+		Vector3(ex + 0.6, 1.0, 2.1), world.mat("skip"), "AlcoveSkip"))
+	var junk := ["cardboard", "cardboard_printed", "crate_wood", "board", "bin_bag"]
 	for i in 5:
 		street.add_child(ProcMesh.box(Vector3(0.5, 0.4, 0.5),
 			Vector3(ex + rng.randf_range(-1.2, 2.0), 1.9, 2.1 + rng.randf_range(-0.4, 0.4)),
-			world.mat("cardboard"), "SkipJunk%d" % i))
+			world.mat(junk[i % junk.size()]), "SkipJunk%d" % i))
 
 	var egg := EasterEgg.new()
 	egg.position = Vector3(ex, 0, 5.9)
@@ -198,7 +326,7 @@ static func _far_end(world: World, street: Node3D, rng: RandomNumberGenerator) -
 	# The sewer's other end, in the same dark corner.
 	var exit_pos := World.SEWER_EXIT
 	street.add_child(ProcMesh.cylinder(0.52, 0.06, exit_pos + Vector3(0, 0.03, 0),
-		world.mat("dark_steel"), 12))
+		world.mat("manhole_cover"), 12))
 	street.add_child(ProcMesh.cylinder(0.44, 0.10, exit_pos + Vector3(0, -0.06, 0),
 		ProcMesh.mat(ProcTex.flat(Color(0.02, 0.02, 0.03))), 12))
 	world.interact_zone(street, "manhole_street", exit_pos + Vector3(0, 0.5, 0), Vector3(1.1, 1.0, 1.1))
@@ -209,7 +337,7 @@ static func _far_end(world: World, street: Node3D, rng: RandomNumberGenerator) -
 	# place to be seen climbing out of.
 	var mid_pos := World.SEWER_MID_EXIT
 	street.add_child(ProcMesh.cylinder(0.52, 0.06, mid_pos + Vector3(0, 0.03, 0),
-		world.mat("dark_steel"), 12))
+		world.mat("manhole_cover"), 12))
 	street.add_child(ProcMesh.cylinder(0.44, 0.10, mid_pos + Vector3(0, -0.06, 0),
 		ProcMesh.mat(ProcTex.flat(Color(0.02, 0.02, 0.03))), 12))
 	world.interact_zone(street, "manhole_mid", mid_pos + Vector3(0, 0.5, 0), Vector3(1.1, 1.0, 1.1))

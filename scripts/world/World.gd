@@ -227,9 +227,18 @@ func _build_materials() -> void:
 	# The terminal's monitor. Keeps its glow either way — the interface is drawn
 	# on a panel in front of it, so this is the box the screen lives in, and a
 	# dead grey box beside a lit interface reads as switched off.
-	_mats["screen"] = _surface("crt_screen",
-		ProcTex.flat(Color(0.10, 0.35, 0.16)), 1.0, 1.0,
-		Color(0.85, 1.0, 0.88), Color(0.20, 0.85, 0.35), 1.3)
+	#
+	# It said that in a comment for a while and did not do it: `_surface` drops
+	# the emission on the painted branch by design, so the moment the pack landed
+	# the one lit object on the counter went dark. `_lit` is the branch that
+	# means what this comment says.
+	#
+	# The painted one glows less. Emission is added on top of the texture rather
+	# than multiplied through it, so the strength that makes a flat green box
+	# read as a lit screen turns a photograph of a monitor into a green blob with
+	# a monitor somewhere underneath it.
+	_mats["screen"] = _lit("crt_screen", ProcTex.flat(Color(0.10, 0.35, 0.16)),
+		Color(0.20, 0.85, 0.35), 1.3, 1.0, Color(0.85, 1.0, 0.88), 0.45)
 	# The shop's own sign. The pack has one that says KIOSK 24/7, which is what
 	# the place is called, so it replaces the generated neon strip entirely — and
 	# the glow comes down with it, because a lit box sign is a photograph of
@@ -255,11 +264,11 @@ func _build_materials() -> void:
 	_mats["water"] = _surface("water",
 		ProcTex.grime(Color(0.10, 0.13, 0.12), 0.4, 141), 8.0, 4.0,
 		Color.WHITE, Color(0.06, 0.10, 0.09), 0.15)
-	# The shelving carcass. Its own entry rather than sharing `dark_steel` with
-	# the lamp posts and the shutter frame — those are all the same grey metal in
-	# code, and a photograph of a shelf unit stretched over a lamp post is not.
-	_mats["stock_floor"] = _surface("floor_concrete",
-		ProcTex.grime(Color(0.30, 0.30, 0.29), 0.5, 161), 5.0, 5.0)
+	# The kiosk sheet has a swatch called "storage room floor", and this is the
+	# storage room floor. It was wearing the street's concrete because the pack
+	# was wired up a sheet at a time and this one arrived last.
+	_mats["stock_floor"] = _surface("stock_floor",
+		ProcTex.grime(Color(0.30, 0.30, 0.29), 0.5, 161), 5.0, 4.0)
 	_mats["sewer_floor"] = _surface("sewer_floor", ProcTex.brick(137), 5.0, 4.0,
 		Color(1.35, 1.35, 1.30))
 	# Back to generated metal.
@@ -272,13 +281,147 @@ func _build_materials() -> void:
 	#
 	# A photograph of a thing is not a material for that thing.
 	_mats["rack"] = ProcMesh.mat(ProcTex.metal(Color(0.14, 0.14, 0.16), 83))
+	# The boards the stock actually sits on. A photograph of a shelf unit is no
+	# good as a material for a rack — that was the mistake above — but it is
+	# exactly right on a board, because a board is the thing the photograph is
+	# mostly of. Two repeats along a three metre run.
+	_mats["shelf_board"] = _surface("shelf_wood",
+		ProcTex.grime(Color(0.32, 0.26, 0.19), 0.4, 181), 1.0, 2.0)
+	_mats["shelf_board_metal"] = _surface("shelf_metal",
+		ProcTex.metal(Color(0.28, 0.29, 0.31), 183), 1.0, 2.0)
 	_mats["cardboard"] = _surface("cardboard",
 		ProcTex.grime(Color(0.44, 0.33, 0.21), 0.35, 151), 1.0, 1.0)
 
+	# --- Everything the pack had that the world was not asking for -----------
+	#
+	# The pack arrived as a hundred-odd cut swatches and the world named twenty
+	# of them. The other eighty were on disk, loaded into memory at launch and
+	# drawn nowhere — a bin painted as a bin, sitting in the texture table while
+	# the bin in the street wore a photograph of a drainpipe.
+	#
+	# This is the rest of it. Nothing here is a new kind of surface; it is the
+	# same objects the street and the shop already had, asking for the picture of
+	# themselves instead of the nearest grey metal.
 
-## One surface. Uses the painted texture if the pack has one under `name`, and
-## the generated one otherwise, with its own repeat for each — a photographed
-## brick wall and a generated one want different tiling to read at the same size.
+	# Street furniture. Each of these is one object with one photograph on it, so
+	# they go through `_thing` and are never tiled.
+	_mats["kerb"] = _surface("kerb", ProcTex.grime(Color(0.24, 0.24, 0.23), 0.4, 171), 8.0, 30.0)
+	_mats["bin"] = _thing("garbage_bin", _mats["dark_steel"])
+	_mats["street_bin"] = _thing("bin", _mats["dark_steel"])
+	# A skip is a big steel box that has been outside for years, which is what
+	# the corroded plate off the decals sheet is a photograph of. Tiled twice so
+	# the corrosion stays the size of corrosion on something three metres long.
+	_mats["skip"] = _surface("metal_corroded",
+		ProcTex.metal(Color(0.22, 0.20, 0.18), 87), 1.0, 2.0)
+	_mats["rusted"] = _surface("rust_patches",
+		ProcTex.metal(Color(0.34, 0.22, 0.15), 97), 1.0, 2.0)
+	_mats["manhole_cover"] = _thing("manhole", _mats["dark_steel"])
+	# The pack has a lamp post and a lamp head, and the street has eight of each.
+	_mats["lamp_post"] = _surface("lamp_post",
+		ProcTex.metal(Color(0.14, 0.14, 0.16), 83), 1.0, 1.0)
+	_mats["lamp_head_off"] = _thing("lamp_head", _mats["dark_steel"])
+	_mats["drain"] = _thing("drain", _mats["dark_steel"])
+	_mats["grate"] = _thing("grate", _mats["steel"])
+	_mats["fence"] = _surface("fence", ProcTex.metal(Color(0.20, 0.21, 0.22), 89), 1.0, 4.0)
+	_mats["litter"] = _thing("newspaper", ProcMesh.mat(ProcTex.flat(Color(0.62, 0.60, 0.55))))
+
+	# Yard clutter. The street had four objects in it and a hundred metres to put
+	# them in; these are what the rest of it is made of.
+	_mats["drum"] = _thing("metal_drum", _mats["dark_steel"])
+	_mats["pallet"] = _thing("pallet_wood", _mats["cardboard"])
+	_mats["crate_wood"] = _thing("wooden_crate", _mats["cardboard"])
+	_mats["crate_plastic"] = _thing("plastic_crate", _mats["cardboard"])
+	_mats["crate_milk"] = _thing("milk_crate", _mats["cardboard"])
+	_mats["tyres"] = _thing("tyres", ProcMesh.mat(ProcTex.flat(Color(0.09, 0.09, 0.10))))
+	_mats["bin_bag"] = _thing("garbage_bag", ProcMesh.mat(ProcTex.flat(Color(0.07, 0.07, 0.08))))
+	_mats["bucket"] = _thing("bucket", _mats["cardboard"])
+	_mats["board"] = _thing("wooden_board", _mats["cardboard"])
+	_mats["cardboard_printed"] = _thing("cardboard_printed", _mats["cardboard"])
+
+	# Doors. The shop has three openings and every one of them was a hole.
+	_mats["door_metal"] = _thing("door_metal", _mats["steel"])
+	_mats["door_wood"] = _thing("door_wooden", _mats["counter"])
+
+	# White goods, which the shop had none of and every shop like it has.
+	_mats["fridge"] = _thing("fridge", _mats["steel"])
+	_mats["vending"] = _thing("vending_machine", _mats["steel"])
+
+	# Signs and the writing on the walls. Small quads, and between them most of
+	# what tells you where you are.
+	#
+	# The warning signs come off the lighting sheet rather than the signage one.
+	# Both sheets have a no-smoking sign; the signage version is a photograph of
+	# a sign on a wall, at an angle, with the wall in it, and the lighting
+	# version is the sign square on and nothing else. On a 30cm quad in a dark
+	# shop that is the difference between a sign and a smudge.
+	for sign: String in ["warn_staff_only", "warn_no_smoking", "warn_wet_floor",
+			"warn_no_entry", "warn_danger_electric", "sign_notice", "note_paper",
+			"graffiti_large_a", "graffiti_large_b", "graffiti_c",
+			"poster_a", "poster_b", "poster_torn"]:
+		_mats[sign] = _thing(sign, _mats["wall"])
+	# The way out, lit, because that is the whole point of one.
+	_mats["sign_exit"] = _lit("sign_emergency", ProcTex.flat(Color(0.20, 0.75, 0.35)),
+		Color(0.25, 0.90, 0.42), 1.1, 1.0, Color.WHITE, 0.35)
+
+	# The sky over the street.
+	#
+	# One very large panel above the roofs rather than a skybox: the world is
+	# drawn one render layer at a time and a skybox would show through the road
+	# the same way the tunnels did. It also answers the complaint that the street
+	# is a black box — the box had no lid, and looking up gave you the clear
+	# colour of the environment and nothing else. Emissive at a fraction,
+	# because nothing lights the sky.
+	_mats["sky"] = _lit("sky_cloudy", ProcTex.grime(Color(0.05, 0.06, 0.09), 0.4, 191),
+		Color(0.10, 0.12, 0.18), 0.55, 3.0, Color(1.55, 1.55, 1.70), 0.42)
+
+	# Light fittings. `_lit` rather than `_surface`, or the painted tube is a grey
+	# stripe on the ceiling of a dark shop.
+	#
+	# Only the shop's strips are painted. The tunnel and the stockroom are lit by
+	# things the size of a fist, and a photograph of a lamp on an eighteen
+	# centimetre box is four dark pixels and a bright one — worse than the flat
+	# white it replaces, on the one object in the room whose whole job is to be
+	# the bright thing in it.
+	_mats["strip_light"] = _lit("light_strip",
+		ProcTex.flat(Color(0.9, 0.95, 1.0)), Color(0.85, 0.92, 1.0), 1.6)
+	_mats["bulb"] = ProcMesh.mat(ProcTex.flat(Color(1.0, 0.92, 0.74)), 1.0,
+		Color(1.0, 0.88, 0.66), 1.4)
+	# The tunnels get the caged bulkhead lamp, which is what is actually bolted
+	# to the wall of a place like that, on a fitting big enough to see it on.
+	_mats["tunnel_bulb"] = _lit("light_bulkhead", ProcTex.flat(Color(0.85, 0.95, 0.8)),
+		Color(0.78, 0.9, 0.72), 1.2, 1.0, Color.WHITE, 0.5)
+	_mats["cctv"] = _lit("screen_cctv", ProcTex.flat(Color(0.14, 0.20, 0.16)),
+		Color(0.30, 0.55, 0.35), 0.9, 1.0, Color.WHITE, 0.30)
+
+	# Surfaces the back rooms and the tunnels wanted and did not have.
+	#
+	# Dirty plaster rather than peeling paint, and at five repeats rather than
+	# three. The peeling swatch is enormously high contrast — great as a picture,
+	# and on a six metre wall at three repeats it is metre-wide brown blooms with
+	# a mirror line down the middle of each one. Plaster has almost nothing in
+	# it, which is what a wall in the background wants: five copies of nearly
+	# nothing is a wall, and one copy of something is a mural.
+	_mats["stock_wall"] = _surface("dirty_plaster",
+		ProcTex.grime(Color(0.36, 0.35, 0.32), 0.5, 173), 4.0, 5.0)
+	_mats["corrugated"] = _surface("corrugated_metal",
+		ProcTex.corrugated(Color(0.26, 0.26, 0.28), 91), 2.0, 3.0)
+	_mats["pipe_rusted"] = _surface("pipe_rusted",
+		ProcTex.metal(Color(0.34, 0.20, 0.12), 93), 1.0, 2.0)
+	# Four faces of the same tunnel, so a hundred metres of it is not one wall
+	# repeated. All lifted the same way the main brick is, for the same reason:
+	# they are photographs of wet walls in the dark and arrive already dim.
+	for pair: Array in [["sewer_wet", "sewer_wall_wet"], ["sewer_mossy", "sewer_wall_mossy"],
+			["sewer_tile", "sewer_wall_tile"], ["sewer_plain", "sewer_wall_concrete"],
+			["sewer_broken", "sewer_brick_damaged"]]:
+		_mats[str(pair[0])] = _surface(str(pair[1]), ProcTex.brick(137), 5.0, 3.0,
+			Color(1.55, 1.55, 1.50))
+	for pair: Array in [["sewer_floor_wet", "sewer_floor_wet"],
+			["sewer_floor_grate", "sewer_floor_grate"],
+			["sewer_floor_brick", "sewer_floor_brick"]]:
+		_mats[str(pair[0])] = _surface(str(pair[1]), ProcTex.brick(137), 5.0, 4.0,
+			Color(1.35, 1.35, 1.30))
+
+
 ## One surface. Uses the painted texture if the pack has one under `name`, and
 ## the generated one otherwise, with its own repeat for each — a photographed
 ## brick wall and a generated one want different tiling to read at the same size.
@@ -294,6 +437,46 @@ func _surface(name: String, generated: Texture2D, repeat: float, painted_repeat:
 	if tex != null:
 		return ProcMesh.mat(tex, painted_repeat, Color.BLACK, 0.0, tint)
 	return ProcMesh.mat(generated, repeat, glow, glow_strength, tint)
+
+
+## A surface that is a light fitting, or a screen, or anything else whose job is
+## to be the bright thing in a dark room.
+##
+## The difference from `_surface` is the one thing `_surface` deliberately will
+## not do: the glow goes on whichever texture is used. That rule is right for a
+## wall — a photograph of a wet floor already has the reflection in it and does
+## not want emission on top — and wrong for a strip light, where the photograph
+## is of a tube that is on, and drawn without emission it is a grey stripe on a
+## ceiling in a dark shop. The lamp is what tells you the room is lit.
+##
+## `painted_strength` is there because emission is added to the shaded colour
+## rather than multiplied through it. A flat green box needs a lot of it before
+## it reads as a screen that is switched on; a photograph of a lit monitor
+## already has the light in it and needs a fraction of the same number, or the
+## picture disappears under the glow. Left at -1 the two are the same.
+func _lit(name: String, generated: Texture2D, glow: Color, glow_strength: float,
+		repeat: float = 1.0, tint: Color = Color.WHITE,
+		painted_strength: float = -1.0) -> Material:
+	var tex := ProcTex.painted(name)
+	if tex != null:
+		return ProcMesh.mat(tex, repeat, glow,
+			glow_strength if painted_strength < 0.0 else painted_strength, tint)
+	return ProcMesh.mat(generated, repeat, glow, glow_strength, tint)
+
+
+## Something the pack has a photograph of, drawn at one copy per face.
+##
+## Every one of these is a picture of an object rather than a material, so it is
+## never tiled and never mirrored, and if the pack does not have it the caller's
+## generated material is used unchanged. Kept separate from `_surface` because
+## the two fail in opposite directions: a surface with the wrong repeat looks
+## like a bad wall, and an object with any repeat at all looks like four of
+## itself.
+func _thing(name: String, fallback: Material, tint: Color = Color.WHITE) -> Material:
+	var tex := ProcTex.painted(name)
+	if tex == null:
+		return fallback
+	return ProcMesh.mat(tex, 1.0, Color.BLACK, 0.0, tint)
 
 
 func mat(id: String) -> Material:
@@ -417,7 +600,7 @@ func _build_shop_shell() -> void:
 	strip_light.omni_range = 13.0
 	add_child(strip_light)
 	shop.add_child(ProcMesh.box(Vector3(3.0, 0.08, 0.22), Vector3(0, CEILING - 0.12, -1.4),
-		ProcMesh.mat(ProcTex.flat(Color(0.9, 0.95, 1.0)), 1.0, Color(0.85, 0.92, 1.0), 1.6), "Strip1"))
+		mat("strip_light"), "Strip1"))
 
 	var strip2 := OmniLight3D.new()
 	strip2.position = Vector3(0, CEILING - 0.35, 2.0)
@@ -426,7 +609,7 @@ func _build_shop_shell() -> void:
 	strip2.omni_range = 12.0
 	add_child(strip2)
 	shop.add_child(ProcMesh.box(Vector3(3.0, 0.08, 0.22), Vector3(0, CEILING - 0.12, 2.0),
-		ProcMesh.mat(ProcTex.flat(Color(0.9, 0.95, 1.0)), 1.0, Color(0.85, 0.92, 1.0), 1.6), "Strip2"))
+		mat("strip_light"), "Strip2"))
 
 	anchors["customer_stand"] = CUSTOMER_STAND
 	anchors["customer_entry"] = CUSTOMER_ENTRY
@@ -579,7 +762,106 @@ func _build_fittings() -> void:
 	fit.add_child(ProcMesh.box(Vector3(0.34, 0.16, 0.16), Vector3(-4.3, 1.62, SHOP_HALF_Z - 0.25),
 		mat("dark_steel"), "Radio"))
 
+	_signs(fit)
+	_cold_cabinet(fit)
+	_outside_dressing(fit)
+
 	anchors["back_door"] = Vector3(BACK_DOOR_X, 0, SHOP_HALF_Z)
+
+
+## The paper on the walls.
+##
+## A shop like this is covered in it — the licence, the no-smoking notice, the
+## sign on the staff door, the exit sign nobody has changed the bulb in — and
+## the pack has all four. They are flat panels a few centimetres proud of the
+## wall, with no collision: a customer who walks into the licence notice should
+## walk into the wall behind it, not into a piece of paper.
+func _signs(fit: Node3D) -> void:
+	# Over the shop door, and the only one that is lit.
+	fit.add_child(ProcMesh.box(Vector3(0.62, 0.24, 0.05),
+		Vector3(FRONT_DOOR_X, DOOR_H + 0.28, -SHOP_HALF_Z + 0.14), mat("sign_exit"), "ExitSign"))
+	# On the door through to the back.
+	fit.add_child(ProcMesh.box(Vector3(0.30, 0.44, 0.05),
+		Vector3(BACK_DOOR_X, DOOR_H - 0.40, SHOP_HALF_Z - 0.14), mat("warn_staff_only"), "StaffSign"))
+	# On the side walls, so these are thin along X rather than along Z. A sign
+	# built the wrong way round is edge-on to the room and invisible from every
+	# angle a player is ever standing at, which is a very quiet way to lose an
+	# hour.
+	# Behind the counter, where the person working is the one who ignores it.
+	fit.add_child(ProcMesh.box(Vector3(0.05, 0.38, 0.26),
+		Vector3(-SHOP_HALF_X + 0.16, 2.05, CHECKOUT_Z + 0.4), mat("warn_no_smoking"), "NoSmoking"))
+	# The licence and whatever else the council makes you display, by the hatch.
+	fit.add_child(ProcMesh.box(Vector3(0.34, 0.46, 0.05),
+		Vector3(HATCH_X + 1.55, 1.70, -SHOP_HALF_Z + 0.14), mat("sign_notice"), "Notice"))
+	# Somebody's list, taped to the wall by the till.
+	fit.add_child(ProcMesh.box(Vector3(0.04, 0.30, 0.22),
+		Vector3(SHOP_HALF_X - 0.16, 1.55, CHECKOUT_Z + 0.9), mat("note_paper"), "TapedNote"))
+	# The camera in the corner has to be looking at something. A small monitor on
+	# a bracket beside the till, showing the aisle it points down.
+	fit.add_child(ProcMesh.box(Vector3(0.16, 0.24, 0.30),
+		Vector3(SHOP_HALF_X - 0.30, 2.20, CHECKOUT_Z - 0.30), mat("dark_steel"), "MonitorCase"))
+	fit.add_child(ProcMesh.box(Vector3(0.04, 0.19, 0.25),
+		Vector3(SHOP_HALF_X - 0.40, 2.20, CHECKOUT_Z - 0.30), mat("cctv"), "MonitorScreen"))
+
+	# The stockroom is a working room and it has the signs to prove it.
+	fit.add_child(ProcMesh.box(Vector3(0.05, 0.40, 0.28),
+		Vector3(STOCK_MIN_X + 0.24, 1.85, STOCK_MAX_Z - 2.2), mat("warn_danger_electric"), "DangerSign"))
+	fit.add_child(ProcMesh.box(Vector3(0.05, 0.40, 0.28),
+		Vector3(STOCK_MAX_X - 0.24, 1.75, STOCK_MIN_Z + 1.4), mat("warn_wet_floor"), "WetFloorSign"))
+	# And one on the wall beside the hole in the floor.
+	fit.add_child(ProcMesh.box(Vector3(0.05, 0.40, 0.28),
+		Vector3(STOCK_MIN_X + 0.24, 1.60, MANHOLE.z), mat("warn_no_entry"), "ManholeSign"))
+
+
+## What is bolted to the outside of the building.
+##
+## A vending machine beside the front door and the stockroom's fire door, both
+## of which the pack had a photograph of and neither of which existed. The
+## machine also puts a little light on the pavement outside the door, which is
+## the stretch a customer walks down to reach the hatch.
+func _outside_dressing(fit: Node3D) -> void:
+	var at := Vector3(FRONT_DOOR_X + 1.55, 0.0, -SHOP_HALF_Z - 0.45)
+	fit.add_child(ProcMesh.solid_box(Vector3(0.90, 1.85, 0.60), at + Vector3(0, 0.925, 0),
+		mat("vending"), "VendingMachine"))
+	var glow := OmniLight3D.new()
+	glow.position = at + Vector3(0, 1.30, -0.55)
+	glow.light_color = Color(0.86, 0.92, 1.0)
+	glow.light_energy = 1.4
+	glow.omni_range = 3.2
+	fit.add_child(glow)
+
+	# The fire door out of the stockroom. A leaf, shut, in the wall it belongs
+	# to — no collision of its own, because the wall behind it already has some
+	# and two overlapping bodies in a doorway is how a player gets stuck.
+	fit.add_child(ProcMesh.box(Vector3(0.05, 2.00, 0.90),
+		Vector3(STOCK_MIN_X - 0.02, 1.00, STOCK_MAX_Z - 1.8), mat("door_metal"), "FireDoor"))
+	# And a wooden one on the shop side of the back doorway, propped open flat
+	# against the wall the way it has been for years.
+	fit.add_child(ProcMesh.box(Vector3(0.90, 2.05, 0.05),
+		Vector3(BACK_DOOR_X + 1.20, 1.02, SHOP_HALF_Z - 0.16), mat("door_wood"), "BackDoorLeaf"))
+
+
+## The drinks cabinet against the back wall.
+##
+## The shop sells cold beer and soda out of nothing at all — the racks are dry
+## shelving and there was no fridge in the building. The pack has one, so now
+## there is: a cabinet with a lit glass front, which also puts a second source
+## of light in the far corner of a room that has always been dark at that end.
+func _cold_cabinet(fit: Node3D) -> void:
+	var at := Vector3(SHOP_HALF_X - 0.62, 0.0, SHOP_HALF_Z - 1.35)
+	var body := ProcMesh.solid_box(Vector3(1.10, 1.95, 0.70), at + Vector3(0, 0.975, 0),
+		mat("fridge"), "ColdCabinet")
+	fit.add_child(body)
+	# The glass, and the strip inside it. Proud of the front face so the two do
+	# not fight over the same pixels.
+	fit.add_child(ProcMesh.box(Vector3(0.92, 1.55, 0.04), at + Vector3(0, 1.10, -0.38),
+		mat("glass"), "CabinetGlass"))
+	var glow := OmniLight3D.new()
+	glow.position = at + Vector3(0, 1.35, -0.55)
+	glow.light_color = Color(0.78, 0.90, 1.0)
+	glow.light_energy = 1.6
+	glow.omni_range = 3.4
+	fit.add_child(glow)
 
 
 # --- Shelving ----------------------------------------------------------------
@@ -631,6 +913,19 @@ func _build_shelving() -> void:
 		for i in items.size():
 			var item_id: String = items[i]
 			var level_y := 0.98 + float(i) * 0.48
+
+			# A board under each level.
+			#
+			# The rack was a plain box with cartons hovering at three heights
+			# against it and nothing between them, which is why the stock looked
+			# like it was floating in mid air. A shelf is the board; the carcass
+			# is just what holds the boards up.
+			var board: Vector3 = Vector3(0.42, 0.04, span) if dir.z > 0.5 \
+				else Vector3(span, 0.04, 0.42)
+			racks.add_child(ProcMesh.box(board,
+				centre + Vector3(0, level_y - 0.13, 0),
+				mat("shelf_board" if rack_id != 1 else "shelf_board_metal"),
+				"Board%d_%d" % [rack_id, i]))
 			var slots: Array[MeshInstance3D] = []
 			# A painted product if the pack has one for this item, and a
 			# generated carton in the item's colour if not. Never tiled — the
@@ -684,12 +979,15 @@ func _build_stockroom() -> void:
 		mat("stock_floor"), "StockFloor"))
 	room.add_child(ProcMesh.solid_box(Vector3(w + 0.4, 0.2, d + 0.4),
 		Vector3(cx, STOCK_CEILING + 0.1, cz), mat("ceiling"), "StockCeiling"))
+	# Peeling paint back here rather than the bare concrete of the street. It is
+	# the inside of a building that has been the inside of a building for a long
+	# time, and it wants to look different from the wall outside it.
 	room.add_child(ProcMesh.solid_box(Vector3(w + 0.4, STOCK_CEILING, 0.2),
-		Vector3(cx, STOCK_CEILING * 0.5, STOCK_MAX_Z + 0.1), mat("concrete"), "StockBack"))
+		Vector3(cx, STOCK_CEILING * 0.5, STOCK_MAX_Z + 0.1), mat("stock_wall"), "StockBack"))
 	for side: int in [-1, 1]:
 		var x := STOCK_MIN_X - 0.1 if side < 0 else STOCK_MAX_X + 0.1
 		room.add_child(ProcMesh.solid_box(Vector3(0.2, STOCK_CEILING, d),
-			Vector3(x, STOCK_CEILING * 0.5, cz), mat("concrete"), "StockSide%d" % side))
+			Vector3(x, STOCK_CEILING * 0.5, cz), mat("stock_wall"), "StockSide%d" % side))
 
 	for piece: Array in [[STOCK_MIN_X, BACK_DOOR_X - BACK_DOOR_W * 0.5],
 			[BACK_DOOR_X + BACK_DOOR_W * 0.5, STOCK_MAX_X]]:
@@ -698,7 +996,7 @@ func _build_stockroom() -> void:
 			continue
 		room.add_child(ProcMesh.solid_box(Vector3(seg, STOCK_CEILING, 0.2),
 			Vector3((piece[0] + piece[1]) * 0.5, STOCK_CEILING * 0.5, STOCK_MIN_Z + 0.1),
-			mat("concrete"), "StockFront"))
+			mat("stock_wall"), "StockFront"))
 
 	stock_light = OmniLight3D.new()
 	stock_light.position = Vector3(cx, STOCK_CEILING - 0.30, cz - 0.8)
@@ -707,7 +1005,7 @@ func _build_stockroom() -> void:
 	stock_light.omni_range = 13.0
 	add_child(stock_light)
 	room.add_child(ProcMesh.box(Vector3(0.30, 0.10, 0.30), Vector3(cx, STOCK_CEILING - 0.10, cz - 0.8),
-		ProcMesh.mat(ProcTex.flat(Color(1.0, 0.92, 0.74)), 1.0, Color(1.0, 0.88, 0.66), 1.4), "StockBulb"))
+		mat("bulb"), "StockBulb"))
 
 	var back_light := OmniLight3D.new()
 	back_light.position = Vector3(cx - 0.6, STOCK_CEILING - 0.30, STOCK_MAX_Z - 1.4)
@@ -730,19 +1028,26 @@ func _build_stockroom() -> void:
 					Vector3(STOCK_MIN_X + 0.55, 0.44 + float(level) * 0.74, bz - 0.38 + float(c) * 0.76),
 					case_mat, "Case"))
 
+	# Boxes on the floor. Printed cartons, plain ones, crates and a milk crate,
+	# rather than nine copies of the same brown box — the pack has all of them
+	# and the difference is what stops a stockroom reading as one texture.
+	var loose := ["cardboard", "cardboard_printed", "crate_wood", "crate_plastic", "crate_milk"]
 	for i in 9:
 		room.add_child(ProcMesh.box(Vector3(rng.randf_range(0.4, 0.7), rng.randf_range(0.3, 0.5),
 			rng.randf_range(0.4, 0.7)),
 			Vector3(rng.randf_range(STOCK_MIN_X + 1.8, STOCK_MAX_X - 0.7), 0.25,
 				rng.randf_range(STOCK_MIN_Z + 1.0, STOCK_MAX_Z - 1.6)),
-			mat("cardboard"), "Box%d" % i))
+			mat(loose[i % loose.size()]), "Box%d" % i))
 	room.add_child(ProcMesh.box(Vector3(1.2, 0.34, 1.0),
-		Vector3(STOCK_MAX_X - 1.0, 0.17, STOCK_MIN_Z + 1.0), mat("cardboard"), "Pallets"))
+		Vector3(STOCK_MAX_X - 1.0, 0.17, STOCK_MIN_Z + 1.0), mat("pallet"), "Pallets"))
 
+	# The crates you take an armful of stock off. Wood, because that is what
+	# they are and the pack has a photograph of one.
 	_interactable(room, "crates", "Crates", Vector3(1.60, 0.90, 0.80),
-		Vector3(STOCK_MIN_X + 2.6, 0.45, STOCK_MAX_Z - 0.9), mat("counter"))
+		Vector3(STOCK_MIN_X + 2.6, 0.45, STOCK_MAX_Z - 0.9), mat("crate_wood"))
 
-	room.add_child(ProcMesh.cylinder(0.52, 0.06, MANHOLE + Vector3(0, 0.03, 0), mat("dark_steel"), 12))
+	room.add_child(ProcMesh.cylinder(0.52, 0.06, MANHOLE + Vector3(0, 0.03, 0),
+		mat("manhole_cover"), 12))
 	room.add_child(ProcMesh.cylinder(0.44, 0.10, MANHOLE + Vector3(0, -0.06, 0),
 		ProcMesh.mat(ProcTex.flat(Color(0.02, 0.02, 0.03))), 12))
 	var cover := ProcMesh.cylinder(0.46, 0.05, MANHOLE + Vector3(0.75, 0.30, 0.1), mat("steel"), 12)

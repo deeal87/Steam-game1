@@ -147,11 +147,17 @@ func _ready() -> void:
 	game.sewer_director.active = false
 	game.sewer_director.enter()
 	await _settle(40)
+	# Seven metres east of whoever is down there, looking west at them — but on
+	# the main run, not wherever they happen to be standing. Half the dwellers
+	# spawn on the spur, and "their position plus seven metres of x" is a point
+	# inside solid ground with the lights on the other side of a wall: this shot
+	# has been a black rectangle for as long as it has existed.
 	var lurker := _nearest_dweller(game)
+	var down_the_tunnel := Vector3(-30.0, World.SEWER_Y + 0.2, World.MANHOLE.z)
 	if lurker != null:
-		await _look_from(lurker.global_position + Vector3(7.0, 0.2, 0.0), 1.57, "20_sewer_tunnel")
-	else:
-		await _look_from(Vector3(-30.0, World.SEWER_Y + 0.2, World.MANHOLE.z), 1.57, "20_sewer_tunnel")
+		down_the_tunnel.x = clampf(lurker.global_position.x + 7.0,
+			World.SEWER_EXIT.x + 2.0, World.MANHOLE.x - 2.0)
+	await _look_from(down_the_tunnel, 1.57, "20_sewer_tunnel")
 	game.sewer_director.leave()
 
 	# The far end. Approach it the way a player would, from down the street.
