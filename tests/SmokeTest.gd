@@ -46,6 +46,7 @@ func _ready() -> void:
 	await test_customer_construction()
 	await test_sewer_is_traversable()
 	await test_two_halves_of_the_world()
+	await test_shoppers_go_round_the_shelves()
 	await test_identity_and_egg()
 	await test_sewer_escape()
 	await test_transaction()
@@ -1252,6 +1253,128 @@ func test_two_halves_of_the_world() -> void:
 	_check(_player._torch.light_cull_mask == Player.VIEW_LAYERS, "the torch lights both")
 	_player._show_in_hand("")
 	_done("two halves")
+
+
+## Nobody walks through the shelving.
+##
+## Customers steer in a straight line at whatever they want next and slide off
+## whatever they hit, which is fine everywhere in this shop except the island
+## rack: the line from the right-hand rack to the left-hand one runs the length
+## of it. What that looked like from the floor was people standing inside the
+## shelves, which is what was reported.
+##
+## Checked on the route rather than by watching somebody walk it. A simulated
+## shopper who happens not to want anything off both wall racks proves nothing,
+## and the routing is what the fix is.
+func test_shoppers_go_round_the_shelves() -> void:
+	print("\nGetting round the shop:")
+	var points: Array[Vector3] = []
+	for id: String in GameState.ITEMS:
+		var p := _world.browse_point(id)
+		if not points.has(p):
+			points.append(p)
+	points.append(World.DOOR_INSIDE)
+	points.append(World.AISLE)
+	_check(points.size() >= 4, "there are %d places to stand in the shop" % points.size())
+
+	# Every leg anyone could ever walk, in both directions.
+	var crossings := 0
+	var detoured := 0
+	var legs := 0
+	for from: Vector3 in points:
+		for to: Vector3 in points:
+			if from.is_equal_approx(to):
+				continue
+			legs += 1
+			var route: Array[Vector3] = [from]
+			route.append_array(_world.detour(from, to))
+			route.append(to)
+			if route.size() > 2:
+				detoured += 1
+			for i in route.size() - 1:
+				if _crosses_a_rack(route[i], route[i + 1]):
+					crossings += 1
+					# Named, because "two legs cross a rack" out of forty is not
+					# something anybody can find by reading the floor plan.
+					print("   through a rack: %.2f,%.2f -> %.2f,%.2f  (leg %.2f,%.2f -> %.2f,%.2f)"
+						% [route[i].x, route[i].z, route[i + 1].x, route[i + 1].z,
+							from.x, from.z, to.x, to.z])
+	_check(detoured > 0, "some of the %d legs need a way round (%d do)" % [legs, detoured])
+	_check(crossings == 0, "and no leg of any route goes through a rack (%d do)" % crossings)
+
+	# A detour has to be somewhere a person can actually stand.
+	var unreachable := 0
+	for from: Vector3 in points:
+		for to: Vector3 in points:
+			for via: Vector3 in _world.detour(from, to):
+				if not _point_is_clear(via + Vector3(0, 0.9, 0), 0.32):
+					unreachable += 1
+	_check(unreachable == 0, "and every way round is a place you can stand (%d are not)"
+		% unreachable)
+
+	# And the body drawn on a customer fits inside the thing that collides.
+	var widest := 0.0
+	var tightest := 999.0
+	for i in 40:
+		var p := ProfileGenerator.generate(i * 37, 3, 0.5)
+		var c := Customer.new()
+		c.setup(p, _world)
+		_world.add_child(c)
+		var shape := c.get_node_or_null("CollisionShape3D") as CollisionShape3D
+		if shape == null:
+			for child in c.get_children():
+				if child is CollisionShape3D:
+					shape = child as CollisionShape3D
+					break
+		if shape != null:
+			var caps := shape.shape as CapsuleShape3D
+			# 0.302 is where `ProcMesh.human` puts the outside of an arm at bulk
+			# 1.0; anything bulkier needs a wider capsule or the shoulder ends up
+			# inside whatever the capsule stopped against.
+			tightest = minf(tightest, caps.radius - 0.302 * p.bulk_scale)
+		widest = maxf(widest, p.bulk_scale)
+		c.queue_free()
+	_check(tightest >= -0.001,
+		"the capsule holds the body at every build (worst margin %.3f m, widest %.2f)"
+			% [tightest, widest])
+	_done("round the shelves")
+
+
+func _crosses_a_rack(from: Vector3, to: Vector3) -> bool:
+	# Walking up to a shelf ends inside its clearance on purpose. What must not
+	# happen is passing through the body of one.
+	var a := Vector2(from.x, from.z)
+	var b := Vector2(to.x, to.z)
+	for rect: Rect2 in _rack_rects_of(_world):
+		if rect.has_point(a) or rect.has_point(b):
+			continue
+		if World._segment_hits(a, b, rect):
+			return true
+	return false
+
+
+func _rack_rects_of(w: World) -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	var racks := w.get_node_or_null("Shelving")
+	if racks == null:
+		return out
+	for child in racks.get_children():
+		if not str(child.name).begins_with("Rack"):
+			continue
+		var mesh: MeshInstance3D = null
+		for sub in child.get_children():
+			if sub is MeshInstance3D:
+				mesh = sub as MeshInstance3D
+				break
+		if mesh == null:
+			continue
+		var box := mesh.mesh as BoxMesh
+		if box == null:
+			continue
+		var at: Vector3 = (child as Node3D).global_position
+		out.append(Rect2(Vector2(at.x - box.size.x * 0.5, at.z - box.size.z * 0.5),
+			Vector2(box.size.x, box.size.z)))
+	return out
 
 
 func _all_visuals(root: Node, out: Array[VisualInstance3D] = []) -> Array[VisualInstance3D]:
@@ -2828,7 +2951,7 @@ func test_raid_keeps_looking() -> void:
 
 
 func _report() -> void:
-	for name: String in ["raid_keeps_looking", "two halves"]:
+	for name: String in ["raid_keeps_looking", "two halves", "round the shelves"]:
 		if not _finished.has(name):
 			failures.append("%s never reached its end — it died part way through, "
 				% name + "and a suite that counts only failures calls that a pass")

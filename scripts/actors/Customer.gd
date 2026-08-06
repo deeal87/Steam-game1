@@ -78,8 +78,14 @@ func _ready() -> void:
 	set_collision_layer_value(3, true)
 	collision_mask = 1
 
+	# Wide enough to hold the person drawn on it.
+	#
+	# `ProcMesh.human` builds a body 0.42 * bulk across at the torso and puts the
+	# arms outside that, so the widest point is about 0.30 * bulk — which at any
+	# bulk above 1.0 is outside a fixed 0.30 capsule. The capsule stopped at the
+	# shelf and the shoulder carried on into it.
 	var caps := CapsuleShape3D.new()
-	caps.radius = 0.30
+	caps.radius = maxf(0.30, 0.302 * profile.bulk_scale)
 	caps.height = 1.70
 	var cs := CollisionShape3D.new()
 	cs.shape = caps
@@ -102,31 +108,46 @@ func _ready() -> void:
 func _build_inbound_path() -> void:
 	_path.clear()
 	_path_index = 0
-	_path.append({"pos": World.DOOR_OUTSIDE, "take": ""})
-	_path.append({"pos": World.DOOR_INSIDE, "take": ""})
+	_step(World.DOOR_OUTSIDE)
+	_step(World.DOOR_INSIDE)
 
 	var last := Vector3.INF
 	for id: String in profile.order:
 		var point: Vector3 = world.browse_point(id) if world != null else World.CUSTOMER_STAND
 		# Two things off the same rack is one stop, not two.
 		if point.distance_to(last) < 0.6 and not _path.is_empty():
-			_path.append({"pos": point + Vector3(randf_range(-0.25, 0.25), 0, 0.2), "take": id})
+			_step(point + Vector3(randf_range(-0.25, 0.25), 0, 0.2), id)
 		else:
-			_path.append({"pos": point, "take": id})
+			_step(point, id)
 		last = point
 
 	# The path stops at the aisle. Where they stand after that depends on how
 	# many people are already in front of them, which is not knowable yet.
-	_path.append({"pos": World.AISLE, "take": ""})
+	_step(World.AISLE)
 
 
 func _build_outbound_path() -> void:
 	_path.clear()
 	_path_index = 0
-	_path.append({"pos": World.AISLE, "take": ""})
-	_path.append({"pos": World.DOOR_INSIDE, "take": ""})
-	_path.append({"pos": World.DOOR_OUTSIDE, "take": ""})
-	_path.append({"pos": World.CUSTOMER_EXIT, "take": ""})
+	_step(World.AISLE)
+	_step(World.DOOR_INSIDE)
+	_step(World.DOOR_OUTSIDE)
+	_step(World.CUSTOMER_EXIT)
+
+
+## Adds a stop, and whatever it takes to walk to it without going through the
+## shelving on the way.
+##
+## Steering is a straight line at the next stop and a slide off anything hit, so
+## a leg that crosses a rack is a customer pressed into the side of it for as
+## long as the leg lasts. The world knows where its shelving is; it hands back
+## the corner to go round, and that corner becomes a stop of its own.
+func _step(pos: Vector3, take: String = "") -> void:
+	if world != null and not _path.is_empty():
+		var from: Vector3 = _path[_path.size() - 1]["pos"]
+		for via: Vector3 in world.detour(from, pos):
+			_path.append({"pos": via, "take": ""})
+	_path.append({"pos": pos, "take": take})
 
 
 func interaction_prompt() -> String:

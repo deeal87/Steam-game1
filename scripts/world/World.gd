@@ -148,6 +148,9 @@ var stock_light: OmniLight3D
 var sign_light: OmniLight3D
 var _breach_points: Array[Vector3] = []
 var _mats: Dictionary = {}
+## The shelving, flattened to the floor plan. Used for routing shoppers around
+## it rather than through it.
+var _rack_rects: Array[Rect2] = []
 
 
 func _ready() -> void:
@@ -909,6 +912,14 @@ func _build_shelving() -> void:
 		var carcass: Vector3 = Vector3(0.40, 1.80, span) if dir.z > 0.5 else Vector3(span, 1.80, 0.40)
 		racks.add_child(ProcMesh.solid_box(carcass, centre + Vector3(0, 0.90, 0),
 			mat("rack"), "Rack%d" % rack_id))
+		# Remembered as a flat rectangle so a shopper can be routed round it. A
+		# customer walks in a straight line at whatever they want next, and the
+		# line from the right-hand rack to the left-hand one goes through the
+		# middle of the island — which is why they were seen walking through the
+		# shelves rather than round them.
+		_rack_rects.append(Rect2(
+			Vector2(centre.x - carcass.x * 0.5, centre.z - carcass.z * 0.5),
+			Vector2(carcass.x, carcass.z)))
 
 		for i in items.size():
 			var item_id: String = items[i]
@@ -961,6 +972,121 @@ func refresh_shelves() -> void:
 ## Where a shopper stands to take something off a given rack.
 func browse_point(item_id: String) -> Vector3:
 	return shelf_points.get(item_id, CUSTOMER_STAND)
+
+
+## How wide a body has to be treated as when routing it round the shelving.
+## The capsule is narrower than the person drawn on it, and it is the person you
+## can see going through a shelf.
+const BODY_CLEARANCE := 0.45
+## How far past the clearance a way-round point sits, so it is unambiguously
+## outside the rectangle it is going round.
+const DETOUR_MARGIN := 0.20
+
+
+## A detour, if walking straight from `from` to `to` would go through a rack.
+##
+## Returns the points to visit on the way, which is either nothing or one place
+## to stand. Customers steer straight at whatever they want next and slide off
+## whatever they hit, which works everywhere in this shop except the island: the
+## line from the right-hand rack to the left-hand one runs the length of it, so
+## a shopper wanting something off both ends up grinding along the middle of the
+## shelving with their shoulder inside it.
+##
+## The detour goes round whichever end of the rack is nearer, and always on the
+## side of it closer to the middle of the room — that is the aisle, and it is
+## where a person would walk. Going the other way round is sometimes shorter and
+## always looks like a mistake, because it means squeezing between the shelf and
+## the wall.
+func detour(from: Vector3, to: Vector3) -> Array[Vector3]:
+	var out: Array[Vector3] = []
+	var cursor := from
+	# Going round one rack can put you on a line that crosses the next, so this
+	# walks the route rather than checking the original leg once against each.
+	# Four is more corners than this floor plan has; the cap is there so a shape
+	# nobody has drawn yet cannot hang the game.
+	for _guard in 4:
+		var via: Array[Vector3] = _first_detour(cursor, to)
+		if via.is_empty():
+			break
+		out.append(via[0])
+		cursor = via[0]
+	return out
+
+
+## The way round the first rack this leg goes through, as a list of one — or an
+## empty list if it goes through none of them. A list rather than a nullable
+## Vector3 because there is no such thing.
+func _first_detour(from: Vector3, to: Vector3) -> Array[Vector3]:
+	var a := Vector2(from.x, from.z)
+	var b := Vector2(to.x, to.z)
+	for rect: Rect2 in _rack_rects:
+		var grown := rect.grow(BODY_CLEARANCE)
+		# Standing at a shelf means standing right up against it, so the ends of
+		# this leg are usually inside the grown rectangle. Only the middle of the
+		# walk is a crossing worth avoiding.
+		if grown.has_point(a) or grown.has_point(b):
+			continue
+		if not _segment_hits(a, b, grown):
+			continue
+
+		var long_x: bool = rect.size.x > rect.size.y
+		var mid := grown.get_center()
+		# Past the end of the rack, on the aisle side of it, and a little past
+		# that again. Sitting exactly on the corner of the grown rectangle put
+		# the point on a boundary that `Rect2.has_point` decides by floating
+		# point equality, so the next leg sometimes believed it was starting
+		# inside the rack and skipped the check that would have routed it round
+		# the other end.
+		var toward_room := signf(-mid.y) if long_x else signf(-mid.x)
+		if is_zero_approx(toward_room):
+			toward_room = 1.0
+		var options: Array[Vector2] = []
+		if long_x:
+			var out_z: float = mid.y + toward_room * (grown.size.y * 0.5 + DETOUR_MARGIN)
+			options.append(Vector2(grown.position.x, out_z))
+			options.append(Vector2(grown.end.x, out_z))
+		else:
+			var out_x: float = mid.x + toward_room * (grown.size.x * 0.5 + DETOUR_MARGIN)
+			options.append(Vector2(out_x, grown.position.y))
+			options.append(Vector2(out_x, grown.end.y))
+		# Never the corner already being stood on. Going round one end of the
+		# island puts you exactly on that corner, and "walk to where you already
+		# are" is always the shortest of the two — so without this the second
+		# time round the loop picks the same corner again and the leg past the
+		# far end never gets made.
+		var choices: Array[Vector2] = []
+		for option: Vector2 in options:
+			if a.distance_to(option) > 0.05:
+				choices.append(option)
+		if choices.is_empty():
+			continue
+
+		# The end nearer to where you are standing, which is the one you can walk
+		# to without going through the rack you are going round. Picking the end
+		# that makes the whole journey shortest is tempting and wrong: from the
+		# right-hand rack the far corner of the island is a hair closer overall,
+		# and the walk to it goes straight down the middle of the shelving.
+		# Getting past the near end first is the point. The loop above then makes
+		# the rest of the journey from there, so nothing doubles back.
+		var here: Vector2 = choices[0]
+		for option: Vector2 in choices:
+			if a.distance_to(option) < a.distance_to(here):
+				here = option
+		return [Vector3(here.x, from.y, here.y)] as Array[Vector3]
+	return [] as Array[Vector3]
+
+
+## Whether a segment crosses a rectangle. Both ends are known to be outside it,
+## so it is enough to ask whether the segment meets any of the four edges.
+static func _segment_hits(a: Vector2, b: Vector2, rect: Rect2) -> bool:
+	var tl := rect.position
+	var br := rect.end
+	var tr := Vector2(br.x, tl.y)
+	var bl := Vector2(tl.x, br.y)
+	for edge: Array in [[tl, tr], [tr, br], [br, bl], [bl, tl]]:
+		if Geometry2D.segment_intersects_segment(a, b, edge[0], edge[1]) != null:
+			return true
+	return false
 
 
 # --- Stockroom ---------------------------------------------------------------

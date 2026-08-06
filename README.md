@@ -242,6 +242,35 @@ standard errors. That test is not decoration: it caught a real 2.3-sigma bias
 the first time it ran, because these traits were being drawn off the same
 random stream that had already decided who was police.
 
+### Getting round the shop
+
+A customer steers in a straight line at whatever they want next and slides off
+whatever they hit. That is enough almost everywhere in a room this size, and it
+is not enough for the island rack: the line from the right-hand shelving to the
+left-hand shelving runs the length of it, so anybody wanting something off both
+ended up pressed into the middle of the shelves for the whole walk. From the
+floor that reads as people standing inside the furniture, which is what it was
+reported as.
+
+The world knows where its shelving is, as flat rectangles on the floor plan.
+Before each leg of a shopper's route is committed, it is asked whether walking
+it goes through one — and if it does, the leg is split around the near end of
+that rack, on the aisle side. Round the near end rather than whichever end makes
+the total journey shortest: from the right-hand rack the far corner of the
+island is a hair closer overall and the walk to it goes straight down the middle
+of the shelving. The split repeats on the new legs, so going round one rack onto
+a line that crosses the next is handled without any of it knowing about the
+floor plan in particular.
+
+The smoke suite walks every leg anyone could ever take, in both directions, and
+fails if any of them passes through a rack — the routing is the fix, and a
+simulated shopper who happens not to want anything off both wall racks would
+prove nothing either way.
+
+The collision capsule was also narrower than the person drawn on it. `human()`
+builds a body 0.42 × bulk across with the arms outside that, so above bulk 1.0
+the capsule stopped at the shelf and the shoulder carried on into it.
+
 ## The checkout
 
 The reason this is worth doing by hand rather than by pressing "sell": you have
