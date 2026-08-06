@@ -51,6 +51,9 @@ var _next_grumble: float = 0.0
 var _shift_phase: float = 0.0
 var _time_at_counter: float = 0.0
 var _asked_for_illicit: bool = false
+## Set once they have walked in on a body. They stay and keep shopping — it has
+## already cost you heat and your name — but they are never charged for it twice.
+var seen_a_body: bool = false
 var _body: Node3D
 var _hips: Array[Node3D] = []
 var _shoulders: Array[Node3D] = []

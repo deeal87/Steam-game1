@@ -262,8 +262,16 @@ func _build_materials() -> void:
 		ProcTex.grime(Color(0.30, 0.30, 0.29), 0.5, 161), 5.0, 5.0)
 	_mats["sewer_floor"] = _surface("sewer_floor", ProcTex.brick(137), 5.0, 4.0,
 		Color(1.35, 1.35, 1.30))
-	_mats["rack"] = _surface("shelf_rack_metal",
-		ProcTex.metal(Color(0.14, 0.14, 0.16), 83), 1.0, 1.0)
+	# Back to generated metal.
+	#
+	# I put the furniture sheet's shelf-unit photograph on this, which was wrong
+	# twice over: it is a picture of a whole shelving unit, shelves and all, and
+	# the rack carcass is a plain box the length of a wall. Stretched over that
+	# it became a field of metal blobs with no shelf in it anywhere, so the stock
+	# sitting on the racks looked like it was floating in mid air.
+	#
+	# A photograph of a thing is not a material for that thing.
+	_mats["rack"] = ProcMesh.mat(ProcTex.metal(Color(0.14, 0.14, 0.16), 83))
 	_mats["cardboard"] = _surface("cardboard",
 		ProcTex.grime(Color(0.44, 0.33, 0.21), 0.35, 151), 1.0, 1.0)
 

@@ -332,8 +332,16 @@ func take_from_shelf(item: String) -> bool:
 	return true
 
 
+## How many of one item a shelf run holds. Ten slots are built per run, so this
+## is what "full" means when an armful is being put out.
+const SHELF_MAX := 10
+
+
 ## Moves one unit from the back-room crate onto the shelf. Returns false when
 ## the crate is empty, which is the player's cue to buy stock between shifts.
+##
+## Still used by the supplier screen and by the tests. The player cannot call it
+## by standing at a shelf any more — stock has to be carried out of the back.
 func restock_one(item: String) -> bool:
 	if int(crate_stock.get(item, 0)) <= 0:
 		return false

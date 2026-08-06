@@ -13,6 +13,10 @@ signal interacted_with_customer
 
 const SPEED := 2.6
 ## Walking pace, and no faster, while carrying somebody.
+## How much one trip to the back is worth. Six fills an empty run in one go, so
+## a quiet moment is enough to put a shelf right and a busy one is not.
+const ARMFUL := 6
+
 const CARRY_SPEED := 1.5
 const SPRINT := 4.0
 const CROUCH_SPEED := 1.4
@@ -40,6 +44,14 @@ var equipped: String = ""             ## Weapon id, "" when hands are free.
 ## A bagged body over the shoulder. It fills both hands and slows you to a walk,
 ## which is the whole cost of having shot somebody: you cannot serve, you cannot
 ## shoot, and you are very obviously carrying a person.
+## An armful of stock from the back room, on its way to a shelf.
+##
+## Restocking used to be a key you pressed while standing at the shelf, which
+## filled it from the back room without you ever going there — the stock existed,
+## it just teleported. Now it is a trip: take an armful off the crates, carry it
+## out, put it on the run it belongs to.
+var carried_stock: String = ""
+var carried_stock_count: int = 0
 var carried_body: Node3D = null
 var _fire_cooldown: float = 0.0
 var _bob: float = 0.0
@@ -236,18 +248,32 @@ func _prompt_for(hit: Object) -> String:
 	if id.begins_with("shelf:"):
 		var item := id.substr(6)
 		var units := GameState.shelf_units(item)
+		var carrying_right := carried_stock == item
+		var note := ""
+		if carrying_right:
+			note = Loc.f("   [Q] put out %d", [carried_stock_count])
+		elif units <= 0:
+			note = Loc.t("   (fetch some from the back)")
 		if units <= 0:
-			return Loc.f("%s — empty  [Q] restock",
-				[Loc.t(str(GameState.ITEMS[item]["name"]))])
-		return Loc.f("[E] Take %s  (%d left)   [Q] restock",
-			[Loc.t(str(GameState.ITEMS[item]["name"])), units])
+			return Loc.f("%s — empty%s",
+				[Loc.t(str(GameState.ITEMS[item]["name"])), note])
+		return Loc.f("[E] Take %s  (%d left)%s",
+			[Loc.t(str(GameState.ITEMS[item]["name"])), units, note])
 	match id:
 		"till": return Loc.f("[E] Till — %d", [GameState.money])
 		"terminal": return Loc.t("[E] Terminal")
 		"stash": return Loc.f("[E] Under the counter  (%d)", [GameState.drug_stock])
 		"scanner": return Loc.t("[E] Put the scanner down") if holding_scanner \
 			else Loc.t("[E] Pick up the scanner")
-		"crates": return Loc.t("[E] Back stock")
+		"crates":
+			if not carried_stock.is_empty():
+				return Loc.f("[E] Put the %s back",
+					[Loc.t(str(GameState.ITEMS[carried_stock]["name"])).to_lower()])
+			var want := _needs_restocking()
+			if want.is_empty():
+				return Loc.t("Nothing back here to take out.")
+			return Loc.f("[E] Take an armful of %s",
+				[Loc.t(str(GameState.ITEMS[want]["name"])).to_lower()])
 		"shop": return Loc.t("[E] Call the supplier")
 		"shutter_control": return Loc.t("[E] Shutter")
 		"cash": return Loc.t("[E] Pick up cash")
@@ -344,7 +370,7 @@ func _interact() -> void:
 				Signals.notice.emit(Loc.f("Takings tonight: %d. Rent: %d.",
 					[GameState.takings + GameState.illicit_takings, GameState.rent_due()]), "info")
 		"crates":
-			_restock_all()
+			_take_stock()
 		"shutter_control":
 			if world != null:
 				var closed: bool = bool(world.anchors.get("shutter_is_closed", false))
@@ -459,21 +485,81 @@ func _restock_looked_at() -> void:
 	if not id.begins_with("shelf:"):
 		return
 	var item := id.substr(6)
-	var moved := 0
-	# Restock in a handful rather than one at a time; the tedium is not the
-	# interesting part, the interruption is.
-	for i in 4:
-		if GameState.restock_one(item):
-			moved += 1
-	if moved > 0:
-		Audio.play("click", -18.0)
-		Signals.notice.emit(Loc.f("Filled %s (+%d).",
-			[Loc.t(str(GameState.ITEMS[item]["name"])), moved]), "good")
-		if world != null:
-			world.refresh_shelves()
-	else:
+	if carried_stock.is_empty():
 		Audio.play("deny", -16.0)
-		Signals.notice.emit(Loc.t("None left in the back. Call the supplier."), "warn")
+		Signals.notice.emit(Loc.t("Your hands are empty. The stock is in the back."), "warn")
+		return
+	if carried_stock != item:
+		Audio.play("deny", -16.0)
+		Signals.notice.emit(Loc.f("That is the %s run. You are carrying %s.",
+			[Loc.t(str(GameState.ITEMS[item]["name"])).to_lower(),
+			Loc.t(str(GameState.ITEMS[carried_stock]["name"])).to_lower()]), "warn")
+		return
+
+	var moved := 0
+	while carried_stock_count > 0 and GameState.shelf_units(item) < GameState.SHELF_MAX:
+		GameState.shelf_stock[item] = GameState.shelf_units(item) + 1
+		carried_stock_count -= 1
+		moved += 1
+	if moved == 0:
+		Audio.play("deny", -16.0)
+		Signals.notice.emit(Loc.t("That run is already full."), "warn")
+		return
+
+	Audio.play("click", -18.0)
+	Signals.notice.emit(Loc.f("Filled %s (+%d).",
+		[Loc.t(str(GameState.ITEMS[item]["name"])), moved]), "good")
+	if carried_stock_count <= 0:
+		carried_stock = ""
+		_show_in_hand("")
+	if world != null:
+		world.refresh_shelves()
+
+
+## Which run is emptiest and has stock in the back to fill it. Chosen for you
+## rather than offered as a menu: the decision is whether to leave the counter
+## at all, not which carton to pick up.
+func _needs_restocking() -> String:
+	var worst := ""
+	var fewest := 1 << 30
+	for item: String in GameState.ITEMS:
+		if int(GameState.crate_stock.get(item, 0)) <= 0:
+			continue
+		var units := GameState.shelf_units(item)
+		if units < fewest:
+			fewest = units
+			worst = item
+	return worst
+
+
+## Takes an armful off the crates, or puts one back.
+func _take_stock() -> void:
+	if not carried_stock.is_empty():
+		GameState.crate_stock[carried_stock] = \
+			int(GameState.crate_stock.get(carried_stock, 0)) + carried_stock_count
+		Signals.notice.emit(Loc.f("Put the %s back.",
+			[Loc.t(str(GameState.ITEMS[carried_stock]["name"])).to_lower()]), "info")
+		carried_stock = ""
+		carried_stock_count = 0
+		_show_in_hand("")
+		Audio.play("click", -20.0)
+		return
+
+	var want := _needs_restocking()
+	if want.is_empty():
+		Audio.play("deny", -16.0)
+		Signals.notice.emit(Loc.t("Nothing back here. Call the supplier."), "warn")
+		return
+
+	var take := mini(ARMFUL, int(GameState.crate_stock.get(want, 0)))
+	GameState.crate_stock[want] = int(GameState.crate_stock.get(want, 0)) - take
+	carried_stock = want
+	carried_stock_count = take
+	_show_in_hand(want)
+	Audio.play("click", -18.0)
+	Signals.notice.emit(Loc.f("%d %s. They go on the %s run.",
+		[take, Loc.t(str(GameState.ITEMS[want]["name"])).to_lower(),
+		Loc.t(str(GameState.ITEMS[want]["name"])).to_lower()]), "good")
 
 
 func _restock_all() -> void:

@@ -5,10 +5,13 @@ Stand at the hatch with someone in front of you and try again."
     %s,    %s
     Fewer people will bother coming tomorrow — about %d%% down.,    Fewer people will bother coming tomorrow — about %d%% down.
 "    Leave blank to use your Steam name, or your computer's account name.","    Leave blank to use your Steam name, or your computer's account name."
+   (fetch some from the back),   (fetch some from the back)
+   [Q] put out %d,   [Q] put out %d
   · %s,  · %s
 %d   +%d heat,%d   +%d heat
 %d   -%d,%d   -%d
 %d %s,%d %s
+%d %s. They go on the %s run.,%d %s. They go on the %s run.
 "%d a unit · they go for %d–%d, depending who's asking","%d a unit · they go for %d–%d, depending who's asking"
 %d fps,%d fps
 %d item on the counter. Scan it.,%d item on the counter. Scan it.
@@ -39,11 +42,11 @@ Stand at the hatch with someone in front of you and try again."
 %s got tired of waiting.,%s got tired of waiting.
 %s in your hands.,%s in your hands.
 %s put their basket down and walked out.,%s put their basket down and walked out.
-%s saw it. They're gone.,%s saw it. They're gone.
+%s saw it. They will remember that.,%s saw it. They will remember that.
 %s stepped in front of %s.,%s stepped in front of %s.
 %s way. Fifteen minutes on foot.,%s way. Fifteen minutes on foot.
 %s — %d,%s — %d
-%s — empty  [Q] restock,%s — empty  [Q] restock
+%s — empty%s,%s — empty%s
 %s — fitted,%s — fitted
 %s — leaving,%s — leaving
 %s — owned,%s — owned
@@ -393,7 +396,6 @@ Nobody walks this street in February with warm hands.,Nobody walks this street i
 Nobody's called it that since I was at school.,Nobody's called it that since I was at school.
 "Nobody, at the minute. I'm looking.","Nobody, at the minute. I'm looking."
 Nobody. I live on my own.,Nobody. I live on my own.
-None left in the back. Call the supplier.,None left in the back. Call the supplier.
 None of the bills at your place are yours.,None of the bills at your place are yours.
 None on file.,None on file.
 None registered,None registered
@@ -404,6 +406,8 @@ Notepad,Notepad
 Notes in the wallet run in sequence. Straight from a bank strap.,Notes in the wallet run in sequence. Straight from a bank strap.
 Nothing Else For A Mile,Nothing Else For A Mile
 "Nothing at that address is in their name. No power, no water, nothing.","Nothing at that address is in their name. No power, no water, nothing."
+Nothing back here to take out.,Nothing back here to take out.
+Nothing back here. Call the supplier.,Nothing back here. Call the supplier.
 Nothing else down here.,Nothing else down here.
 "Nothing else for a mile, is there?","Nothing else for a mile, is there?"
 Nothing explains the clothes or the hour.,Nothing explains the clothes or the hour.
@@ -457,6 +461,7 @@ Print operator,Print operator
 "Provider switch logged, with the old account closed the same week.","Provider switch logged, with the old account closed the same week."
 Public urination,Public urination
 Pump Shotgun,Pump Shotgun
+Put the %s back.,Put the %s back.
 Q — refill the shelf you're looking at,Q — refill the shelf you're looking at
 Quiet down here. For now.,Quiet down here. For now.
 Quit,Quit
@@ -570,9 +575,11 @@ Tell them you don't do that here,Tell them you don't do that here
 Tenancy predates the department's lease by nine years.,Tenancy predates the department's lease by nine years.
 That door doesn't go anywhere you need.,That door doesn't go anywhere you need.
 That is a tell — something that needs explaining. Talk to them and it unlocks a question about it.,That is a tell — something that needs explaining. Talk to them and it unlocks a question about it.
+That is the %s run. You are carrying %s.,That is the %s run. You are carrying %s.
 That key is already doing something else.,That key is already doing something else.
 That number's brand new.,That number's brand new.
 That plate's a city motor.,That plate's a city motor.
+That run is already full.,That run is already full.
 That run is empty. [Q] while looking at a shelf restocks it from the back.,That run is empty. [Q] while looking at a shelf restocks it from the back.
 That your car out front?,That your car out front?
 That's a lot of gloves for a Tuesday.,That's a lot of gloves for a Tuesday.
@@ -737,6 +744,7 @@ You've had a lot of licences.,You've had a lot of licences.
 You've not been out in this long.,You've not been out in this long.
 You've nothing smaller at all?,You've nothing smaller at all?
 Your firm doesn't seem to have an address.,Your firm doesn't seem to have an address.
+Your hands are empty. The stock is in the back.,Your hands are empty. The stock is in the back.
 Your name,Your name
 Your name on the street,Your name on the street
 [1-9] choose   ·   [ESC] step back,[1-9] choose   ·   [ESC] step back
@@ -744,15 +752,16 @@ Your name on the street,Your name on the street
 [ESC] back to the counter,[ESC] back to the counter
 [ESC] hang up,[ESC] hang up
 [E] %s — no bags left,[E] %s — no bags left
-[E] Back stock,[E] Back stock
 [E] Bag them (%d left),[E] Bag them (%d left)
 [E] Call the supplier,[E] Call the supplier
 [E] Pick them up,[E] Pick them up
 [E] Pick up cash,[E] Pick up cash
 [E] Pick up the scanner,[E] Pick up the scanner
+[E] Put the %s back,[E] Put the %s back
 [E] Put the scanner down,[E] Put the scanner down
 [E] Shutter,[E] Shutter
-[E] Take %s  (%d left)   [Q] restock,[E] Take %s  (%d left)   [Q] restock
+[E] Take %s  (%d left)%s,[E] Take %s  (%d left)%s
+[E] Take an armful of %s,[E] Take an armful of %s
 [E] Talk,[E] Talk
 "[E] Talk  (%s, %d in line)","[E] Talk  (%s, %d in line)"
 [E] Terminal,[E] Terminal

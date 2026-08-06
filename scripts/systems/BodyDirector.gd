@@ -105,20 +105,32 @@ func _process(delta: float) -> void:
 				continue
 			if c.state == Customer.State.DEAD or c.state == Customer.State.LEAVING:
 				continue
+			if c.seen_a_body:
+				continue
 			if b.notice_check(c):
 				_witness(c)
 
 
+## Somebody has walked in on a body.
+##
+## They used to turn round and go, which sounds right and played badly: one
+## mistake at the wrong moment emptied the shop, and the night was over before
+## you could do anything about it. Now they say what they saw, it costs you heat
+## and your name on the street, and they stay — shaken, and still a customer.
+##
+## The pressure is unchanged and the punishment is still real. What has gone is
+## the part where a single body cascades into an empty shop and no way back.
 func _witness(c: Customer) -> void:
 	Signals.customer_spoke.emit(c.profile.full_name, Loc.t("...What is that. What is that on the floor."))
-	Signals.notice.emit(Loc.f("%s saw it. They're gone.",
+	Signals.notice.emit(Loc.f("%s saw it. They will remember that.",
 		[c.profile.full_name.split(" ")[0]]), "bad")
 	GameState.add_heat(WITNESS_HEAT)
 	GameState.add_reputation(-WITNESS_REPUTATION)
 	GameState.evidence_against_you += 1
 	if GameState.raid_reason.is_empty():
 		GameState.raid_reason = Loc.t("Somebody walked in on a body on your floor.")
-	c._leave("witness")
+	# Marked so the sweep does not charge for the same body twice a second.
+	c.seen_a_body = true
 
 
 ## Called at the end of the shift. Anything still here is a problem you did not

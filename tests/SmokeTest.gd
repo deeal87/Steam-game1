@@ -2122,14 +2122,27 @@ func test_bodies() -> void:
 		return
 	_check(not corpse.bagged, "it starts unbagged, which is the problem")
 
-	# An unbagged body empties your shop.
+	# An unbagged body costs you, and does not empty the shop.
+	#
+	# It used to: everyone who saw one turned round and left, which reads right
+	# and played badly — one mistake at the wrong moment cleared the room and the
+	# night was over with nothing you could do. The heat and the damage to your
+	# name are unchanged. What is gone is the cascade.
 	var witness := _spawn_at_counter(5150)
 	witness.global_position = corpse.global_position + Vector3(1.0, 0, 0)
 	var heat_before := GameState.heat
 	var rep_before := GameState.reputation
 	director._check_timer = 0.0
 	director._process(1.0)
-	_check(witness.state == Customer.State.LEAVING, "anyone who walks in on one leaves")
+	_check(witness.seen_a_body, "anyone who walks in on one takes it in")
+	_check(witness.state != Customer.State.LEAVING, "and stays, shaken, rather than walking out")
+
+	# And is never charged for the same sight twice.
+	var heat_after_first := GameState.heat
+	director._check_timer = 0.0
+	director._process(1.0)
+	_check(is_equal_approx(GameState.heat, heat_after_first),
+		"and seeing it again costs nothing more")
 	_check(GameState.heat > heat_before, "it raises heat")
 	_check(GameState.reputation < rep_before, "and takes your name down")
 
