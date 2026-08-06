@@ -6,7 +6,7 @@ importer="keep"
 
 files=[]
 
-source_file="res://textures/item_crisps.png"
+source_file="res://textures/sewer_brick_damaged.png"
 dest_files=[]
 
 [params]

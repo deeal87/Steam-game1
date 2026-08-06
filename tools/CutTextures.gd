@@ -53,6 +53,19 @@ const CUTS := {
 		["item_lighter", 1286, 152, 50, 112],
 		["item_noodles", 954, 358, 74, 114],
 	],
+	"sewer.png": [
+		["sewer_brick", 22, 138, 120, 132],
+		["sewer_brick_damaged", 400, 138, 120, 132],
+		["sewer_concrete", 778, 138, 120, 132],
+		["sewer_floor", 1156, 138, 120, 132],
+		["sewer_mud", 22, 334, 120, 132],
+		["water", 400, 334, 120, 132],
+		["water_flow", 778, 334, 120, 132],
+		["pipe_metal", 20, 530, 100, 100],
+		["pipe_rusted", 300, 530, 100, 100],
+		["steel", 20, 694, 100, 106],
+		["grate", 585, 694, 96, 106],
+	],
 	"kiosk.png": [
 		["floor", 26, 112, 190, 190],
 		["floor_worn", 790, 112, 190, 190],
@@ -90,11 +103,30 @@ func _ready() -> void:
 				piece = _tileable(piece)
 			var out := OUT_DIR.path_join("%s.png" % cut[0])
 			if piece.save_png(out) == OK:
+				_write_keep_import(out)
 				print("  %-14s %3dx%-3d -> %s" % [
 					cut[0], piece.get_width(), piece.get_height(), out])
 				made += 1
 	print("\n%d textures cut\n" % made)
 	get_tree().quit(0 if made > 0 else 1)
+
+
+## Writes the `.import` that stops Godot compiling this PNG into a `.ctex` and
+## dropping the readable file from the build.
+##
+## Done here rather than by hand because it has now been forgotten twice, and
+## the way it fails is silent: the game reads these with `Image.load` and falls
+## back to the generator for anything missing, so an export with no textures in
+## it runs perfectly and looks exactly like it did before the pack existed.
+## Nothing throws. The only sign is a number in the log.
+func _write_keep_import(png_path: String) -> void:
+	var f := FileAccess.open(png_path + ".import", FileAccess.WRITE)
+	if f == null:
+		push_error("cannot write import for %s" % png_path)
+		return
+	f.store_string("[remap]\n\nimporter=\"keep\"\n\n[deps]\n\nfiles=[]\n\n"
+		+ "source_file=\"%s\"\ndest_files=[]\n\n[params]\n\n" % png_path)
+	f.close()
 
 
 ## Crops, then walks in from each edge while the row or column is part of the
