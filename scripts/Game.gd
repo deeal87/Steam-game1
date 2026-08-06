@@ -147,8 +147,9 @@ func _run_self_test(path: String) -> void:
 	var world_img := viewport_3d.get_texture().get_image()
 	var world_path := path.get_basename() + ".world.png"
 	if world_img.save_png(world_path) == OK:
-		print("[selftest] wrote %s (%dx%d)" % [
-			world_path, world_img.get_width(), world_img.get_height()])
+		print("[selftest] wrote %s (%dx%d) · mean %.1f" % [
+			world_path, world_img.get_width(), world_img.get_height(),
+			_mean_luminance(world_img)])
 	print("[selftest] night %d · money %d · in shop %d · in line %d · at the till: %s" % [
 		GameState.night, GameState.money,
 		night_director.present_count(), night_director.waiting_count(),
@@ -186,6 +187,36 @@ func _run_self_test(path: String) -> void:
 	print("[selftest] language %s · %d in the table · offered: %s" % [
 		Loc.locale(), Loc.template_keys().size(), ", ".join(Loc.locales())])
 	get_tree().quit(0)
+
+
+## How bright the frame came out, 0-255.
+##
+## Here rather than in a script beside it, because the script version of this
+## assumed three bytes to a pixel against a four-byte image and reported a lit
+## frame as almost black. Every number I had about which builds rendered
+## correctly came out of it. Reading the image through the engine that wrote it
+## cannot get the format wrong, and it works on any machine the build runs on.
+func _mean_luminance(img: Image) -> float:
+	var w := img.get_width()
+	var h := img.get_height()
+	if w <= 0 or h <= 0:
+		return 0.0
+	# Every fourth pixel in each direction. A sixteenth of the work, and this is
+	# a whole-frame average rather than anything that needs to be exact.
+	var total := 0.0
+	var n := 0
+	var y := 0
+	while y < h:
+		var x := 0
+		while x < w:
+			var c := img.get_pixel(x, y)
+			total += 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b
+			n += 1
+			x += 4
+		y += 4
+	if n == 0:
+		return 0.0
+	return total / float(n) * 255.0
 
 
 # --- Construction ------------------------------------------------------------

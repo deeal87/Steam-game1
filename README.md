@@ -958,47 +958,57 @@ the export's own shader compile running before project settings register the
 globals. The shipped binary has them and renders correctly; the check for that
 is `--selftest` on the result, which is how this paragraph was written.
 
-### An open question: large windows under software GL
+### An open question: dark frames under software GL
 
 Worth writing down because it is unresolved rather than because it is solved.
 
 Rendering the shipped Linux binary under Xvfb with llvmpipe, the world buffer
-comes back essentially black — the counter, the customer and the floor present,
-the walls, ceiling and shelves missing — and how often depends on the size of
-the window:
+sometimes comes back at about a quarter of its normal brightness — mean 13
+against a usual 45 — with the counter, the customer and the floor present and
+the walls, ceiling and shelves unlit. How often depends on the window:
 
-| window | runs | dark |
-|---|---|---|
-| 1280x720 | 7 | 0 |
-| 1280x800 | 3 | 0 |
-| 1280x720 on a 2560x1080 screen | 1 | 0 |
-| 1920x1080 | 8 | 3 |
-| 2560x1080 | 6 | 6 |
+| window | logical space | 3D buffer | runs | dark |
+|---|---|---|---|---|
+| 1280x720 | 1280x720 | 426x240 | 16 | 0 |
+| 1280x800 | 1280x720 | 426x240 | 3 | 0 |
+| 1280x720 on a 2560x1080 screen | 1280x720 | 426x240 | 2 | 0 |
+| 1920x1080 | 1280x720 | 426x240 | 10 | 3 |
+| 2560x1080 | 1706x720 | 568x240 | 8 | 8 |
 
-It tracks the window's own framebuffer, not the shape of the screen and not the
-aspect ratio: a small window on a large screen is fine, and 16:10 is as fine as
-16:9. The 3D buffer itself is only 568x240 at its largest, so it is not the size
-of the thing being drawn.
+The middle two columns are why this took so long to read. The interface is laid
+out in a fixed 1280x720 space that is scaled to the window, so a 1920x1080
+window has exactly the same logical size and exactly the same 3D buffer as a
+720p one — those rows are the same test at two window sizes, and one of them
+fails sometimes. Only the ultrawide row is a different shape, and it fails every
+time. It is not the aspect ratio: 16:10 behaves like 16:9. It is not the screen:
+a small window on a large screen is fine.
 
-Things that were tried and did not explain it: the CRT pass (curvature is off,
-and the world buffer is captured before the pass anyway); the camera (identical
-position, facing and field of view in the lit and dark frames); waiting several
-complete frames before reading, in case the capture was racing the renderer;
-and raising the per-object light budget, which made every frame black because
-that shader will not compile at 32 lights on this driver.
+The 2560 case returns a mean of 13.5 to within a tenth across every run, which
+is not what a randomly flickering strip light would produce — whatever it is, it
+is deterministic.
 
-What it is most likely to be is llvmpipe, which is a software rasteriser and not
-representative of a real GPU at large render targets. What it might be is
-something in GL Compatibility that a player on an ultrawide would also see. This
-environment cannot tell the two apart — settling it needs one run on real
-hardware at 2560x1080 or wider, which is the first thing to do before a store
-page goes up.
+Things tried that did not explain it: the CRT pass (curvature is off, and the
+buffer is captured before the pass anyway); the camera (identical position,
+facing and field of view in the lit and dark frames); waiting four complete
+frames before reading, in case the capture was racing the renderer; and raising
+the per-object light budget, which made every frame black because that shader
+will not compile at 32 lights on this driver.
 
-An early reading of this had it as an aspect-ratio bug, on two ultrawide
-captures and no controls. Three runs at 1920x1080 came back lit, which killed
-that, and the window-size table above is what replaced it. The lesson is
-cheaper than the bug: two samples of a flaky thing will tell you whatever you
-were already expecting.
+Most likely llvmpipe, which is a software rasteriser and not representative of a
+real GPU. Possibly something in GL Compatibility that a player on an ultrawide
+would also see. This environment cannot tell the two apart — settling it needs
+one run on real hardware at 2560x1080 or wider, and that is the first thing to
+do before a store page goes up.
+
+Two corrections went into that table, both worth more than the finding. It was
+first read as an aspect-ratio bug, on two ultrawide captures and no controls;
+three runs at 1920x1080 came back lit and killed it. And the brightness numbers
+behind it were produced by a script that assumed three bytes to a pixel against
+a four-byte image, which reported a perfectly lit frame as almost black. The
+classification survived re-measurement — the two clusters were real and well
+separated — but nothing about that was luck. `--selftest` now reports the mean
+itself, read through the engine that wrote the image, so there is no format
+guess between the build and the number.
 
 ## Assets
 
