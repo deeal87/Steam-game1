@@ -22,6 +22,10 @@ var _crosshair: Control
 var _hands: Label
 var _slots: HBoxContainer
 var _slots_signature: String = ""
+var _bubble: PanelContainer
+var _bubble_who: Label
+var _bubble_line: Label
+var _asker: Node = null
 var _checkout: Label
 var _notices: Array[Dictionary] = []
 var _player: Player
@@ -39,6 +43,7 @@ func _ready() -> void:
 	Signals.shift_clock.connect(_on_clock)
 	Signals.quota_changed.connect(func(_c: int, _t: int) -> void: _refresh_stats())
 	Signals.checkout_changed.connect(_on_checkout)
+	Signals.customer_asks.connect(_on_asks)
 	_refresh_stats()
 
 
@@ -144,6 +149,28 @@ func _build() -> void:
 	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	root.add_child(_prompt)
 
+	# What they are asking for, over their head, until you have decided.
+	#
+	# The ask is the moment the whole game turns on and it used to go past in
+	# the notice column between "2 waiting" and a tip, with a subtitle that
+	# faded after four seconds. Now it sits above the person who said it and
+	# does not leave until you sell, refuse, or send them away.
+	_bubble = PanelContainer.new()
+	_bubble.add_theme_stylebox_override("panel", UIKit.panel(
+		Color(0.03, 0.09, 0.05, 0.94), UIKit.AMBER))
+	_bubble.visible = false
+	_bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var bubble_col := VBoxContainer.new()
+	bubble_col.add_theme_constant_override("separation", 2)
+	_bubble.add_child(bubble_col)
+	_bubble_who = UIKit.label("", UIKit.FONT_S, UIKit.AMBER)
+	bubble_col.add_child(_bubble_who)
+	_bubble_line = UIKit.label("", UIKit.FONT_M, UIKit.WHITE)
+	_bubble_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_bubble_line.custom_minimum_size = Vector2(300, 0)
+	bubble_col.add_child(_bubble_line)
+	root.add_child(_bubble)
+
 	_crosshair = Control.new()
 	_crosshair.set_anchors_preset(Control.PRESET_CENTER)
 	root.add_child(_crosshair)
@@ -172,6 +199,54 @@ func _process(delta: float) -> void:
 		_prune_notices()
 	if _player != null and is_instance_valid(_player):
 		_refresh_player_bits()
+	_follow_asker()
+
+
+## Shows the bubble, or takes it away when the line is empty.
+func _on_asks(customer: Node, line: String) -> void:
+	if line.is_empty():
+		if customer == _asker or _asker == null:
+			_asker = null
+			_bubble.visible = false
+		return
+	_asker = customer
+	var who := ""
+	if customer != null and is_instance_valid(customer) and customer.get("profile") != null:
+		who = str(customer.profile.full_name).split(" ")[0]
+	_bubble_who.text = Loc.done(who)
+	_bubble_line.text = Loc.f("\u201c%s\u201d", [Loc.t(line)])
+	_bubble.visible = true
+
+
+## Keeps it over their head. The world is drawn into a viewport a third of the
+## window's size, so a point projected there has to be scaled back up before it
+## means anything in interface coordinates.
+func _follow_asker() -> void:
+	if not _bubble.visible:
+		return
+	if _asker == null or not is_instance_valid(_asker) or _player == null \
+			or not is_instance_valid(_player) or _player.camera == null:
+		_bubble.visible = false
+		_asker = null
+		return
+	var cam := _player.camera
+	var head: Vector3 = (_asker as Node3D).global_position + Vector3(0, 1.95, 0)
+	# Behind you is not somewhere a bubble can go.
+	if cam.is_position_behind(head):
+		_bubble.visible = false
+		return
+	# Scale from the world buffer's coordinates to the interface's, worked out
+	# from the two sizes rather than from the shrink constant — the interface is
+	# laid out in a fixed 1280x720 space whatever the window is doing, and the
+	# buffer is whatever the container gave it.
+	var buffer := cam.get_viewport().get_visible_rect().size
+	if buffer.x <= 0.0:
+		return
+	var at := cam.unproject_position(head) * (UIKit.DESIGN_W / buffer.x)
+	var size := _bubble.size
+	_bubble.position = Vector2(
+		clampf(at.x - size.x * 0.5, 8.0, UIKit.DESIGN_W - size.x - 8.0),
+		clampf(at.y - size.y - 12.0, 8.0, UIKit.DESIGN_H - size.y - 8.0))
 
 
 func _refresh_player_bits() -> void:

@@ -105,9 +105,24 @@ static func _gd_files(root: String) -> PackedStringArray:
 ## Turns the escapes back into the characters the game will actually ask for.
 ## `Loc.t()` is handed a runtime string, not the source text, so a line written
 ## with `\n` in it has to be recorded with a real newline or the lookup misses.
+##
+## `\uXXXX` is in here for the same reason and cost a red coverage test to
+## learn: the speech bubble wraps what a customer says in typographic quotes,
+## written as escapes because the source stays ASCII, and a template that
+## carries the six literal characters is a template with no entry for the string
+## the game actually looks up.
 static func _unescape(raw: String) -> String:
-	return raw.replace("\\n", "\n").replace("\\t", "\t") \
-		.replace("\\\"", "\"").replace("\\\\", "\\")
+	var out := raw.replace("\\n", "\n").replace("\\t", "\t") \
+		.replace("\\\"", "\"")
+	var rx := RegEx.new()
+	if rx.compile("\\\\u([0-9a-fA-F]{4})") == OK:
+		# Right to left, so replacing one does not shift the next one's offsets.
+		var hits := rx.search_all(out)
+		hits.reverse()
+		for m: RegExMatch in hits:
+			var code := ("0x" + m.get_string(1)).hex_to_int()
+			out = out.left(m.get_start()) + String.chr(code) + out.substr(m.get_end())
+	return out.replace("\\\\", "\\")
 
 
 # --- Pass two: the content tables ----------------------------------------

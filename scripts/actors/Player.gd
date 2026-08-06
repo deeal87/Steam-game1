@@ -123,9 +123,18 @@ func _ready() -> void:
 	# The player carries their light between the two render layers, so unlike
 	# every fixed lamp in the game these two have to reach both. A torch culled
 	# to the surface layer lights nothing at all once you are down the ladder.
-	var both := (1 << (World.LAYER_SURFACE - 1)) | (1 << (World.LAYER_UNDERGROUND - 1))
-	_torch.light_cull_mask = both
-	_muzzle_flash.light_cull_mask = both
+	_torch.light_cull_mask = VIEW_LAYERS
+	_muzzle_flash.light_cull_mask = VIEW_LAYERS
+
+	# The camera only draws the half of the world you are standing in.
+	#
+	# The two layers already existed and only the lights used them, so the
+	# tunnels were being drawn from the street whenever they fell in the frustum
+	# — visible through the road wherever the depth buffer did not save it, which
+	# is what "I can still see the underground" is. Depth is the wrong thing to
+	# rely on for two spaces stacked on top of each other with nothing between
+	# them; the layers say outright which one you are in.
+	_apply_view_layer()
 
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
@@ -141,7 +150,29 @@ func _unhandled_input(event: InputEvent) -> void:
 		camera.rotation.x = clampf(camera.rotation.x, -1.35, 1.35)
 
 
+## Below this is underground. Sits well clear of both floors so crossing it
+## always happens inside the fade of a ladder trip rather than mid-stride.
+const UNDERGROUND_ABOVE := -2.5
+
+## Everything that travels with the player — the torch, the muzzle flash, the
+## thing in your hands — belongs to both halves of the world.
+const VIEW_LAYERS := (1 << (World.LAYER_SURFACE - 1)) | (1 << (World.LAYER_UNDERGROUND - 1))
+
+
+## Points the camera at one layer or the other, and does nothing at all if that
+## is already where it is pointing.
+func _apply_view_layer() -> void:
+	if camera == null:
+		return
+	var layer := World.LAYER_UNDERGROUND if global_position.y < UNDERGROUND_ABOVE \
+		else World.LAYER_SURFACE
+	var want := 1 << (layer - 1)
+	if camera.cull_mask != want:
+		camera.cull_mask = want
+
+
 func _physics_process(delta: float) -> void:
+	_apply_view_layer()
 	if dead:
 		return
 	_look_with_stick(delta)
@@ -747,4 +778,8 @@ func _show_in_hand(kind: String) -> void:
 	_view_item.rotation_degrees = Vector3(-8, 22, 6)
 	# Draw on top of the world so it never clips through the counter.
 	(_view_item as MeshInstance3D).sorting_offset = 4.0
+	# On both render layers, for the same reason the torch is on both: the camera
+	# swaps layer when you go down the ladder, and a gun that only exists on the
+	# surface layer vanishes out of your hands the moment you land.
+	(_view_item as MeshInstance3D).layers = VIEW_LAYERS
 	_view_root.add_child(_view_item)

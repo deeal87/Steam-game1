@@ -462,7 +462,12 @@ func _ask_for_illicit() -> void:
 	if state != State.AT_COUNTER:
 		return
 	_asked_for_illicit = true
-	Signals.customer_spoke.emit(profile.full_name, ProfileGenerator.illicit_line(profile))
+	var line := ProfileGenerator.illicit_line(profile)
+	Signals.customer_spoke.emit(profile.full_name, line)
+	# The ask is the moment the whole game turns on, and it used to go past in
+	# the same notice column as "2 waiting" and a subtitle that fades after four
+	# seconds. It stays over their head now until you have decided.
+	Signals.customer_asks.emit(self, line)
 	Signals.notice.emit(Loc.t("They're asking. Decide."), "warn")
 	Tutor.fire("asked")
 
@@ -470,6 +475,7 @@ func _ask_for_illicit() -> void:
 func receive_illicit(units: int) -> void:
 	if state != State.AT_COUNTER:
 		return
+	Signals.customer_asks.emit(self, "")
 	var rng := RandomNumberGenerator.new()
 	rng.seed = profile.seed_value + 77
 	var total := GameState.illicit_unit_price(rng) * units
@@ -487,6 +493,7 @@ func receive_illicit(units: int) -> void:
 
 
 func refuse() -> void:
+	Signals.customer_asks.emit(self, "")
 	if state != State.AT_COUNTER:
 		return
 	if profile.kind == CustomerProfile.Kind.UNDERCOVER:
@@ -499,6 +506,7 @@ func refuse() -> void:
 ## Telling someone to get out. Free when you are right; expensive when the
 ## person you threw out was only ever here for cigarettes.
 func dismiss() -> void:
+	Signals.customer_asks.emit(self, "")
 	if state not in [State.AT_COUNTER, State.QUEUEING]:
 		return
 	if profile.kind == CustomerProfile.Kind.CIVILIAN:
@@ -610,6 +618,7 @@ func _die() -> void:
 # --- Leaving -----------------------------------------------------------------
 
 func _leave(why: String) -> void:
+	Signals.customer_asks.emit(self, "")
 	if state == State.DEAD or state == State.LEAVING:
 		return
 	state = State.LEAVING

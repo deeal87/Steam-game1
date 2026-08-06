@@ -131,6 +131,12 @@ func _ready() -> void:
 	await _look_from(Vector3(World.FRONT_DOOR_X, 0.3, -World.SHOP_HALF_Z - 2.6), PI, "17_outside_shop_door")
 	await _look_from(Vector3(-8.0, 0.3, -2.0), 1.57, "18_street_looking_west")
 
+	# Standing on top of the tunnels, looking at your feet. The road is solid
+	# here and it has to read as solid: this is the shot that says whether the
+	# sewer is showing through the ground, which it did for a long time and
+	# which no amount of walking around at eye height ever revealed.
+	await _look_from(Vector3(-24.0, 0.3, World.MANHOLE.z), PI, "18b_road_over_tunnel", -1.35)
+
 	# Down the ladder.
 	game.player.toggle_torch()
 	await _look_from(Vector3(World.MANHOLE.x - 1.0, World.SEWER_Y + 0.2, World.MANHOLE.z), 1.57, "19_sewer")

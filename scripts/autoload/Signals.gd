@@ -15,6 +15,9 @@ signal shift_clock(minutes_left: float)
 signal customer_arrived(customer: Node)
 signal customer_departed(customer: Node, outcome: String)
 signal customer_spoke(speaker: String, line: String)
+## Raised when somebody asks for what is under the counter, and again with an
+## empty line once the moment has passed. The bubble over their head listens.
+signal customer_asks(customer: Node, line: String)
 
 # --- Player-facing state ---
 signal money_changed(amount: int)

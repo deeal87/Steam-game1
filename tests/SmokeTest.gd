@@ -45,6 +45,7 @@ func _ready() -> void:
 	await test_resource_sharing()
 	await test_customer_construction()
 	await test_sewer_is_traversable()
+	await test_two_halves_of_the_world()
 	await test_identity_and_egg()
 	await test_sewer_escape()
 	await test_transaction()
@@ -1184,6 +1185,81 @@ func test_sewer_is_traversable() -> void:
 			sealed += 1
 	_check(junctions.size() == 3, "all three junctions are registered (%d)" % junctions.size())
 	_check(sealed == 0, "and every one of them is open (%d bricked up)" % sealed)
+
+
+## The street and the tunnels are stacked on top of each other with a road slab
+## between them, and a road slab is not enough — "I can still see the
+## underground" was the tunnels drawing straight through it wherever the depth
+## buffer lost the argument. So the camera draws one layer or the other and
+## never both, and that only holds if three things are true: every piece of the
+## sewer is on the underground layer, nothing above ground is, and the camera
+## actually swaps when the player goes down.
+func test_two_halves_of_the_world() -> void:
+	print("\nTwo halves of the world:")
+	var under := 1 << (World.LAYER_UNDERGROUND - 1)
+	var over := 1 << (World.LAYER_SURFACE - 1)
+
+	# Membership is by branch of the tree, not by height. The tunnel roof sits at
+	# about -2.1 and the shafts run all the way up to the pavement, so a test
+	# that sorted pieces by their Y would call a third of the sewer "above
+	# ground" and be wrong about every one of them. What is under the Sewer node
+	# is underground; everything else is the street and the shop.
+	var sewer := _world.get_node_or_null("Sewer")
+	_check(sewer != null, "the tunnels are built")
+	if sewer == null:
+		return
+
+	var tunnel_pieces := _all_visuals(sewer)
+	var strays: Array[String] = []
+	for vis: VisualInstance3D in tunnel_pieces:
+		if vis.layers != under:
+			strays.append(vis.name)
+	_check(tunnel_pieces.size() > 20, "there is a real amount of it (%d pieces)"
+		% tunnel_pieces.size())
+	_check(strays.is_empty(), "every piece is on the underground layer (%d stray: %s)"
+		% [strays.size(), ", ".join(strays.slice(0, 4))])
+
+	# And the other direction, which is the one that would hide the shop: nothing
+	# a player sees from the street may be on the layer the street does not draw.
+	var hidden: Array[String] = []
+	for vis: VisualInstance3D in _all_visuals(_world):
+		if vis.layers == under and not sewer.is_ancestor_of(vis):
+			hidden.append(vis.name)
+	_check(hidden.is_empty(), "and nothing outside them is (%d: %s)"
+		% [hidden.size(), ", ".join(hidden.slice(0, 4))])
+
+	# The camera follows the player across the boundary, both ways. Driven off
+	# the spawn anchor rather than wherever the player happens to be standing
+	# after the tests before this one.
+	var home: Vector3 = _world.anchors["player_spawn"]
+	_player.global_position = _world.anchors["sewer_shaft_bottom"]
+	_player._apply_view_layer()
+	_check(_player.camera.cull_mask == under, "down the ladder the camera draws the tunnels")
+	_player.global_position = home
+	_player._apply_view_layer()
+	_check(_player.camera.cull_mask == over, "and back up it draws the street")
+	# The threshold has to sit clear of both floors, or it flips mid-stride.
+	_check(Player.UNDERGROUND_ABOVE < -1.0 and Player.UNDERGROUND_ABOVE > World.SEWER_Y + 1.9,
+		"and the line between them is clear of both floors")
+
+	# What the player carries has to survive the swap, or the gun in your hands
+	# disappears the moment you land.
+	_player.equipped = "bat"
+	_player._show_in_hand("weapon")
+	var held := _player._view_item as MeshInstance3D
+	_check(held != null and held.layers == Player.VIEW_LAYERS,
+		"and what is in your hands is drawn in both")
+	_check(_player._torch.light_cull_mask == Player.VIEW_LAYERS, "the torch lights both")
+	_player._show_in_hand("")
+	_done("two halves")
+
+
+func _all_visuals(root: Node, out: Array[VisualInstance3D] = []) -> Array[VisualInstance3D]:
+	if root is VisualInstance3D:
+		out.append(root as VisualInstance3D)
+	for child in root.get_children():
+		_all_visuals(child, out)
+	return out
 
 
 func test_identity_and_egg() -> void:
@@ -2502,6 +2578,16 @@ func test_panels() -> void:
 	Signals.heat_changed.emit(40.0)
 	_check(true, "HUD absorbs every signal it listens for")
 
+	# The ask has to stay on screen until it is answered.
+	var asker := _spawn_at_counter(7788)
+	Signals.customer_asks.emit(asker, "Someone said you keep something under there.")
+	_check(hud._bubble.visible, "the ask puts a bubble over their head")
+	_check(hud._bubble_line.text.contains("under there"),
+		"with what they actually said in it")
+	Signals.customer_asks.emit(asker, "")
+	_check(not hud._bubble.visible, "and it goes when the moment is answered")
+	asker.queue_free()
+
 	# The meters are built once and moved in place. They used to be thrown away
 	# and rebuilt on every change, which cost two node allocations a frame for
 	# the health bar; if that ever comes back, the bar the test is holding stops
@@ -2742,7 +2828,7 @@ func test_raid_keeps_looking() -> void:
 
 
 func _report() -> void:
-	for name: String in ["raid_keeps_looking"]:
+	for name: String in ["raid_keeps_looking", "two halves"]:
 		if not _finished.has(name):
 			failures.append("%s never reached its end — it died part way through, "
 				% name + "and a suite that counts only failures calls that a pass")
