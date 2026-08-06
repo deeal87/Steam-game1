@@ -41,6 +41,18 @@ const CUTS := {
 		["lamp_post", 660, 514, 90, 130],
 		["lamp_head", 884, 514, 120, 130],
 	],
+	# Products are cut but never mirrored: a photograph of a can of cola folded
+	# back on itself is not a can of cola. They go on a box the size of a fist
+	# and are meant to read as one object, not as a surface.
+	"products.png": [
+		["item_soda", 100, 152, 64, 112],
+		["item_beer", 258, 152, 64, 112],
+		["item_coffee", 486, 152, 64, 112],
+		["item_crisps", 568, 152, 70, 112],
+		["item_smokes", 1106, 152, 76, 112],
+		["item_lighter", 1286, 152, 50, 112],
+		["item_noodles", 954, 358, 74, 114],
+	],
 	"kiosk.png": [
 		["floor", 26, 112, 190, 190],
 		["floor_worn", 790, 112, 190, 190],
@@ -73,7 +85,9 @@ func _ready() -> void:
 			if piece == null:
 				printerr("  %s: nothing there" % cut[0])
 				continue
-			piece = _tileable(piece)
+			# Surfaces have to tile. Objects must not be folded.
+			if not str(cut[0]).begins_with("item_"):
+				piece = _tileable(piece)
 			var out := OUT_DIR.path_join("%s.png" % cut[0])
 			if piece.save_png(out) == OK:
 				print("  %-14s %3dx%-3d -> %s" % [

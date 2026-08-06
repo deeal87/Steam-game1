@@ -177,9 +177,16 @@ func _build_materials() -> void:
 	_mats["pavement"] = _surface("pavement", ProcTex.grime(Color(0.20, 0.20, 0.21), 0.5, 12), 10.0, 5.0)
 	_mats["brick"] = _surface("brick_far", ProcTex.brick(21), 3.0, 2.0)
 	_mats["brick_far"] = _surface("brick_far", ProcTex.brick(33), 6.0, 4.0, Color(0.55, 0.55, 0.6))
-	_mats["floor"] = _surface("floor", ProcTex.tiles(41), 6.0, 3.0)
+	# Six, not three. The cut is mirrored into a 2x2, so three repeats put a
+	# six-tile grid across the shop and each tile came out about a metre across
+	# — twice the size of a real floor tile and the first thing you notice.
+	_mats["floor"] = _surface("floor", ProcTex.tiles(41), 6.0, 6.0)
 	_mats["wall"] = _surface("wall", ProcTex.grime(Color(0.38, 0.37, 0.33), 0.45, 55), 4.0, 2.0)
-	_mats["ceiling"] = _surface("ceiling", ProcTex.grime(Color(0.26, 0.26, 0.25), 0.5, 61), 4.0, 3.0)
+	# And the ceiling the other way, though not as far as it first went. The cut
+	# is itself a grid of four tiles, so mirroring made sixteen and repeating
+	# three times put a hundred and forty-four overhead, which read as noise
+	# rather than as a ceiling. One repeat smeared them into swirls instead.
+	_mats["ceiling"] = _surface("ceiling", ProcTex.grime(Color(0.26, 0.26, 0.25), 0.5, 61), 4.0, 2.5)
 	_mats["counter"] = _surface("counter_front", ProcTex.grime(Color(0.30, 0.24, 0.18), 0.4, 71), 2.0, 1.0)
 	_mats["steel"] = ProcMesh.mat(ProcTex.metal(Color(0.30, 0.31, 0.33), 81))
 	_mats["dark_steel"] = ProcMesh.mat(ProcTex.metal(Color(0.14, 0.14, 0.16), 83))
@@ -543,8 +550,13 @@ func _build_shelving() -> void:
 			var item_id: String = items[i]
 			var level_y := 0.98 + float(i) * 0.48
 			var slots: Array[MeshInstance3D] = []
-			var box_mat := ProcMesh.mat(ProcTex.product(
-				SHELF_TINTS.get(item_id, Color(0.5, 0.5, 0.5)), hash(item_id)))
+			# A painted product if the pack has one for this item, and a
+			# generated carton in the item's colour if not. Never tiled — the
+			# picture is of one object and wants to stay one object.
+			var painted := ProcTex.painted("item_%s" % item_id)
+			var box_mat := ProcMesh.mat(painted, 1.0) if painted != null \
+				else ProcMesh.mat(ProcTex.product(
+					SHELF_TINTS.get(item_id, Color(0.5, 0.5, 0.5)), hash(item_id)))
 			var count := 10
 			for s in count:
 				var along := 0.20 + float(s) * ((span - 0.40) / float(count - 1))
