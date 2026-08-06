@@ -1116,6 +1116,22 @@ func test_sewer_is_traversable() -> void:
 	_check(_point_is_clear(mid_bottom + Vector3(0, 0.9, 0), 0.30),
 		"the middle ladder does not drop you inside a wall")
 
+	# --- And can you actually get back out? ---
+	#
+	# Everything above proves the tunnels are open. None of it proves there is a
+	# way up, which is a different question and the one that matters: a player
+	# who climbs down and cannot climb back is stuck in a dark tunnel with no
+	# menu option that helps. Standing where the ladder drops you and looking at
+	# it has to produce the prompt, or the run is over.
+	for way_out: Array in [
+			["the stockroom ladder", "sewer_shaft_bottom", "ladder_up_stock", World.MANHOLE],
+			["the street ladder", "sewer_exit_bottom", "ladder_up_street", World.SEWER_EXIT],
+			["the middle ladder", "sewer_mid_bottom", "ladder_up_mid", World.SEWER_MID_EXIT]]:
+		var stand: Vector3 = _world.anchors[str(way_out[1])]
+		var shaft := Vector3(float(way_out[3].x), stand.y, float(way_out[3].z))
+		_check(_can_reach_interact(stand, shaft, str(way_out[2])),
+			"%s can be reached from where it puts you" % way_out[0])
+
 	for branch: Array in [
 		["the dogleg to the far exit", World.SEWER_EXIT.x, World.SEWER_EXIT.z, -1.0],
 		["the dogleg to the middle ladder", World.SEWER_MID_EXIT.x, World.SEWER_MID_EXIT.z, -1.0],
@@ -2576,6 +2592,29 @@ func _peak_of(stream: AudioStreamWAV) -> float:
 		peak = maxi(peak, absi(v))
 		i += 2
 	return float(peak) / 32767.0
+
+
+## Stands the player where `from` says, looks at `at`, and reports whether the
+## interaction ray finds the thing named. This is the player's own ray with the
+## player's own reach, so it answers the question a player would ask.
+func _can_reach_interact(from: Vector3, at: Vector3, want_id: String) -> bool:
+	_player.global_position = from
+	# Eye height, and aimed from the eye rather than the feet.
+	var eye := from + Vector3(0, 1.62, 0)
+	var to := at + Vector3(0, 1.0, 0)
+	var space := _player.get_world_3d().direct_space_state
+	var query := PhysicsRayQueryParameters3D.create(eye, eye + (to - eye).normalized() * 2.4)
+	query.collision_mask = 0
+	query.collision_mask |= 1 << 1
+	query.collision_mask |= 1 << 2
+	query.collide_with_areas = false
+	var hit := space.intersect_ray(query)
+	if hit.is_empty():
+		return false
+	var collider = hit["collider"]
+	if collider == null or not collider.has_meta("interact"):
+		return false
+	return str(collider.get_meta("interact")) == want_id
 
 
 func _report() -> void:

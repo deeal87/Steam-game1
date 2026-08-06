@@ -290,7 +290,19 @@ func _build_ui() -> void:
 ## channel separation, and a vignette that keeps the corners of the room dark.
 func _build_screen_effect() -> void:
 	var layer := CanvasLayer.new()
-	layer.layer = 20
+	# Below the interface, not above it.
+	#
+	# This sat at layer 20, over the HUD and every panel, so the channel-split
+	# that sells a cheap composite signal was being applied to text — which is
+	# why the title screen read as though it needed 3D glasses and why nothing
+	# in the game was sharp. The grain, the scanlines and the posterisation were
+	# all landing on words as well.
+	#
+	# At layer 0 it samples what has been drawn so far, which is the 3D view and
+	# nothing else. The world still goes through the whole grubby pass; the
+	# interface is drawn afterwards and stays exactly as crisp as it was
+	# rendered. That was always what the README claimed and never what happened.
+	layer.layer = 0
 	add_child(layer)
 
 	var rect := ColorRect.new()

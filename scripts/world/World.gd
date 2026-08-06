@@ -216,6 +216,30 @@ func _build_environment() -> void:
 	world_env.environment = env
 	add_child(world_env)
 
+	# A little sky on the street.
+	#
+	# The lamps throw tight pools, which is right — a sodium lamp does — but tight
+	# pools with nothing between them left the road a void: you could see the
+	# pavement at your feet and then absolutely nothing, which reads as walking
+	# in a black box rather than as walking at night. No real street is like
+	# that. There is always some sky, and it is what puts an edge on a building
+	# forty metres away that you cannot otherwise see at all.
+	#
+	# Weak enough that it never competes with a lamp, angled down and slightly
+	# along the road so walls catch it at a grazing angle and keep their shape.
+	# A directional light does not count against the eight-lights-per-object
+	# limit that made the lamp pools small in the first place.
+	var sky := DirectionalLight3D.new()
+	sky.name = "SkyGlow"
+	sky.light_color = Color(0.46, 0.54, 0.78)
+	sky.light_energy = 0.30
+	sky.rotation_degrees = Vector3(-62, 28, 0)
+	sky.shadow_enabled = false
+	# Surface only. Down the ladder it is meant to be genuinely dark, and the
+	# tunnels have their own lamps for that.
+	sky.light_cull_mask = 1 << (LAYER_SURFACE - 1)
+	add_child(sky)
+
 
 # --- Shop shell --------------------------------------------------------------
 

@@ -19,8 +19,20 @@ var music_volume: float = 0.55
 var sfx_volume: float = 0.85
 var mouse_sensitivity: float = 1.0  ## multiplier on the base look speed
 var field_of_view: float = 68.0
-var crt_intensity: float = 1.0      ## scanlines, grain, aberration, vignette
-var retro_intensity: float = 1.0    ## vertex snapping and affine warping
+## Both of these shipped at full strength and both were too much.
+##
+## The effects are correct — the vertex jitter and the texture swim are what the
+## hardware really did — but the hardware did it at 320x240 on a television.
+## Here the 3D view is rendered at 426x240 and scaled up three times, so every
+## artefact is three times the size it was ever meant to be, on a sharp panel,
+## a foot from your face. Played rather than looked at, it is genuinely
+## unpleasant: the texture on a wall crawls the whole time you are moving.
+##
+## So the defaults are set where the era still reads clearly and an hour of it
+## does not hurt. Both sliders still go to 1.0 for anyone who wants the full
+## thing, and to 0.0 for anyone who wants none of it.
+var crt_intensity: float = 0.45     ## scanlines, grain, aberration, vignette
+var retro_intensity: float = 0.55   ## vertex snapping and affine warping
 var subtitles: bool = true
 
 # --- Display ---
@@ -145,8 +157,8 @@ func reset() -> void:
 	sfx_volume = 0.85
 	mouse_sensitivity = 1.0
 	field_of_view = 68.0
-	crt_intensity = 1.0
-	retro_intensity = 1.0
+	crt_intensity = 0.45
+	retro_intensity = 0.55
 	subtitles = true
 	player_name = ""
 	locale = ""

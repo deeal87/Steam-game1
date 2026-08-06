@@ -68,10 +68,14 @@ static func build(world: World) -> void:
 	_tunnel(world, sewer, Vector3(World.SEWER_SPUR_X, y, stock.y),
 		Vector3(World.SEWER_SPUR_X, y, World.SEWER_SPUR_END_Z), [], {}, false, true)
 
-	# Shafts sit in the holes left in the roof and go up to ground level.
-	_shaft(world, sewer, Vector3(stock.x, 0, stock.y), roof_y)
-	_shaft(world, sewer, Vector3(street.x, 0, street.y), roof_y)
-	_shaft(world, sewer, Vector3(mid.x, 0, mid.y), roof_y)
+	# Shafts sit in the holes left in the roof and go up to ground level. The
+	# rungs start at the tunnel floor rather than at the roof, which is where
+	# they used to start — a ladder whose bottom rung is above the ceiling you
+	# are standing under is one you can see and cannot climb, and that is
+	# exactly how it read.
+	_shaft(world, sewer, Vector3(stock.x, 0, stock.y), roof_y, y)
+	_shaft(world, sewer, Vector3(street.x, 0, street.y), roof_y, y)
+	_shaft(world, sewer, Vector3(mid.x, 0, mid.y), roof_y, y)
 
 	# Where the ladders put you. Offset clear of the shaft walls so nobody ever
 	# lands inside a brick.
@@ -79,12 +83,14 @@ static func build(world: World) -> void:
 	world.anchors["sewer_exit_bottom"] = Vector3(street.x, y + 0.2, street.y - SHAFT_HALF - 0.7)
 	world.anchors["sewer_mid_bottom"] = Vector3(mid.x, y + 0.2, mid.y - SHAFT_HALF - 0.7)
 
-	world.interact_zone(sewer, "ladder_up_stock",
-		Vector3(stock.x, y + 1.0, stock.y), Vector3(1.6, 2.0, 1.6))
-	world.interact_zone(sewer, "ladder_up_street",
-		Vector3(street.x, y + 1.0, street.y), Vector3(1.6, 2.0, 1.6))
-	world.interact_zone(sewer, "ladder_up_mid",
-		Vector3(mid.x, y + 1.0, mid.y), Vector3(1.6, 2.0, 1.6))
+	# Tall enough to cover the ladder a player can see, so looking anywhere at it
+	# offers the climb. Two metres of zone under a ladder that runs to the roof
+	# meant aiming at the rungs found nothing at all.
+	var zone := Vector3(1.9, TUNNEL_H + 0.6, 1.9)
+	var zone_y := y + zone.y * 0.5
+	world.interact_zone(sewer, "ladder_up_stock", Vector3(stock.x, zone_y, stock.y), zone)
+	world.interact_zone(sewer, "ladder_up_street", Vector3(street.x, zone_y, street.y), zone)
+	world.interact_zone(sewer, "ladder_up_mid", Vector3(mid.x, zone_y, mid.y), zone)
 
 	_dead_end(world, sewer, y)
 
@@ -129,7 +135,12 @@ static func _dead_end(world: World, parent: Node3D, y: float) -> void:
 
 ## Decorative brick shaft between the tunnel roof and the street. The player is
 ## teleported rather than climbing, so this only ever has to look like a reason.
-static func _shaft(world: World, parent: Node3D, top: Vector3, from_y: float) -> void:
+## `from_y` is where the brick tube starts — the tunnel roof. `floor_y` is where
+## the rungs start, which is the floor you are standing on, a good two metres
+## lower. They are different numbers and treating them as one made the ladders
+## unusable.
+static func _shaft(world: World, parent: Node3D, top: Vector3, from_y: float,
+		floor_y: float) -> void:
 	var height := top.y - from_y
 	if height <= 0.05:
 		return
@@ -143,9 +154,12 @@ static func _shaft(world: World, parent: Node3D, top: Vector3, from_y: float) ->
 			Vector3(top.x, centre_y, top.z + side * SHAFT_HALF),
 			world.mat("sewer_brick"), "ShaftZ"))
 
-	for rung in maxi(1, int(height / 0.32)):
+	# All the way down to the floor, so there is something to take hold of from
+	# where you are actually standing.
+	var climb := top.y - floor_y
+	for rung in maxi(1, int(climb / 0.32)):
 		parent.add_child(ProcMesh.box(Vector3(0.42, 0.05, 0.05),
-			Vector3(top.x, from_y + 0.25 + float(rung) * 0.32, top.z + SHAFT_HALF - 0.14),
+			Vector3(top.x, floor_y + 0.25 + float(rung) * 0.32, top.z + SHAFT_HALF - 0.14),
 			world.mat("steel"), "Rung"))
 
 	var glow := OmniLight3D.new()

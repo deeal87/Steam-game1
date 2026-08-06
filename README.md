@@ -601,6 +601,22 @@ for the board at the end of the road, plus the two that matter:
 - **Screen effect** — scanlines, grain, vignette and colour fringing.
 - **Retro geometry** — vertex jitter and affine texture warping.
 
+Both default to well under full strength, and that is a correction rather than
+a taste. The effects are honest — the jitter and the texture swim are what the
+hardware really did — but the hardware did it at 320x240 on a television across
+the room. Here the 3D view is rendered at 426x240 and scaled up three times, on
+a sharp panel, a foot from your face, so every artefact arrives three times the
+size it was ever meant to be. At full strength the wall texture crawls the whole
+time you are moving and an hour of it is genuinely unpleasant. Both sliders
+still go to 1.0 for anyone who wants the real thing.
+
+The screen effect is also applied *below* the interface rather than over it. It
+sat on top for most of this project's life, which meant the channel-split that
+sells a cheap composite signal was being applied to text — the title screen read
+as though it needed 3D glasses, and nothing in the game was sharp. The world
+goes through the whole grubby pass; the interface is drawn afterwards and stays
+exactly as crisp as it was rendered.
+
 Both go down to zero independently, and at zero the game renders clean, stable
 and perspective-correct. This is an accessibility control, not a taste one:
 those effects cause real eye strain for some people, and the jitter that sells

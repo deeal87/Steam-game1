@@ -109,7 +109,12 @@ static func _lamp_post(world: World, parent: Node3D, pos: Vector3, working: bool
 		var l := OmniLight3D.new()
 		l.position = pos + Vector3(0.78, 5.1, 0)
 		l.light_color = Color(1.0, 0.86, 0.60)
-		l.light_energy = 4.6
+		# Brightness, not reach. What leaked through the brick was the nine-metre
+		# radius below, and shortening it was right; what it also did was leave
+		# the road too dark to walk down — "like walking in a black box". Energy
+		# fills the pool without extending it a centimetre, so the lamps light
+		# the pavement properly and still stop at the wall.
+		l.light_energy = 11.0
 		# Nine metres, not eighteen.
 		#
 		# A sodium lamp five metres above a pavement throws a pool about seven
@@ -124,7 +129,9 @@ static func _lamp_post(world: World, parent: Node3D, pos: Vector3, working: bool
 		# out into darkness as you walk west, and a smaller circle of light does
 		# more of that than a large soft one.
 		l.omni_range = 9.0
-		l.omni_attenuation = 1.6
+		# Flatter falloff, so the pool has a usable middle rather than a hot spot
+		# under the lamp and nothing two paces away.
+		l.omni_attenuation = 1.0
 		parent.add_child(l)
 
 
