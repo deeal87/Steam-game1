@@ -52,6 +52,12 @@ func _ready() -> void:
 	report.show_title()
 	player.ui_locked = true
 
+	# Everything in this game is generated at launch — every texture, every
+	# mesh, every sound, the icon. That is a deliberate trade and this is the
+	# number that says what it cost, on whatever machine a player is actually
+	# using rather than this one.
+	Log.info("open for business in %d ms" % Time.get_ticks_msec())
+
 	_maybe_self_test()
 
 

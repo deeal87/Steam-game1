@@ -783,9 +783,22 @@ by the node drawing it, so eviction only costs a rebuild if that exact shape is
 asked for again.
 
 Object count now settles at about 3,690 instead of climbing past 4,576 and
-going, and the night-six p99 is 7.96ms rather than 20. The soak checks the shape
-of the curve on every run: caches may fill for two nights, and after that a jump
-of more than sixty in one night fails the run and says what to look for.
+going, and the night-six p99 is 7.96ms rather than 20. Memory follows: 36 MB on
+the first night, flat at 38.3 MB from the fifth onward. The soak reports that
+alongside the object counts, because objects settling does not prove the memory
+behind them has — an image is one object however many pixels it holds.
+
+It checks this on every run, two ways. A jump of more than ninety in one night
+fails it, which catches a cache filling fast; and a total over 1,200 fails it
+too, which catches one that adds twenty a night and would otherwise pass the
+first check forever. The growth limit is deliberately loose — the leak was two
+to three hundred a night, and set any tighter the check failed on its own
+warm-up about one run in three. A flaky check is worse than no check, because it
+teaches you to ignore it.
+
+The game reports its own start-up cost in the log: **open for business in 3,163
+ms** on this machine, headless. Everything is generated at launch — every
+texture, every mesh, every sound, the icon — and that is the price of it.
 
 It earned its keep immediately. Four bugs found on the first day, none of which
 any unit test in this repository could have found:

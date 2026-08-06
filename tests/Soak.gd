@@ -44,10 +44,20 @@ var _cache_samples: int = 0
 ## Nights allowed for the caches to reach their ceilings before growth counts.
 const CACHE_WARMUP_NIGHTS := 2
 
-## How much the caches may grow between two consecutive nights. Bounded caches
-## settle within the first night or two and then move by a handful; an unbounded
-## one was adding two to three hundred every night.
-const CACHE_GROWTH_LIMIT := 60
+## How much the caches may grow between two consecutive nights.
+##
+## Set against what the leak actually looked like — two to three hundred a
+## night — rather than as tight as it will go. The caches are still filling
+## toward their ceilings on the third night and can legitimately add sixty or so
+## then, which at a tighter limit failed the run perhaps one time in three. A
+## flaky check is worse than no check: it teaches you to ignore it.
+const CACHE_GROWTH_LIMIT := 90
+
+## And a ceiling, because growth alone only catches a cache filling quickly. One
+## that adds twenty a night is still unbounded and would pass the check above
+## forever. This is comfortably over the sum of every declared cap and far under
+## where an unbounded cache ends up.
+const CACHE_TOTAL_LIMIT := 1200
 
 
 func _on_arrived(c: Customer) -> void:
@@ -336,6 +346,11 @@ func _report_frames() -> void:
 	# orphans say what kind: an orphan is a node that was taken out of the tree
 	# and never freed, which is the leak you get from forgetting a queue_free,
 	# and it is the number that grew.
+	# Objects settling says the counts are bounded. It does not say the memory
+	# behind them is: an image is one object however many pixels it holds.
+	_note("        memory %.1f MB static · %.1f MB peak" % [
+		float(Performance.get_monitor(Performance.MEMORY_STATIC)) / 1048576.0,
+		float(Performance.get_monitor(Performance.MEMORY_STATIC_MAX)) / 1048576.0])
 	_note("        objects %d · nodes %d · orphaned %d · resources %d" % [
 		Performance.get_monitor(Performance.OBJECT_COUNT),
 		Performance.get_monitor(Performance.OBJECT_NODE_COUNT),
@@ -409,6 +424,10 @@ func _check_caches(held: int) -> void:
 	# The first two nights are the caches filling to their ceilings, which is
 	# what they are for. Only what happens after that says whether they settle.
 	_cache_samples += 1
+	if held > CACHE_TOTAL_LIMIT:
+		_fail("the generated-resource caches hold %d, over the %d ceiling — "
+			% [held, CACHE_TOTAL_LIMIT]
+			+ "a cache has been added without one, or a cap has been raised too far")
 	if _cache_samples <= CACHE_WARMUP_NIGHTS:
 		return
 	if growth > CACHE_GROWTH_LIMIT:
