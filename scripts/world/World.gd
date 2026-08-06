@@ -185,7 +185,15 @@ func _build_materials() -> void:
 	# six-tile grid across the shop and each tile came out about a metre across
 	# — twice the size of a real floor tile and the first thing you notice.
 	_mats["floor"] = _surface("floor", ProcTex.tiles(41), 6.0, 6.0)
-	_mats["wall"] = _surface("wall", ProcTex.grime(Color(0.38, 0.37, 0.33), 0.45, 55), 4.0, 2.0)
+	# Painted plaster rather than the nicotine-stained panel.
+	#
+	# That swatch is a tall narrow crop with a rail across it, and folding a
+	# thing with a horizontal line in it puts that line back at you mirrored —
+	# which is the seam behind the counter. Painted plaster is close to
+	# featureless, so it folds without leaving anything to notice, and four
+	# repeats keeps whatever is left small.
+	_mats["wall"] = _surface("wall_painted",
+		ProcTex.grime(Color(0.38, 0.37, 0.33), 0.45, 55), 4.0, 4.0)
 	# Plain concrete overhead rather than the tiled ceiling from the kiosk sheet.
 	# That one is itself a grid of four tiles, so mirroring made sixteen and any
 	# repeat above one put a hundred-odd of them over your head — busy in a way a
@@ -194,7 +202,16 @@ func _build_materials() -> void:
 	# without ever announcing that it is tiling.
 	_mats["ceiling"] = _surface("ceiling_concrete",
 		ProcTex.grime(Color(0.26, 0.26, 0.25), 0.5, 61), 4.0, 3.0)
-	_mats["counter"] = _surface("counter_front", ProcTex.grime(Color(0.30, 0.24, 0.18), 0.4, 71), 2.0, 1.0)
+	# The counter top, not the counter front.
+	#
+	# The front swatch is a photograph of a whole counter unit — a pale upper
+	# panel over a dark green lower one — so stretching one copy across the
+	# counter gave a big flat slab with a band through it that reads as plywood.
+	# The top swatch is plain worn wood with no structure in it, which is what a
+	# surface wants to be: it tiles three times along the counter without ever
+	# showing where one copy ends.
+	_mats["counter"] = _surface("counter_top",
+		ProcTex.grime(Color(0.30, 0.24, 0.18), 0.4, 71), 2.0, 3.0)
 	_mats["steel"] = _surface("steel", ProcTex.metal(Color(0.30, 0.31, 0.33), 81), 1.0, 1.0)
 	# Lamp posts, bins, skips, the awning — the dull painted steel everything
 	# outdoors is made of. The pipe swatch is the closest thing in the pack to a
