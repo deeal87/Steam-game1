@@ -215,7 +215,8 @@ func _build_materials() -> void:
 	_mats["water"] = _surface("water",
 		ProcTex.grime(Color(0.10, 0.13, 0.12), 0.4, 141), 8.0, 4.0,
 		Color.WHITE, Color(0.06, 0.10, 0.09), 0.15)
-	_mats["cardboard"] = ProcMesh.mat(ProcTex.grime(Color(0.44, 0.33, 0.21), 0.35, 151), 1.0)
+	_mats["cardboard"] = _surface("cardboard",
+		ProcTex.grime(Color(0.44, 0.33, 0.21), 0.35, 151), 1.0, 1.0)
 
 
 ## One surface. Uses the painted texture if the pack has one under `name`, and

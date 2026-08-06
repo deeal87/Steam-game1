@@ -45,13 +45,26 @@ const CUTS := {
 	# back on itself is not a can of cola. They go on a box the size of a fist
 	# and are meant to read as one object, not as a surface.
 	"products.png": [
-		["item_soda", 100, 152, 64, 112],
-		["item_beer", 258, 152, 64, 112],
-		["item_coffee", 486, 152, 64, 112],
-		["item_crisps", 568, 152, 70, 112],
-		["item_smokes", 1106, 152, 76, 112],
-		["item_lighter", 1286, 152, 50, 112],
-		["item_noodles", 954, 358, 74, 114],
+		["item_soda", 100, 152, 64, 112, true],
+		["item_beer", 258, 152, 64, 112, true],
+		["item_coffee", 486, 152, 64, 112, true],
+		["item_crisps", 568, 152, 70, 112, true],
+		["item_smokes", 1106, 152, 76, 112, true],
+		["item_lighter", 1286, 152, 50, 112, true],
+		["item_noodles", 954, 358, 74, 114, true],
+	],
+	"props.png": [
+		["pallet_wood", 22, 138, 104, 118, true],
+		["cardboard", 650, 138, 104, 118, true],
+		["cardboard_printed", 937, 138, 104, 118, true],
+		["plastic_crate", 1225, 138, 104, 118, true],
+		["milk_crate", 22, 316, 104, 118, true],
+		["bucket", 650, 316, 104, 118, true],
+		["garbage_bag", 22, 493, 104, 118, true],
+		["wooden_board", 937, 493, 104, 118, true],
+		["metal_drum", 345, 668, 104, 118, true],
+		["wooden_crate", 937, 668, 104, 118, true],
+		["tyres", 1225, 668, 104, 118, true],
 	],
 	"architecture.png": [
 		["wall_concrete", 118, 136, 82, 78],
@@ -108,8 +121,10 @@ func _ready() -> void:
 			if piece == null:
 				printerr("  %s: nothing there" % cut[0])
 				continue
-			# Surfaces have to tile. Objects must not be folded.
-			if not str(cut[0]).begins_with("item_"):
+			# Surfaces have to tile. Objects must not be folded — a crate mirrored
+			# into a two-by-two is four crates, and a can of cola folded back on
+			# itself is not a can of cola. The sixth column says which this is.
+			if cut.size() < 6 or not bool(cut[5]):
 				piece = _tileable(piece)
 			var out := OUT_DIR.path_join("%s.png" % cut[0])
 			if piece.save_png(out) == OK:
