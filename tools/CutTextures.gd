@@ -53,6 +53,17 @@ const CUTS := {
 		["item_lighter", 1286, 152, 50, 112, true],
 		["item_noodles", 954, 358, 74, 114, true],
 	],
+	"signage.png": [
+		["sign_kiosk", 566, 145, 66, 92, true],
+		["sign_staff_only", 186, 145, 84, 90, true],
+		["sign_exit", 20, 145, 84, 90, true],
+		["sign_no_smoking", 272, 145, 80, 90, true],
+		["sign_notice", 355, 145, 78, 90, true],
+		["graffiti_a", 20, 300, 78, 86, true],
+		["graffiti_b", 210, 300, 74, 86, true],
+		["graffiti_c", 400, 300, 68, 86, true],
+		["note_paper", 20, 678, 76, 96, true],
+	],
 	"props.png": [
 		["pallet_wood", 22, 138, 104, 118, true],
 		["cardboard", 650, 138, 104, 118, true],

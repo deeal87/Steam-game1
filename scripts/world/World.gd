@@ -175,8 +175,12 @@ func _build_materials() -> void:
 	# with some hand-made walls rather than a broken one.
 	_mats["asphalt"] = _surface("asphalt", ProcTex.asphalt(7), 14.0, 6.0)
 	_mats["pavement"] = _surface("pavement", ProcTex.grime(Color(0.20, 0.20, 0.21), 0.5, 12), 10.0, 5.0)
-	_mats["brick"] = _surface("brick_far", ProcTex.brick(21), 3.0, 2.0)
-	_mats["brick_far"] = _surface("brick_far", ProcTex.brick(33), 6.0, 4.0, Color(0.55, 0.55, 0.6))
+	# Six, not two. Two repeats stretched one brick swatch across the whole
+	# front of the kiosk, which at that size stops reading as brick and starts
+	# reading as a wooden panel — and it is the size at which the mirroring
+	# becomes obvious, because the fold line ends up a metre wide.
+	_mats["brick"] = _surface("brick_far", ProcTex.brick(21), 3.0, 6.0)
+	_mats["brick_far"] = _surface("brick_far", ProcTex.brick(33), 6.0, 9.0, Color(0.55, 0.55, 0.6))
 	# Six, not three. The cut is mirrored into a 2x2, so three repeats put a
 	# six-tile grid across the shop and each tile came out about a metre across
 	# — twice the size of a real floor tile and the first thing you notice.
@@ -196,7 +200,13 @@ func _build_materials() -> void:
 	_mats["shutter"] = ProcMesh.mat(ProcTex.corrugated(Color(0.26, 0.26, 0.28), 91), 2.0)
 	_mats["glass"] = ProcMesh.mat(ProcTex.flat(Color(0.30, 0.35, 0.38)), 1.0, Color(0.4, 0.5, 0.55), 0.06)
 	_mats["screen"] = ProcMesh.mat(ProcTex.flat(Color(0.10, 0.35, 0.16)), 1.0, Color(0.20, 0.85, 0.35), 1.3)
-	_mats["neon"] = ProcMesh.mat(ProcTex.neon_sign(Color(1.0, 0.25, 0.45), 5), 1.0, Color(1.0, 0.25, 0.45), 2.2)
+	# The shop's own sign. The pack has one that says KIOSK 24/7, which is what
+	# the place is called, so it replaces the generated neon strip entirely — and
+	# the glow comes down with it, because a lit box sign is a photograph of
+	# something already lit rather than a tube that has to emit to read as one.
+	_mats["neon"] = _surface("sign_kiosk",
+		ProcTex.neon_sign(Color(1.0, 0.25, 0.45), 5), 1.0, 1.0,
+		Color(1.35, 1.30, 1.15), Color(1.0, 0.25, 0.45), 2.2)
 	_mats["lamp"] = ProcMesh.mat(ProcTex.flat(Color(1.0, 0.92, 0.72)), 1.0, Color(1.0, 0.90, 0.66), 2.0)
 	_mats["cash"] = ProcMesh.mat(ProcTex.flat(Color(0.55, 0.62, 0.42)), 1.0, Color(0.4, 0.5, 0.3), 0.25)
 	_mats["concrete"] = _surface("wall_concrete",
