@@ -898,7 +898,9 @@ func _signs(fit: Node3D) -> void:
 ## machine also puts a little light on the pavement outside the door, which is
 ## the stretch a customer walks down to reach the hatch.
 func _outside_dressing(fit: Node3D) -> void:
-	var at := Vector3(FRONT_DOOR_X + 1.55, 0.0, -SHOP_HALF_Z - 0.45)
+	# Clear of the front wall, whose outer face is at -SHOP_HALF_Z - 0.2. Set
+	# back any less and the machine's own back face is inside the wall.
+	var at := Vector3(FRONT_DOOR_X + 1.55, 0.0, -SHOP_HALF_Z - 0.55)
 	fit.add_child(ProcMesh.solid_box(Vector3(0.90, 1.85, 0.60), at + Vector3(0, 0.925, 0),
 		mat("vending"), "VendingMachine"))
 	var glow := OmniLight3D.new()
