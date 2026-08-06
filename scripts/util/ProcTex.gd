@@ -362,3 +362,51 @@ static func neon_sign(tint: Color, seed_val: int, w: int = 128, h: int = 32) -> 
 			img.set_pixel(gx, int((top + bottom) / 2), tint.darkened(0.15))
 		x += glyph_w + rng.randi_range(3, 6)
 	return _finish(img)
+
+
+# --- Painted textures ----------------------------------------------------
+
+## Where a hand-made texture lives if there is one for this surface.
+const PACK_DIR := "res://textures"
+
+static var _pack: Dictionary = {}
+static var _pack_read := false
+
+
+## A painted texture by name, or null if the pack does not have one.
+##
+## The generators below still exist and still run — they are what the game falls
+## back to for every surface nobody has painted yet, and what it used entirely
+## before there was a pack. Nothing here replaces them; it just gets asked
+## first. A surface with a file gets the file, a surface without gets the code,
+## and neither has to know about the other.
+static func painted(name: String) -> ImageTexture:
+	if not _pack_read:
+		_pack_read = true
+		_read_pack()
+	var hit: Variant = _pack.get(name)
+	return hit if hit != null else null
+
+
+static func _read_pack() -> void:
+	if not DirAccess.dir_exists_absolute(PACK_DIR):
+		return
+	for file: String in DirAccess.get_files_at(PACK_DIR):
+		if not file.ends_with(".png"):
+			continue
+		var img := Image.new()
+		if img.load(PACK_DIR.path_join(file)) != OK:
+			continue
+		# Nearest filtering, no mipmaps: the whole world is drawn into a
+		# 426x240 buffer, and a filtered texture at that size is mud.
+		_pack[file.get_basename()] = ImageTexture.create_from_image(img)
+	Log.info("textures: %d painted surfaces loaded" % _pack.size())
+
+
+## True when a painted texture exists, so callers can pick their own tiling for
+## it — a photographed brick wall wants a different repeat to a generated one.
+static func has_painted(name: String) -> bool:
+	if not _pack_read:
+		_pack_read = true
+		_read_pack()
+	return _pack.has(name)

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://bkiosk0cut001"]
+
+[ext_resource type="Script" path="res://tools/CutTextures.gd" id="1_cut"]
+
+[node name="CutTextures" type="Node"]
+script = ExtResource("1_cut")

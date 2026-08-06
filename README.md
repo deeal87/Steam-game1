@@ -1056,7 +1056,51 @@ guess between the build and the number.
 
 ## Assets
 
-**Nothing in this game was downloaded or bought.** No stock textures, no sample
+### Painted textures
+
+Surfaces come from a hand-made pack where there is one for them, and from code
+where there is not. `textures/` holds the swatches the game loads; each is
+matched to a surface by name in `World._surface()`, which asks for the painted
+one and falls back to the generator if it is missing. A half-finished pack is a
+game with some painted walls, not a broken one.
+
+The pack arrived as presentation sheets — one large image per theme, each
+showing a grid of labelled swatches with albedo, normal and roughness side by
+side. Made to be looked at rather than loaded, so `tools/CutTextures.tscn` takes
+the albedo panel out of each swatch and writes it as something the game can put
+on a surface:
+
+```sh
+godot --headless --path . tools/CutTextures.tscn
+```
+
+Three things it does that are worth knowing. It trims the border the sheet draws
+around every swatch by finding it rather than assuming it, so a crop rectangle
+estimated by eye self-corrects. It backs off the normal map that sits to the
+right of every albedo, found by its colour — tangent-space blue is a signature
+nothing real has — because a crop estimated by eye lands wide about half the
+time and a strip of that baked into a wall is unmistakable. And it mirrors each
+cut into a tile, because a swatch off a contact sheet does not tile and a wall
+that does not tile shows a seam every few metres. Mirroring is crude next to a
+proper heal, and it is the right crude: it cannot produce a seam, it keeps the
+grain and colour exactly, and at this resolution in this light the symmetry does
+not read.
+
+Normal and roughness maps are ignored on purpose. The world is lit per vertex
+with roughness pinned at 1.0, which is a large part of why it looks like the era
+it is pretending to; a normal map would need per-pixel lighting and would undo
+that.
+
+`textures/*.png.import` is committed and pinned to `keep`, for the same reason
+the locale CSV is. Left alone, Godot compiles each PNG to a `.ctex` and the raw
+file never reaches the build — and because the code falls back to the generator
+when a file is missing, the exported game came out looking exactly as it had
+before the pack existed, with nothing failing and nothing to see. The log says
+which it is: `textures: 24 painted surfaces loaded`.
+
+### Everything else
+
+**Nothing else in this game was downloaded or bought.** No stock textures, no sample
 packs, no model libraries, no fonts. Everything is drawn or synthesised by code
 in this repository:
 

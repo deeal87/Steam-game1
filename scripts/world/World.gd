@@ -167,14 +167,20 @@ func _ready() -> void:
 # --- Materials ---------------------------------------------------------------
 
 func _build_materials() -> void:
-	_mats["asphalt"] = ProcMesh.mat(ProcTex.asphalt(7), 14.0)
-	_mats["pavement"] = ProcMesh.mat(ProcTex.grime(Color(0.20, 0.20, 0.21), 0.5, 12), 10.0)
-	_mats["brick"] = ProcMesh.mat(ProcTex.brick(21), 3.0)
-	_mats["brick_far"] = ProcMesh.mat(ProcTex.brick(33), 6.0, Color.BLACK, 0.0, Color(0.55, 0.55, 0.6))
-	_mats["floor"] = ProcMesh.mat(ProcTex.tiles(41), 6.0)
-	_mats["wall"] = ProcMesh.mat(ProcTex.grime(Color(0.38, 0.37, 0.33), 0.45, 55), 4.0)
-	_mats["ceiling"] = ProcMesh.mat(ProcTex.grime(Color(0.26, 0.26, 0.25), 0.5, 61), 4.0)
-	_mats["counter"] = ProcMesh.mat(ProcTex.grime(Color(0.30, 0.24, 0.18), 0.4, 71), 2.0)
+	# Painted first, generated second.
+	#
+	# Every surface below names a texture and a repeat. `_surface()` hands back
+	# the painted one if the pack has a file of that name and the generated one
+	# if it does not, so the two can coexist and a half-finished pack is a game
+	# with some hand-made walls rather than a broken one.
+	_mats["asphalt"] = _surface("asphalt", ProcTex.asphalt(7), 14.0, 6.0)
+	_mats["pavement"] = _surface("pavement", ProcTex.grime(Color(0.20, 0.20, 0.21), 0.5, 12), 10.0, 5.0)
+	_mats["brick"] = _surface("brick_far", ProcTex.brick(21), 3.0, 2.0)
+	_mats["brick_far"] = _surface("brick_far", ProcTex.brick(33), 6.0, 4.0, Color(0.55, 0.55, 0.6))
+	_mats["floor"] = _surface("floor", ProcTex.tiles(41), 6.0, 3.0)
+	_mats["wall"] = _surface("wall", ProcTex.grime(Color(0.38, 0.37, 0.33), 0.45, 55), 4.0, 2.0)
+	_mats["ceiling"] = _surface("ceiling", ProcTex.grime(Color(0.26, 0.26, 0.25), 0.5, 61), 4.0, 3.0)
+	_mats["counter"] = _surface("counter_front", ProcTex.grime(Color(0.30, 0.24, 0.18), 0.4, 71), 2.0, 1.0)
 	_mats["steel"] = ProcMesh.mat(ProcTex.metal(Color(0.30, 0.31, 0.33), 81))
 	_mats["dark_steel"] = ProcMesh.mat(ProcTex.metal(Color(0.14, 0.14, 0.16), 83))
 	_mats["shutter"] = ProcMesh.mat(ProcTex.corrugated(Color(0.26, 0.26, 0.28), 91), 2.0)
@@ -183,11 +189,22 @@ func _build_materials() -> void:
 	_mats["neon"] = ProcMesh.mat(ProcTex.neon_sign(Color(1.0, 0.25, 0.45), 5), 1.0, Color(1.0, 0.25, 0.45), 2.2)
 	_mats["lamp"] = ProcMesh.mat(ProcTex.flat(Color(1.0, 0.92, 0.72)), 1.0, Color(1.0, 0.90, 0.66), 2.0)
 	_mats["cash"] = ProcMesh.mat(ProcTex.flat(Color(0.55, 0.62, 0.42)), 1.0, Color(0.4, 0.5, 0.3), 0.25)
-	_mats["concrete"] = ProcMesh.mat(ProcTex.grime(Color(0.40, 0.40, 0.38), 0.45, 131), 4.0)
-	_mats["sewer_brick"] = ProcMesh.mat(ProcTex.brick(137), 5.0, Color.BLACK, 0.0, Color(0.72, 0.78, 0.74))
+	_mats["concrete"] = _surface("concrete", ProcTex.grime(Color(0.40, 0.40, 0.38), 0.45, 131), 4.0, 3.0)
+	_mats["sewer_brick"] = _surface("brick_far", ProcTex.brick(137), 5.0, 3.0, Color(0.72, 0.78, 0.74))
 	_mats["water"] = ProcMesh.mat(ProcTex.grime(Color(0.10, 0.13, 0.12), 0.4, 141), 8.0,
 		Color(0.06, 0.10, 0.09), 0.15)
 	_mats["cardboard"] = ProcMesh.mat(ProcTex.grime(Color(0.44, 0.33, 0.21), 0.35, 151), 1.0)
+
+
+## One surface. Uses the painted texture if the pack has one under `name`, and
+## the generated one otherwise, with its own repeat for each — a photographed
+## brick wall and a generated one want different tiling to read at the same size.
+func _surface(name: String, generated: Texture2D, repeat: float, painted_repeat: float,
+		tint: Color = Color.WHITE) -> Material:
+	var tex := ProcTex.painted(name)
+	if tex != null:
+		return ProcMesh.mat(tex, painted_repeat, Color.BLACK, 0.0, tint)
+	return ProcMesh.mat(generated, repeat, Color.BLACK, 0.0, tint)
 
 
 func mat(id: String) -> Material:
