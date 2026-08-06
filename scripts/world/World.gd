@@ -182,11 +182,14 @@ func _build_materials() -> void:
 	# — twice the size of a real floor tile and the first thing you notice.
 	_mats["floor"] = _surface("floor", ProcTex.tiles(41), 6.0, 6.0)
 	_mats["wall"] = _surface("wall", ProcTex.grime(Color(0.38, 0.37, 0.33), 0.45, 55), 4.0, 2.0)
-	# And the ceiling the other way, though not as far as it first went. The cut
-	# is itself a grid of four tiles, so mirroring made sixteen and repeating
-	# three times put a hundred and forty-four overhead, which read as noise
-	# rather than as a ceiling. One repeat smeared them into swirls instead.
-	_mats["ceiling"] = _surface("ceiling", ProcTex.grime(Color(0.26, 0.26, 0.25), 0.5, 61), 4.0, 2.5)
+	# Plain concrete overhead rather than the tiled ceiling from the kiosk sheet.
+	# That one is itself a grid of four tiles, so mirroring made sixteen and any
+	# repeat above one put a hundred-odd of them over your head — busy in a way a
+	# ceiling should never be, since it is the one surface with nothing on it to
+	# look at. Concrete has almost no feature to repeat, so it can tile hard
+	# without ever announcing that it is tiling.
+	_mats["ceiling"] = _surface("ceiling_concrete",
+		ProcTex.grime(Color(0.26, 0.26, 0.25), 0.5, 61), 4.0, 3.0)
 	_mats["counter"] = _surface("counter_front", ProcTex.grime(Color(0.30, 0.24, 0.18), 0.4, 71), 2.0, 1.0)
 	_mats["steel"] = _surface("steel", ProcTex.metal(Color(0.30, 0.31, 0.33), 81), 1.0, 1.0)
 	_mats["dark_steel"] = ProcMesh.mat(ProcTex.metal(Color(0.14, 0.14, 0.16), 83))
@@ -196,7 +199,8 @@ func _build_materials() -> void:
 	_mats["neon"] = ProcMesh.mat(ProcTex.neon_sign(Color(1.0, 0.25, 0.45), 5), 1.0, Color(1.0, 0.25, 0.45), 2.2)
 	_mats["lamp"] = ProcMesh.mat(ProcTex.flat(Color(1.0, 0.92, 0.72)), 1.0, Color(1.0, 0.90, 0.66), 2.0)
 	_mats["cash"] = ProcMesh.mat(ProcTex.flat(Color(0.55, 0.62, 0.42)), 1.0, Color(0.4, 0.5, 0.3), 0.25)
-	_mats["concrete"] = _surface("concrete", ProcTex.grime(Color(0.40, 0.40, 0.38), 0.45, 131), 4.0, 3.0)
+	_mats["concrete"] = _surface("wall_concrete",
+		ProcTex.grime(Color(0.40, 0.40, 0.38), 0.45, 131), 4.0, 3.0)
 	# Lifted above 1.0 on purpose. The painted brick is a photograph of wet brick
 	# in the dark, so it arrives already dim, and the tunnel is lit by a torch
 	# and a handful of lamps — multiplying it down as well left the walls almost

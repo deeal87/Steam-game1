@@ -53,6 +53,16 @@ const CUTS := {
 		["item_lighter", 1286, 152, 50, 112],
 		["item_noodles", 954, 358, 74, 114],
 	],
+	"architecture.png": [
+		["wall_concrete", 118, 136, 82, 78],
+		["wall_panel_metal", 645, 136, 86, 78],
+		["wall_peeling", 428, 136, 82, 78],
+		["floor_concrete", 762, 136, 84, 78],
+		["floor_tile", 855, 136, 82, 78],
+		["ceiling_concrete", 25, 313, 86, 74],
+		["ceiling_drop", 218, 313, 78, 74],
+		["ceiling_beam", 535, 313, 82, 74],
+	],
 	"sewer.png": [
 		["sewer_brick", 22, 138, 120, 132],
 		["sewer_brick_damaged", 400, 138, 120, 132],
