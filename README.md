@@ -1098,6 +1098,18 @@ when a file is missing, the exported game came out looking exactly as it had
 before the pack existed, with nothing failing and nothing to see. The log says
 which it is: `textures: 24 painted surfaces loaded`.
 
+Not every sheet in the pack is a source of surfaces. Two are lighting and
+post-process reference — renders showing what the game should look like rather
+than textures to put on anything — and the decal sheet is overlays, which need a
+decal system this game does not have: every surface here is one flat texture on
+a box. They are left uncut on purpose rather than forgotten.
+
+A cut can also land on the wrong thing. The crop rectangles are read off the
+sheets by eye, and two of them came back holding the object next door — a chain
+where the police baton should have been, a camera where the notebook should have
+been. Both were dropped rather than shipped, and the montage step that caught
+them is worth keeping in the loop: cut, look at what came out, then wire it up.
+
 ### Everything else
 
 **Nothing else in this game was downloaded or bought.** No stock textures, no sample

@@ -645,7 +645,12 @@ func _show_in_hand(kind: String) -> void:
 			size = Vector3(0.055, 0.075, 0.012)
 		"weapon":
 			var w: Dictionary = GameState.WEAPONS.get(equipped, {})
-			m = ProcMesh.mat(ProcTex.metal(Color(0.16, 0.16, 0.18), 3))
+			# The painted weapon if the pack has one under this id, and a lump of
+			# dark metal if not. It is a box either way — this is a texture on the
+			# thing in your hands, not a model of a gun.
+			var art := ProcTex.painted("weapon_%s" % equipped)
+			m = ProcMesh.mat(art, 1.0) if art != null \
+				else ProcMesh.mat(ProcTex.metal(Color(0.16, 0.16, 0.18), 3))
 			size = Vector3(0.05, 0.09, 0.30) if not bool(w.get("melee", false)) else Vector3(0.05, 0.05, 0.55)
 		_:
 			var tint: Color = World.SHELF_TINTS.get(kind, Color(0.6, 0.6, 0.6))

@@ -225,6 +225,11 @@ func _build_materials() -> void:
 	_mats["water"] = _surface("water",
 		ProcTex.grime(Color(0.10, 0.13, 0.12), 0.4, 141), 8.0, 4.0,
 		Color.WHITE, Color(0.06, 0.10, 0.09), 0.15)
+	# The shelving carcass. Its own entry rather than sharing `dark_steel` with
+	# the lamp posts and the shutter frame — those are all the same grey metal in
+	# code, and a photograph of a shelf unit stretched over a lamp post is not.
+	_mats["rack"] = _surface("shelf_rack_metal",
+		ProcTex.metal(Color(0.14, 0.14, 0.16), 83), 1.0, 1.0)
 	_mats["cardboard"] = _surface("cardboard",
 		ProcTex.grime(Color(0.44, 0.33, 0.21), 0.35, 151), 1.0, 1.0)
 
@@ -579,7 +584,7 @@ func _build_shelving() -> void:
 		var centre: Vector3 = origin + dir * (span * 0.5)
 		var carcass: Vector3 = Vector3(0.40, 1.80, span) if dir.z > 0.5 else Vector3(span, 1.80, 0.40)
 		racks.add_child(ProcMesh.solid_box(carcass, centre + Vector3(0, 0.90, 0),
-			mat("dark_steel"), "Rack%d" % rack_id))
+			mat("rack"), "Rack%d" % rack_id))
 
 		for i in items.size():
 			var item_id: String = items[i]
