@@ -196,10 +196,23 @@ func _build_materials() -> void:
 		ProcTex.grime(Color(0.26, 0.26, 0.25), 0.5, 61), 4.0, 3.0)
 	_mats["counter"] = _surface("counter_front", ProcTex.grime(Color(0.30, 0.24, 0.18), 0.4, 71), 2.0, 1.0)
 	_mats["steel"] = _surface("steel", ProcTex.metal(Color(0.30, 0.31, 0.33), 81), 1.0, 1.0)
-	_mats["dark_steel"] = ProcMesh.mat(ProcTex.metal(Color(0.14, 0.14, 0.16), 83))
+	# Lamp posts, bins, skips, the awning — the dull painted steel everything
+	# outdoors is made of. The pipe swatch is the closest thing in the pack to a
+	# surface rather than an object, which matters because this one goes on a
+	# dozen shapes of wildly different size.
+	_mats["dark_steel"] = _surface("pipe_metal",
+		ProcTex.metal(Color(0.14, 0.14, 0.16), 83), 1.0, 2.0, Color(0.72, 0.72, 0.76))
+	# The shutter keeps its generated corrugation. Nothing in the pack is ribbed
+	# metal, and a flat panel over the front of the shop would lose the one thing
+	# that says it is a shutter and not a wall.
 	_mats["shutter"] = ProcMesh.mat(ProcTex.corrugated(Color(0.26, 0.26, 0.28), 91), 2.0)
 	_mats["glass"] = ProcMesh.mat(ProcTex.flat(Color(0.30, 0.35, 0.38)), 1.0, Color(0.4, 0.5, 0.55), 0.06)
-	_mats["screen"] = ProcMesh.mat(ProcTex.flat(Color(0.10, 0.35, 0.16)), 1.0, Color(0.20, 0.85, 0.35), 1.3)
+	# The terminal's monitor. Keeps its glow either way — the interface is drawn
+	# on a panel in front of it, so this is the box the screen lives in, and a
+	# dead grey box beside a lit interface reads as switched off.
+	_mats["screen"] = _surface("crt_screen",
+		ProcTex.flat(Color(0.10, 0.35, 0.16)), 1.0, 1.0,
+		Color(0.85, 1.0, 0.88), Color(0.20, 0.85, 0.35), 1.3)
 	# The shop's own sign. The pack has one that says KIOSK 24/7, which is what
 	# the place is called, so it replaces the generated neon strip entirely — and
 	# the glow comes down with it, because a lit box sign is a photograph of
@@ -228,6 +241,10 @@ func _build_materials() -> void:
 	# The shelving carcass. Its own entry rather than sharing `dark_steel` with
 	# the lamp posts and the shutter frame — those are all the same grey metal in
 	# code, and a photograph of a shelf unit stretched over a lamp post is not.
+	_mats["stock_floor"] = _surface("floor_concrete",
+		ProcTex.grime(Color(0.30, 0.30, 0.29), 0.5, 161), 5.0, 5.0)
+	_mats["sewer_floor"] = _surface("sewer_floor", ProcTex.brick(137), 5.0, 4.0,
+		Color(1.35, 1.35, 1.30))
 	_mats["rack"] = _surface("shelf_rack_metal",
 		ProcTex.metal(Color(0.14, 0.14, 0.16), 83), 1.0, 1.0)
 	_mats["cardboard"] = _surface("cardboard",
@@ -639,7 +656,7 @@ func _build_stockroom() -> void:
 	var cz := (STOCK_MIN_Z + STOCK_MAX_Z) * 0.5
 
 	room.add_child(ProcMesh.solid_box(Vector3(w, 0.2, d), Vector3(cx, -0.1, cz),
-		mat("concrete"), "StockFloor"))
+		mat("stock_floor"), "StockFloor"))
 	room.add_child(ProcMesh.solid_box(Vector3(w + 0.4, 0.2, d + 0.4),
 		Vector3(cx, STOCK_CEILING + 0.1, cz), mat("ceiling"), "StockCeiling"))
 	room.add_child(ProcMesh.solid_box(Vector3(w + 0.4, STOCK_CEILING, 0.2),

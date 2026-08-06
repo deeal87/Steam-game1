@@ -184,7 +184,7 @@ static func _tunnel(world: World, parent: Node3D, a: Vector3, b: Vector3,
 
 	var floor_size := Vector3(length, 0.3, half_w * 2) if along_x else Vector3(half_w * 2, 0.3, length)
 	parent.add_child(ProcMesh.solid_box(floor_size, mid + Vector3(0, -0.15, 0),
-		world.mat("sewer_brick"), "TunnelFloor"))
+		world.mat("sewer_floor"), "TunnelFloor"))
 
 	var water := Vector3(length, 0.06, half_w * 0.9) if along_x else Vector3(half_w * 0.9, 0.06, length)
 	parent.add_child(ProcMesh.box(water, mid + Vector3(0, 0.03, 0), world.mat("water"), "Water"))
