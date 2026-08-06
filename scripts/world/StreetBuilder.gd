@@ -280,18 +280,32 @@ static func _writing_on_the_walls(world: World, street: Node3D, rng: RandomNumbe
 
 	# And a couple on the shop's own end walls, which is where anybody standing
 	# at the hatch is actually looking.
+	#
+	# Clear of the cladding, which is the outermost thing on that wall: the side
+	# wall runs to 5.20 and the panel over it to 5.26, so paint at 5.26 shares a
+	# plane with the panel it is painted on and the two flicker against each
+	# other from every angle.
 	for side: int in [-1, 1]:
 		street.add_child(ProcMesh.box(Vector3(0.06, 1.3, 2.2),
-			Vector3(side * (World.SHOP_HALF_X + 0.26), 1.7, 1.2),
+			Vector3(side * (World.SHOP_HALF_X + 0.33), 1.7, 1.2),
 			world.mat(tags[(side + 1) % tags.size()]), "ShopTag%d" % side))
 		street.add_child(ProcMesh.box(Vector3(0.05, 0.88, 0.62),
-			Vector3(side * (World.SHOP_HALF_X + 0.27), 1.6, -1.9),
+			Vector3(side * (World.SHOP_HALF_X + 0.33), 1.6, -1.9),
 			world.mat(bills[(side + 1) % bills.size()]), "ShopBill%d" % side))
 
 	# Gutter drains, at the kerb, where the rain goes.
 	for at: float in [6.0, -9.0, -21.0, -36.0]:
 		street.add_child(ProcMesh.box(Vector3(0.62, 0.04, 0.34),
 			Vector3(at, 0.02, PAVEMENT_Z_MIN - 0.45), world.mat("drain"), "Drain%d" % int(at)))
+		# And standing water beside each of them, which is where it collects.
+		# Flat panels on the road rather than anything that moves — they exist to
+		# catch the lamp above them, and a lit puddle is most of what says the
+		# street is wet.
+		street.add_child(ProcMesh.box(
+			Vector3(rng.randf_range(2.2, 3.8), 0.02, rng.randf_range(1.4, 2.4)),
+			Vector3(at + rng.randf_range(-1.5, 1.5), 0.015,
+				PAVEMENT_Z_MIN - rng.randf_range(1.4, 3.2)),
+			world.mat("wet_road"), "Puddle%d" % int(at)))
 
 
 ## The last twenty metres. No lamps, an alcove between two blocks, and the
@@ -304,8 +318,11 @@ static func _far_end(world: World, street: Node3D, rng: RandomNumberGenerator) -
 		Vector3(ex + 5.2, 4.5, 4.5), world.mat("brick_far"), "AlcoveEast"))
 	street.add_child(ProcMesh.solid_box(Vector3(6.0, 9.0, 6.0),
 		Vector3(ex - 5.2, 4.5, 4.5), world.mat("brick_far"), "AlcoveWest"))
+	# Peeling paint on the one wall at the end of the road. It is the highest
+	# contrast surface in the pack and the wrong thing for a room, and this is
+	# the one place with nothing else to look at.
 	street.add_child(ProcMesh.solid_box(Vector3(4.4, 9.0, 0.4),
-		Vector3(ex, 4.5, 6.6), world.mat("brick"), "AlcoveBack"))
+		Vector3(ex, 4.5, 6.6), world.mat("peeling"), "AlcoveBack"))
 
 	# A skip pushed across the mouth of it, so the board is not visible until
 	# you have walked round the obstacle rather than past it.

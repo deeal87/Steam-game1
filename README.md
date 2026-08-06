@@ -898,6 +898,27 @@ any unit test in this repository could have found:
 All four have regression tests in the smoke suite that fail against the old
 code.
 
+### Timers and tweens that outlive their subject
+
+Two things in Godot keep running after the thing that started them has gone: a
+`SceneTreeTimer`, and a `Tween` bound to a node other than the one it animates.
+Connect either to a lambda and the lambda captures by value, so the connection is
+owned by nothing and fires into a capture that has been freed — `Lambda capture
+at index 0 was freed`, dozens of times a night in the soak.
+
+There were two of them. A customer served in the last seconds of a shift left a
+two-second leave timer behind; the shopping tween that slides an item into the
+bag was started on the till rather than on the item, so clearing the counter
+freed the item while the tween carried on holding it. Neither did any harm — the
+call is skipped — and that is the problem, because an error in the log that is
+always there is an error nobody reads.
+
+The fixes are the same shape both times: give the callable an owner. A method
+callable (`_leave.bind("served")`, `_refresh_stats.unbind(1)`) is disconnected
+when its object is freed, and a tween started with `node.create_tween()` dies
+with the node it is moving. Neither is a workaround; both are what the engine is
+built to do, and the lambda was the shortcut.
+
 ## When something goes wrong
 
 The game writes `kiosk.log` next to the saves, and keeps the previous run's as
@@ -1134,7 +1155,7 @@ the locale CSV is. Left alone, Godot compiles each PNG to a `.ctex` and the raw
 file never reaches the build — and because the code falls back to the generator
 when a file is missing, the exported game came out looking exactly as it had
 before the pack existed, with nothing failing and nothing to see. The log says
-which it is: `textures: 122 painted surfaces loaded`.
+which it is: `textures: 102 painted surfaces found`.
 
 Two sheets look like reference and are not, quite. The lighting and post-process
 sheet is mostly renders of what the engine ought to produce, which the engine has
@@ -1159,6 +1180,25 @@ swatches on disk, loaded at launch and drawn nowhere, while the bin in the stree
 wore a photograph of a drainpipe — the world named about twenty of them and the
 rest were dead weight in memory. If a cut is not in `World._build_materials()`
 under a name something actually asks for, it may as well not exist.
+
+That is a test now rather than a habit. `ProcTex` records every name anyone asks
+for, and the smoke suite fails if a swatch on disk was never reached for — naming
+the ones that were not, because the whole failure mode is that nothing goes
+wrong. Two families need help from the test to be counted: a weapon only asks for
+its picture when it is in your hands, and the sky comes in two and one of them is
+only over the street a third of the time. The remedy for a failure is either to
+wire the swatch up or to take it out of `CUTS`; both are decisions, and neither
+should be made by forgetting. Twenty came out that way — swatches superseded by
+better crops off another sheet, weapons the game does not have, a fluorescent
+tube that came out black — and the cutter now deletes anything in `textures/`
+that the current `CUTS` did not write, so a name removed from the list leaves the
+disk with it.
+
+Loading is lazy for the same reason. Decoding the whole directory at launch put
+every swatch anybody had ever cut into memory for the run whether the world drew
+it or not; only the names are read up front now. The log line survives, because
+it is still the only thing that distinguishes "the pack is here" from "the
+exporter compiled every PNG into a `.ctex` and dropped the readable files".
 
 A cut can also land on the wrong thing. The crop rectangles are read off the
 sheets by eye, and two of them came back holding the object next door — a chain

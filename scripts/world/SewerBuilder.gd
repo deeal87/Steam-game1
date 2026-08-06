@@ -183,7 +183,7 @@ static func _shaft(world: World, parent: Node3D, top: Vector3, from_y: float,
 ## would take that away for no gain at all.
 static func _face(along: float, side: int) -> String:
 	var faces := ["sewer_brick", "sewer_wet", "sewer_mossy", "sewer_plain",
-		"sewer_tile", "sewer_broken"]
+		"sewer_tile", "sewer_broken", "sewer_old", "sewer_poured"]
 	var band := int(floor(absf(along) / 7.0)) + (1 if side > 0 else 0)
 	return faces[band % faces.size()]
 
@@ -192,7 +192,8 @@ static func _face(along: float, side: int) -> String:
 ## than banded, because a floor changing under you every seven metres reads as a
 ## mistake where a wall changing reads as a different stretch of tunnel.
 static func _underfoot(along_x: bool, mid: Vector3) -> String:
-	var floors := ["sewer_floor", "sewer_floor_wet", "sewer_floor_grate", "sewer_floor_brick"]
+	var floors := ["sewer_floor", "sewer_floor_wet", "sewer_floor_grate",
+		"sewer_floor_brick", "sewer_floor_mud", "sewer_floor_puddles"]
 	var pick := int(absf(mid.x) + absf(mid.z)) / 9
 	return floors[(pick + (0 if along_x else 2)) % floors.size()]
 
@@ -213,8 +214,11 @@ static func _tunnel(world: World, parent: Node3D, a: Vector3, b: Vector3,
 	parent.add_child(ProcMesh.solid_box(floor_size, mid + Vector3(0, -0.15, 0),
 		world.mat(_underfoot(along_x, mid)), "TunnelFloor"))
 
+	# The main run holds standing water; the doglegs coming down off the street
+	# are where it is going, so those get the moving surface.
 	var water := Vector3(length, 0.06, half_w * 0.9) if along_x else Vector3(half_w * 0.9, 0.06, length)
-	parent.add_child(ProcMesh.box(water, mid + Vector3(0, 0.03, 0), world.mat("water"), "Water"))
+	parent.add_child(ProcMesh.box(water, mid + Vector3(0, 0.03, 0),
+		world.mat("water" if along_x else "water_flow"), "Water"))
 
 	var lo: float = minf(a.x, b.x) if along_x else minf(a.z, b.z)
 	var hi: float = maxf(a.x, b.x) if along_x else maxf(a.z, b.z)

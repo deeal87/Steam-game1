@@ -83,12 +83,18 @@ func scan(index: int) -> bool:
 	var node: Node3D = item["node"]
 	if is_instance_valid(node):
 		var bag: Vector3 = _world.anchors.get("bag_spot", node.global_position)
-		var tw := create_tween()
+		# The tween belongs to the item, not to the till.
+		#
+		# Started on the till it outlived the thing it was moving: the shopping
+		# is cleared when a customer leaves, and a tween bound to the till went
+		# on running with its callback holding a reference to an item that had
+		# been freed half a second earlier. That is the "Lambda capture at index
+		# 0 was freed" the soak printed dozens of times a night. Bound to the
+		# item, the tween dies when the item does and the callback never fires.
+		var tw := node.create_tween()
 		tw.tween_property(node, "global_position", bag + Vector3(0, 0.18, 0), 0.22)
 		tw.tween_property(node, "global_position", bag + Vector3(0, -0.10, 0), 0.18)
-		tw.tween_callback(func() -> void:
-			if is_instance_valid(node):
-				node.visible = false)
+		tw.tween_callback(node.hide)
 
 	Signals.notice.emit(Loc.f("%s — %d", [Loc.t(str(GameState.ITEMS[item["id"]]["name"])),
 		item["price"]]), "info")

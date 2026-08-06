@@ -47,6 +47,7 @@ func _ready() -> void:
 	await test_sewer_is_traversable()
 	await test_two_halves_of_the_world()
 	await test_shoppers_go_round_the_shelves()
+	await test_the_pack_is_all_used()
 	await test_identity_and_egg()
 	await test_sewer_escape()
 	await test_transaction()
@@ -1338,6 +1339,54 @@ func test_shoppers_go_round_the_shelves() -> void:
 		"the capsule holds the body at every build (worst margin %.3f m, widest %.2f)"
 			% [tightest, widest])
 	_done("round the shelves")
+
+
+## Every swatch in the pack is on something.
+##
+## Cutting a texture is half the job and the other half is silent. A swatch the
+## world never names looks exactly like one it does: the file is there, it loads,
+## nothing fails, and the surface it was cut for goes on wearing whatever it wore
+## before. The pack reached a hundred-odd swatches that way while the world asked
+## for about twenty of them — a photograph of a bin sitting in memory while the
+## bin in the street wore a photograph of a drainpipe.
+##
+## So this asks the pack. Anything on disk that nothing reached for is either a
+## surface still to be wired up or a cut that should come out of
+## `tools/CutTextures.gd`; both are decisions, and neither should be made by
+## forgetting.
+func test_the_pack_is_all_used() -> void:
+	print("\nThe painted pack:")
+	_check(ProcTex.pack_size() > 0, "the pack is on disk (%d swatches)" % ProcTex.pack_size())
+
+	# The world has been built by now, which covers every surface. What it does
+	# not cover is the two families looked up by id at the moment they are
+	# needed: a weapon only asks for its picture when it is in your hands, and a
+	# product only when its shelf is dressed.
+	for id: String in GameState.WEAPONS:
+		ProcTex.painted("weapon_%s" % id)
+	for id: String in GameState.ITEMS:
+		ProcTex.painted("item_%s" % id)
+	# And the sky, which changes with the night — one of the two is only ever
+	# asked for on a third of them.
+	var skies: Dictionary = {}
+	for night in 9:
+		var name := World.sky_for_night(night + 1)
+		skies[name] = true
+		_check_quiet(ProcTex.painted(name) != null, "sky %s exists" % name)
+	_check(skies.size() == 2, "the sky changes with the night (%d of them)" % skies.size())
+
+	var idle := ProcTex.unused_paint()
+	if not idle.is_empty():
+		print("   nothing asks for: %s" % ", ".join(idle))
+	_check(idle.is_empty(),
+		"every one of them is on a surface (%d are on nothing)" % idle.size())
+
+	# And laziness works: a pack this size would be a couple of dozen images in
+	# memory for the whole run if everything decoded at launch.
+	_check(ProcTex.pack_loaded() <= ProcTex.pack_size(),
+		"only what is asked for is decoded (%d of %d)"
+			% [ProcTex.pack_loaded(), ProcTex.pack_size()])
+	_done("the pack is used")
 
 
 func _crosses_a_rack(from: Vector3, to: Vector3) -> bool:
@@ -2951,7 +3000,8 @@ func test_raid_keeps_looking() -> void:
 
 
 func _report() -> void:
-	for name: String in ["raid_keeps_looking", "two halves", "round the shelves"]:
+	for name: String in ["raid_keeps_looking", "two halves", "round the shelves",
+			"the pack is used"]:
 		if not _finished.has(name):
 			failures.append("%s never reached its end — it died part way through, "
 				% name + "and a suite that counts only failures calls that a pass")

@@ -424,8 +424,7 @@ func _arrive() -> void:
 			Signals.customer_spoke.emit(profile.full_name, _empty_handed())
 			Signals.notice.emit(Loc.f("%s found nothing worth buying.",
 				[profile.full_name.split(" ")[0]]), "warn")
-			get_tree().create_timer(2.4).timeout.connect(
-				func() -> void: _leave("nothing_to_buy"))
+			get_tree().create_timer(2.4).timeout.connect(_leave.bind("nothing_to_buy"))
 
 
 const EMPTY_HANDED := [
@@ -476,7 +475,7 @@ func on_paid(total: int) -> void:
 	if profile.wants_illicit and not _asked_for_illicit:
 		get_tree().create_timer(1.5).timeout.connect(_ask_for_illicit)
 	else:
-		get_tree().create_timer(2.0).timeout.connect(func() -> void: _leave("served"))
+		get_tree().create_timer(2.0).timeout.connect(_leave.bind("served"))
 
 
 func _ask_for_illicit() -> void:
@@ -510,7 +509,7 @@ func receive_illicit(units: int) -> void:
 		Signals.notice.emit(Loc.t("They put it straight in their pocket. They didn't even look at it."), "bad")
 	else:
 		Signals.customer_spoke.emit(profile.full_name, Loc.t("You're a lifesaver."))
-	get_tree().create_timer(2.2).timeout.connect(func() -> void: _leave("sold"))
+	get_tree().create_timer(2.2).timeout.connect(_leave.bind("sold"))
 
 
 func refuse() -> void:
@@ -521,7 +520,7 @@ func refuse() -> void:
 		Signals.customer_spoke.emit(profile.full_name, Loc.t("Fine. Have a good night."))
 	else:
 		Signals.customer_spoke.emit(profile.full_name, Loc.t("Right. Worth asking."))
-	get_tree().create_timer(1.6).timeout.connect(func() -> void: _leave("refused"))
+	get_tree().create_timer(1.6).timeout.connect(_leave.bind("refused"))
 
 
 ## Telling someone to get out. Free when you are right; expensive when the
@@ -633,7 +632,21 @@ func _die() -> void:
 		profile.full_name.split(" ")[0], profile.seed_value)
 	Signals.body_dropped.emit(corpse)
 
-	get_tree().create_timer(1.2).timeout.connect(func() -> void: finished.emit(self, "killed"))
+	get_tree().create_timer(1.2).timeout.connect(_report_killed)
+
+
+## Told to the director a beat after the shot, so the body is on the floor
+## before the slot is given away.
+##
+## A method rather than the lambda this used to be. A `SceneTreeTimer` outlives
+## the thing that started it, and a lambda captures by value — so when a night
+## ended between the shot and the beat, the timer fired into a customer that had
+## already been freed and the log filled with "Lambda capture at index 0 was
+## freed". A callable bound to an object is disconnected when that object goes,
+## which is exactly the behaviour wanted, and the same change applies to the four
+## leave timers above.
+func _report_killed() -> void:
+	finished.emit(self, "killed")
 
 
 # --- Leaving -----------------------------------------------------------------

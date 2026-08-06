@@ -35,7 +35,6 @@ const CUTS := {
 		["manhole", 22, 344, 126, 138],
 		["drain", 404, 344, 126, 138],
 		["brick_far", 786, 344, 150, 138],
-		["concrete", 1160, 344, 150, 138],
 		["fence", 22, 514, 110, 130],
 		["bin", 310, 514, 150, 130],
 		["lamp_post", 660, 514, 90, 130],
@@ -66,18 +65,14 @@ const CUTS := {
 		["corrugated_metal", 978, 340, 70, 74],
 		["riveted_metal", 1055, 340, 70, 74],
 		["concrete_panel", 1210, 340, 70, 74],
-		["dirty_plaster", 1465, 340, 56, 74],
 	],
 	"furniture.png": [
 		["shelf_rack_metal", 290, 158, 68, 102, true],
 		["shelf_rack_wood", 375, 158, 68, 102, true],
-		["counter_unit", 22, 378, 76, 106, true],
 		["vending_machine", 780, 378, 74, 106, true],
 		["crt_screen", 650, 378, 72, 106, true],
 		["door_metal", 22, 596, 76, 108, true],
 		["door_wooden", 105, 596, 76, 108, true],
-		["light_fluorescent", 1128, 378, 80, 106, true],
-		["light_wall", 1210, 378, 74, 106, true],
 		["garbage_bin", 950, 596, 74, 108, true],
 		["newspaper", 22, 816, 60, 96, true],
 	],
@@ -85,21 +80,12 @@ const CUTS := {
 		["weapon_revolver", 462, 158, 96, 96, true],
 		["weapon_shotgun", 118, 158, 100, 96, true],
 		["weapon_rifle", 345, 158, 106, 96, true],
-		["weapon_pistol", 22, 158, 96, 96, true],
-		["weapon_crowbar", 655, 158, 68, 96, true],
-		["gear_flashlight", 700, 356, 74, 104, true],
 		["gear_evidence_bag", 1030, 356, 92, 104, true],
-		["gear_medkit", 22, 552, 92, 100, true],
 		["gear_ammo_box", 1030, 552, 92, 100, true],
 	],
 	"signage.png": [
 		["sign_kiosk", 566, 145, 66, 92, true],
-		["sign_staff_only", 186, 145, 84, 90, true],
-		["sign_exit", 20, 145, 84, 90, true],
-		["sign_no_smoking", 272, 145, 80, 90, true],
 		["sign_notice", 355, 145, 78, 90, true],
-		["graffiti_a", 20, 300, 78, 86, true],
-		["graffiti_b", 210, 300, 74, 86, true],
 		["graffiti_c", 400, 300, 68, 86, true],
 		["note_paper", 20, 678, 76, 96, true],
 	],
@@ -120,10 +106,7 @@ const CUTS := {
 		["wall_concrete", 118, 136, 82, 78],
 		["wall_panel_metal", 645, 136, 86, 78],
 		["wall_peeling", 428, 136, 82, 78],
-		["floor_concrete", 762, 136, 84, 78],
-		["floor_tile", 855, 136, 82, 78],
 		["ceiling_concrete", 25, 313, 86, 74],
-		["ceiling_drop", 218, 313, 78, 74],
 		["ceiling_beam", 535, 313, 82, 74],
 	],
 	"sewer.png": [
@@ -183,12 +166,10 @@ const CUTS := {
 		["light_bulkhead", 495, 152, 52, 98, true],
 		["sign_emergency", 587, 167, 78, 73, true],
 		# Screens with something on them.
-		["screen_no_signal", 258, 904, 82, 88, true],
 		["screen_cctv", 356, 907, 63, 70, true],
 	],
 	"kiosk.png": [
 		["floor", 26, 112, 190, 190],
-		["floor_worn", 790, 112, 190, 190],
 		["wall", 1160, 112, 90, 150],
 		# The wall only. This used to run from 364 to 514, which caught the
 		# caption above the swatch at one end and the skirting board and a strip
@@ -198,12 +179,15 @@ const CUTS := {
 		["wall_painted", 28, 374, 182, 128],
 		["shelf_wood", 790, 364, 185, 150],
 		["shelf_metal", 1160, 364, 150, 150],
-		["counter_front", 26, 592, 185, 150],
+		# The two counter panels are objects, not surfaces. Both are photographs
+		# of one whole counter with its own left and right, and the side has
+		# stickers on it — mirrored, that came out as an "Under 18" notice with
+		# the words facing the wrong way beside itself.
+		["counter_front", 26, 592, 185, 150, true],
 		["counter_top", 408, 592, 185, 150],
-		["counter_side", 790, 592, 185, 150],
+		["counter_side", 790, 592, 185, 150, true],
 		["fridge", 1160, 592, 150, 150],
 		["stock_floor", 26, 812, 160, 180],
-		["ceiling", 330, 812, 185, 180],
 		# The lit fitting from the presentation render rather than the swatch
 		# under it. The swatch is the tube seen from the side and is nearly black;
 		# this is the fitting seen from below, lit, which is the only angle a
@@ -217,6 +201,7 @@ func _ready() -> void:
 	Log.mute(true)
 	DirAccess.make_dir_recursive_absolute(OUT_DIR)
 	var made := 0
+	var written: Dictionary = {}
 	for sheet: String in CUTS:
 		var img := Image.new()
 		var path := SHEET_DIR.path_join(sheet)
@@ -236,11 +221,40 @@ func _ready() -> void:
 			var out := OUT_DIR.path_join("%s.png" % cut[0])
 			if piece.save_png(out) == OK:
 				_write_keep_import(out)
+				written[str(cut[0])] = true
 				print("  %-14s %3dx%-3d -> %s" % [
 					cut[0], piece.get_width(), piece.get_height(), out])
 				made += 1
-	print("\n%d textures cut\n" % made)
+
+	var swept := _sweep(written)
+	print("\n%d textures cut" % made)
+	if swept > 0:
+		print("%d left over from a previous run removed" % swept)
+	print("")
 	get_tree().quit(0 if made > 0 else 1)
+
+
+## Deletes anything in the output directory this run did not write.
+##
+## `CUTS` is the whole truth about what the pack contains, so a name taken out
+## of it has to leave the disk too — otherwise the file stays, keeps being
+## exported, keeps being loaded, and keeps looking exactly like a texture
+## somebody meant to use. Twenty of them accumulated that way: swatches
+## superseded by better crops from another sheet, weapons the game does not
+## have, a fluorescent tube that came out black.
+func _sweep(written: Dictionary) -> int:
+	var gone := 0
+	for file: String in DirAccess.get_files_at(OUT_DIR):
+		if not file.ends_with(".png"):
+			continue
+		if written.has(file.get_basename()):
+			continue
+		var path := OUT_DIR.path_join(file)
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(path + ".import"))
+		print("  removed %s" % file)
+		gone += 1
+	return gone
 
 
 ## Writes the `.import` that stops Godot compiling this PNG into a `.ctex` and
@@ -321,8 +335,15 @@ func _is_furniture(img: Image, at: int, vertical: bool) -> bool:
 ## The white is what makes this safe. The darkest photographs in the pack — the
 ## sewer walls, a stack of tyres — are dark all the way across and never contain
 ## a pixel anywhere near white; the brightest thing in a row of tyres is about a
-## fifth of the way up. So "70% black and something at 1.2 out of 3" cannot
-## match a photograph, and matches every caption on every sheet.
+## fifth of the way up. So the brightness half of this cannot match a
+## photograph, and matches every caption on every sheet.
+##
+## The black half is a proportion, so it depends on how wide the crop is: the
+## caption is the same size whatever is under it, and over a 90-pixel column of
+## wall it covers nearly half the row rather than a tenth. That is how the
+## nicotine wall kept its caption at 58% black while the shop floor lost its at
+## 77%. Fifty-five is below anything narrow enough to matter here and still far
+## above any photograph — the blackest rows in a stack of tyres are 42%.
 func _edge_is_caption(img: Image, at: int, vertical: bool) -> bool:
 	var n: int = img.get_height() if vertical else img.get_width()
 	if n <= 0:
@@ -335,7 +356,7 @@ func _edge_is_caption(img: Image, at: int, vertical: bool) -> bool:
 		if l < 0.20:
 			black += 1
 		lightest = maxf(lightest, l)
-	return float(black) / float(n) > 0.70 and lightest > 1.2
+	return float(black) / float(n) > 0.55 and lightest > 1.2
 
 
 ## A border row or column: dark, and flat.

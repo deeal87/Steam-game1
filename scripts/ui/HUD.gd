@@ -37,11 +37,19 @@ func _ready() -> void:
 	Signals.prompt_changed.connect(_on_prompt)
 	Signals.notice.connect(_on_notice)
 	Signals.customer_spoke.connect(_on_spoke)
-	Signals.money_changed.connect(func(_m: int) -> void: _refresh_stats())
-	Signals.heat_changed.connect(func(_h: float) -> void: _refresh_stats())
-	Signals.reputation_changed.connect(func(_r: float) -> void: _refresh_stats())
+	# `unbind` rather than a lambda that throws the argument away.
+	#
+	# `Signals` is an autoload and outlives every HUD ever built. A lambda is not
+	# owned by the object it captures, so a connection made with one stays on the
+	# autoload after the HUD is freed and then fires into a capture that is no
+	# longer there — which is the "Lambda capture at index 0 was freed" the soak
+	# was printing dozens of times a night. A callable made from a method is
+	# owned by its object and goes when the object does.
+	Signals.money_changed.connect(_refresh_stats.unbind(1))
+	Signals.heat_changed.connect(_refresh_stats.unbind(1))
+	Signals.reputation_changed.connect(_refresh_stats.unbind(1))
 	Signals.shift_clock.connect(_on_clock)
-	Signals.quota_changed.connect(func(_c: int, _t: int) -> void: _refresh_stats())
+	Signals.quota_changed.connect(_refresh_stats.unbind(2))
 	Signals.checkout_changed.connect(_on_checkout)
 	Signals.customer_asks.connect(_on_asks)
 	_refresh_stats()

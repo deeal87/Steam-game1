@@ -93,9 +93,13 @@ func bag() -> bool:
 	bagged = true
 	for child in _visual.get_children():
 		child.queue_free()
-	# A bag reads as a bag: one long dark shape, no limbs.
+	# A bag reads as a bag: one long dark shape, no limbs. The pack has a
+	# photograph of a heavy sealed bag with a zip up it, which is close enough to
+	# what this is, and the alternative was a flat black box.
+	var bag_art := ProcTex.painted("gear_evidence_bag")
 	_visual.add_child(ProcMesh.box(Vector3(0.62, 0.42, 1.85), Vector3(0, 0.21, 0),
-		ProcMesh.mat(ProcTex.flat(Color(0.045, 0.05, 0.055))), "Bagged"))
+		ProcMesh.mat(bag_art, 1.0) if bag_art != null
+			else ProcMesh.mat(ProcTex.flat(Color(0.045, 0.05, 0.055))), "Bagged"))
 	Audio.play_at("click", global_position + Vector3(0, 0.4, 0), -12.0)
 	Signals.notice.emit(Loc.t("Bagged. Now it has to go somewhere."), "info")
 	return true

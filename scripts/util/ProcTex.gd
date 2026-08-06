@@ -369,7 +369,16 @@ static func neon_sign(tint: Color, seed_val: int, w: int = 128, h: int = 32) -> 
 ## Where a hand-made texture lives if there is one for this surface.
 const PACK_DIR := "res://textures"
 
+## name -> file path. Filled by a directory scan, which is cheap.
+static var _pack_files: Dictionary = {}
+## name -> ImageTexture, filled on first use. A swatch nobody asks for is never
+## decoded and never occupies anything.
 static var _pack: Dictionary = {}
+## Every name anyone has asked for, whether or not the pack had it. This is how
+## `unused_paint()` can say which swatches the game never reaches for — the
+## failure mode it guards against is silent, because a cut nothing is wired to
+## looks exactly like a cut that is.
+static var _pack_asked: Dictionary = {}
 static var _pack_read := false
 
 
@@ -381,32 +390,87 @@ static var _pack_read := false
 ## first. A surface with a file gets the file, a surface without gets the code,
 ## and neither has to know about the other.
 static func painted(name: String) -> ImageTexture:
-	if not _pack_read:
-		_pack_read = true
-		_read_pack()
+	_scan_pack()
+	_pack_asked[name] = true
 	var hit: Variant = _pack.get(name)
-	return hit if hit != null else null
+	if hit != null:
+		return hit
+	var path: Variant = _pack_files.get(name)
+	if path == null:
+		return null
+	var img := Image.new()
+	if img.load(str(path)) != OK:
+		return null
+	# Nearest filtering, no mipmaps: the whole world is drawn into a
+	# 426x240 buffer, and a filtered texture at that size is mud.
+	var tex := ImageTexture.create_from_image(img)
+	_pack[name] = tex
+	return tex
 
 
-static func _read_pack() -> void:
+## Names the pack has, taken from the directory rather than from the files.
+##
+## Only the names are read here. Decoding all of them at launch meant every
+## swatch anybody had ever cut sat in memory for the whole run whether the world
+## reached for it or not, and by the time the pack was finished that was a
+## couple of dozen images nothing draws.
+##
+## The log line stays, because it is the only signal that distinguishes "the
+## pack is here" from "the exporter compiled every PNG into a .ctex and dropped
+## the readable files", which has happened twice and fails completely silently:
+## the game runs, falls back to the generators, and looks exactly as it did
+## before the pack existed.
+static func _scan_pack() -> void:
+	if _pack_read:
+		return
+	_pack_read = true
 	if not DirAccess.dir_exists_absolute(PACK_DIR):
+		Log.info("textures: no pack directory — every surface is generated")
 		return
 	for file: String in DirAccess.get_files_at(PACK_DIR):
 		if not file.ends_with(".png"):
 			continue
-		var img := Image.new()
-		if img.load(PACK_DIR.path_join(file)) != OK:
-			continue
-		# Nearest filtering, no mipmaps: the whole world is drawn into a
-		# 426x240 buffer, and a filtered texture at that size is mud.
-		_pack[file.get_basename()] = ImageTexture.create_from_image(img)
-	Log.info("textures: %d painted surfaces loaded" % _pack.size())
+		_pack_files[file.get_basename()] = PACK_DIR.path_join(file)
+	Log.info("textures: %d painted surfaces found" % _pack_files.size())
 
 
 ## True when a painted texture exists, so callers can pick their own tiling for
 ## it — a photographed brick wall wants a different repeat to a generated one.
 static func has_painted(name: String) -> bool:
-	if not _pack_read:
-		_pack_read = true
-		_read_pack()
-	return _pack.has(name)
+	_scan_pack()
+	return _pack_files.has(name)
+
+
+## How many swatches the pack holds, and how many of them have been decoded.
+static func pack_size() -> int:
+	_scan_pack()
+	return _pack_files.size()
+
+
+static func pack_loaded() -> int:
+	return _pack.size()
+
+
+## Swatches on disk that nothing has asked for.
+##
+## Cutting a texture is half the job; the world has to name it or it may as well
+## not exist. That half went missing for a long time — the pack reached a
+## hundred-odd swatches while the world named about twenty of them, so the bin
+## in the street wore a photograph of a drainpipe with a photograph of a bin
+## sitting unused in memory. Nothing failed, which is exactly why it lasted.
+##
+## Only meaningful after something has actually built the world.
+static func unused_paint() -> PackedStringArray:
+	_scan_pack()
+	var out := PackedStringArray()
+	for name: String in _pack_files:
+		if not _pack_asked.has(name):
+			out.append(name)
+	out.sort()
+	return out
+
+
+## Forgets what has been asked for, so a test can measure one run rather than
+## everything the process has ever done.
+static func forget_paint_requests() -> void:
+	_pack_asked.clear()
