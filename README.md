@@ -728,6 +728,33 @@ looks like a kiosk:
 xvfb-run -a godot --path . res://tests/Screenshots.tscn -- --shots=/tmp/shots
 ```
 
+### Checking that the checks bite
+
+A suite that passes proves nothing on its own. Three of the checks in this
+repository have, at one point or another, been flaky, silently skipped, or built
+on a measurement that was wrong — and every one of them was green while it was
+broken.
+
+So the important invariants get verified by breaking them on purpose and
+confirming the suite goes red with a message that names the actual problem.
+Each of these was run, seen to fail, and reverted:
+
+| break | what the suite said |
+|---|---|
+| officers made 1.2% taller than civilians | `nothing a player can see says whether they are police — leaking: height_scale (6.6 sigma)` |
+| night waits on the shop emptying alone | `and the night ends rather than waiting for them forever` |
+| save loader trusts its weapon list again | `the weapon that does not exist is dropped` |
+| limiter taken off the master bus | `Master has a limiter on it` |
+| meter sets size before minimum size | `and its fill actually moved (160 -> 160)` |
+
+The first is the one that matters most. A 1.2% difference in height is not
+something any player could see, name, or consciously use — and it is exactly the
+kind of thing that would quietly make the game answer its own question. Six and
+a half standard errors is the suite noticing something no human would.
+
+The third, fourth and fifth are fixes made in this project's own history. Each
+was put back to check the test written alongside it would have caught it.
+
 ## Playing it, automatically
 
 ```sh
