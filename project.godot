@@ -61,6 +61,17 @@ textures/canvas_textures/default_texture_filter=0
 ; every texture in this game is generated at runtime and none is imported.
 textures/vram_compression/import_etc2_astc=true
 anti_aliasing/quality/msaa_3d=0
+; GL Compatibility hands each object a fixed number of the lights near it and
+; silently drops the rest, and it re-picks that set every frame from the camera.
+; Nine lights reach one point in the shop against a default budget of eight, so
+; something in view lost a light whenever you moved — and under vertex lighting
+; an object that loses its lights goes black, which against a black room is
+; indistinguishable from not being drawn.
+;
+; Twelve, not thirty-two. Thirty-two failed to compile on the software driver
+; used for verification here and turned every frame black, so this is set to the
+; smallest value that clears the measured worst case with room to spare.
+limits/opengl/max_lights_per_object=12
 environment/defaults/default_clear_color=Color(0.02, 0.02, 0.03, 1)
 
 [shader_globals]

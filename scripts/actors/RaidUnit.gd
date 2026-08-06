@@ -24,6 +24,9 @@ enum State { ADVANCING, ENGAGING, BREACHING, SEARCHING, DEAD }
 enum Role { APPROACH, POINT, COVER }
 
 const ADVANCE_SPEED := 2.4
+## How long a cover man will hold his angle with no contact before he gives up
+## on it and joins the search.
+const COVER_PATIENCE := 7.0
 const BREACH_SPEED := 1.9
 ## A cover man does not walk into the room, so he needs to be able to hit across
 ## it. A point man is moving, so he should not.
@@ -44,6 +47,9 @@ var _shoulders: Array[Node3D] = []
 var _walk_phase: float = 0.0
 var _fire_timer: float = 1.4
 var _target: Vector3
+## How long this one has gone without seeing anybody, used to decide when
+## holding an angle has stopped being tactics and started being furniture.
+var _hold: float = 0.0
 var _spawn: Vector3
 var _muzzle: OmniLight3D
 
@@ -175,19 +181,29 @@ func _physics_process(delta: float) -> void:
 					state = State.ENGAGING
 		State.SEARCHING:
 			if _sees_player():
+				_hold = 0.0
 				state = State.ENGAGING
 			else:
-				# A cover man does not go looking. His job is the angle he is
-				# already holding, and leaving it is how a doorway becomes free.
-				if role == Role.COVER:
+				_hold += delta
+				# A cover man holds his angle rather than going looking — leaving
+				# it is how a doorway becomes free. But he does not hold it
+				# forever. Nobody stands in a four-metre room for half a minute
+				# watching a door while the man they came for is behind the
+				# counter, and from the other side of that counter it reads as
+				# the police having switched off.
+				if role == Role.COVER and _hold < COVER_PATIENCE:
 					_idle(delta)
 					_face_dir(_watch_direction())
 					return
 				var goal := _search_goal()
 				_move_to(goal, BREACH_SPEED, delta)
 				if global_position.distance_to(goal) < 0.8:
-					# Nothing here. Hold and watch the room.
-					_idle(delta)
+					# Nothing here. Pick somewhere else rather than standing on
+					# the spot: an empty search goal used to mean idle forever,
+					# which is the whole of "they just stand there doing
+					# nothing". The room is small, so a few of these and they
+					# will have swept all of it.
+					_last_known = _sweep_point()
 
 	_muzzle.light_energy = maxf(0.0, _muzzle.light_energy - delta * 30.0)
 
@@ -302,6 +318,16 @@ func _sees_player() -> bool:
 ## Fresher intel wins. A team where everybody converges on the newest sighting
 ## is a team you have to keep moving to escape, rather than one you can shake by
 ## stepping behind the counter once.
+## Somewhere else in the room worth looking. Deliberately loose — it is a sweep,
+## not a homing missile, and the error is what gives you room to move.
+func _sweep_point() -> Vector3:
+	if _player == null or not is_instance_valid(_player):
+		return _last_known
+	var spread := 2.2
+	return _player.global_position + Vector3(
+		randf_range(-spread, spread), 0.0, randf_range(-spread, spread))
+
+
 func _search_goal() -> Vector3:
 	if _squad != null and is_instance_valid(_squad) and _squad.has_method("shared_intel"):
 		var intel: Dictionary = _squad.shared_intel()

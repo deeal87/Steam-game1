@@ -8,6 +8,7 @@ extends Node
 ## null reference or the renamed dictionary key that a pure logic test misses.
 
 var failures: Array[String] = []
+var _finished: Dictionary = {}
 var _world: World
 var _player: Player
 
@@ -56,11 +57,24 @@ func _ready() -> void:
 	await test_illicit_and_departure()
 	await test_violence()
 	await test_raid()
+	await test_raid_keeps_looking()
 	await test_world_is_sealed()
 	await test_panels()
 	await test_translation()
 	_report()
 	get_tree().quit(1 if not failures.is_empty() else 0)
+
+
+## Every test says it got to the end.
+##
+## A runtime error inside a test aborts that function on the spot. No exception
+## reaches the caller, no `_check` runs, and a suite that only counts failures
+## reports a clean run — which is exactly what happened to this file's first
+## raid test, and to the alt-tab checks before it, and to the translation
+## coverage before that. Recording the finish is the only thing that tells the
+## difference between "passed" and "never ran".
+func _done(name: String) -> void:
+	_finished[name] = true
 
 
 func _check(ok: bool, label: String) -> void:
@@ -2685,7 +2699,54 @@ func test_world_is_sealed() -> void:
 		% [holes, floor_probes])
 
 
+## A raid squad that cannot see you has to keep looking.
+##
+## Every unit that lost contact used to walk to the last place it knew about and
+## then stand on that spot indefinitely, and a cover man never moved at all. From
+## behind the counter that reads as the police arriving and switching off.
+func test_raid_keeps_looking() -> void:
+	print("\nA raid does not stand still:")
+	var unit := RaidUnit.new()
+	add_child(unit)
+	unit.setup(_player, Vector3(3.0, 0.0, 3.0), Vector3(3.0, 0.0, 3.0), 1)
+	unit.role = RaidUnit.Role.COVER
+	unit.state = RaidUnit.State.SEARCHING
+	# Somewhere it has already reached, so the old code would idle on it.
+	unit._last_known = unit.global_position
+
+	var started := unit.global_position
+	for i in 240:
+		unit._physics_process(0.05)
+	var moved := unit.global_position.distance_to(started)
+	_check(moved > 0.5, "a cover man stops holding his angle eventually (moved %.1fm)" % moved)
+	_check(unit._hold > 0.0, "and knows how long he has gone without contact")
+
+	# And a search goal that turns up nothing becomes a different search goal.
+	var point := RaidUnit.new()
+	add_child(point)
+	point.setup(_player, _player.global_position + Vector3(4.0, 0, 4.0),
+		_player.global_position + Vector3(4.0, 0, 4.0), 1)
+	point.role = RaidUnit.Role.POINT
+	point.state = RaidUnit.State.SEARCHING
+	point._last_known = point.global_position
+	var before := point.global_position.distance_to(_player.global_position)
+	for i in 240:
+		point._physics_process(0.05)
+	var after := point.global_position.distance_to(_player.global_position)
+	_check(after < before, "and a search that finds nothing moves on (%.1fm -> %.1fm)"
+		% [before, after])
+
+	unit.queue_free()
+	point.queue_free()
+	_done("raid_keeps_looking")
+
+
 func _report() -> void:
+	for name: String in ["raid_keeps_looking"]:
+		if not _finished.has(name):
+			failures.append("%s never reached its end — it died part way through, "
+				% name + "and a suite that counts only failures calls that a pass")
+			print("  FAIL  %s never finished" % name)
 	print("\n=== %s ===\n" % ("ALL CHECKS PASSED" if failures.is_empty() else "%d FAILED" % failures.size()))
 	for f in failures:
 		print("  · " + f)
