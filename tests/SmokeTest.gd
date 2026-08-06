@@ -56,6 +56,7 @@ func _ready() -> void:
 	await test_illicit_and_departure()
 	await test_violence()
 	await test_raid()
+	await test_world_is_sealed()
 	await test_panels()
 	await test_translation()
 	_report()
@@ -2615,6 +2616,60 @@ func _can_reach_interact(from: Vector3, at: Vector3, want_id: String) -> bool:
 	if collider == null or not collider.has_meta("interact"):
 		return false
 	return str(collider.get_meta("interact")) == want_id
+
+
+## Walks the boundary of the street and checks you cannot get out of it.
+##
+## The road had a wall at each end and one along the back, and nothing at all on
+## the far side — where the terrace is built as separate blocks with random gaps
+## between them and the ground stops a metre short of where they start. Any of
+## those gaps dropped you out of the world, with a view of the sewer on the way.
+func test_world_is_sealed() -> void:
+	print("\nYou cannot walk out of the world:")
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+
+	var space := _world.get_world_3d().direct_space_state
+	var leaks: Array[String] = []
+	var probes := 0
+
+	# Along both long edges, looking outward at head height.
+	for edge: Array in [["the far side of the road", -1.0], ["behind the kiosk", 1.0]]:
+		var dir: float = edge[1]
+		var z: float = (StreetBuilder.ROAD_Z_MIN + 1.2) if dir < 0.0 \
+			else (StreetBuilder.PAVEMENT_Z_MAX - 1.2)
+		var x := World.STREET_WEST + 2.0
+		while x < World.STREET_EAST - 2.0:
+			probes += 1
+			var from := Vector3(x, 1.2, z)
+			var query := PhysicsRayQueryParameters3D.create(from, from + Vector3(0, 0, dir * 4.0))
+			query.collision_mask = 1
+			if space.intersect_ray(query).is_empty():
+				leaks.append("%s at x %.0f" % [edge[0], x])
+			x += 1.5
+
+	_check(leaks.is_empty(), "the long edges are sealed (%d probes, %d ways out%s)" % [
+		probes, leaks.size(),
+		"" if leaks.is_empty() else ": " + ", ".join(leaks.slice(0, 4))])
+
+	# And there is ground under the whole walkable strip, so nothing to fall
+	# through even where the walls hold.
+	var holes := 0
+	var floor_probes := 0
+	var px := World.STREET_WEST + 2.0
+	while px < World.STREET_EAST - 2.0:
+		var pz := StreetBuilder.ROAD_Z_MIN + 1.0
+		while pz < StreetBuilder.PAVEMENT_Z_MAX - 1.0:
+			floor_probes += 1
+			var from := Vector3(px, 1.5, pz)
+			var q := PhysicsRayQueryParameters3D.create(from, from + Vector3(0, -3.0, 0))
+			q.collision_mask = 1
+			if space.intersect_ray(q).is_empty():
+				holes += 1
+			pz += 2.0
+		px += 3.0
+	_check(holes == 0, "there is ground everywhere you can stand (%d of %d probes found none)"
+		% [holes, floor_probes])
 
 
 func _report() -> void:

@@ -53,6 +53,21 @@ static func _ground(world: World, street: Node3D) -> void:
 	street.add_child(ProcMesh.solid_box(Vector3(World.STREET_EAST - World.STREET_WEST, 14.0, 0.6),
 		Vector3(mid, 7.0, PAVEMENT_Z_MAX), world.mat("brick_far"), "BackFence"))
 
+	# And the far side of the road, which had nothing.
+	#
+	# The terrace over there is solid, but it is built as separate blocks with a
+	# random half-metre to two metres between them — and the road surface stops a
+	# metre short of where those blocks begin. So any one of those gaps was a way
+	# to walk off the edge of the ground: you drop out of the world, and on the
+	# way down you get a clear look at the sewer, which is the other half of why
+	# the tunnels were visible from the street.
+	#
+	# Placed at the road edge rather than behind the terrace, so it seals the
+	# gaps rather than the buildings. It is never seen — the terrace is in front
+	# of it and the fog takes whatever is left.
+	street.add_child(ProcMesh.solid_box(Vector3(World.STREET_EAST - World.STREET_WEST, 14.0, 0.6),
+		Vector3(mid, 7.0, ROAD_Z_MIN + 0.3), world.mat("brick_far"), "FarFence"))
+
 
 ## A terrace on the far side of the road, and blocks behind the kiosk. Both are
 ## mostly fog; they exist to give the street edges.

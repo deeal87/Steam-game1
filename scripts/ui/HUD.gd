@@ -20,6 +20,8 @@ var _subtitle: Label
 var _subtitle_timer: float = 0.0
 var _crosshair: Control
 var _hands: Label
+var _slots: HBoxContainer
+var _slots_signature: String = ""
 var _checkout: Label
 var _notices: Array[Dictionary] = []
 var _player: Player
@@ -95,6 +97,17 @@ func _build() -> void:
 	_hands = UIKit.label("", UIKit.FONT_S, UIKit.GREEN_DIM)
 	_hands.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	tr.add_child(_hands)
+
+	# What is in your hands, and what else you could have there.
+	#
+	# Cycling with one key and reading a line of text told you what you were
+	# holding but never what your choices were, so reaching for the bat meant
+	# pressing a key repeatedly and watching what came up. This is the row of
+	# things you own, numbered, with the one in your hands lit.
+	_slots = HBoxContainer.new()
+	_slots.alignment = BoxContainer.ALIGNMENT_END
+	_slots.add_theme_constant_override("separation", 4)
+	tr.add_child(_slots)
 
 	# The till display. Blank unless there is shopping on the counter.
 	_checkout = UIKit.label("", UIKit.FONT_M, UIKit.GREEN)
@@ -180,6 +193,32 @@ func _refresh_player_bits() -> void:
 	var hands := " · ".join(bits)
 	if hands != _hands.text:
 		_hands.text = hands
+	_refresh_slots()
+
+
+## Rebuilt only when the row actually changes — buying a weapon, or putting a
+## different one in your hands. Every frame would be a container reflow.
+func _refresh_slots() -> void:
+	var owned := _player.hand_slots()
+	var signature := "%s|%s" % [",".join(owned), _player.equipped]
+	if signature == _slots_signature:
+		return
+	_slots_signature = signature
+	for child in _slots.get_children():
+		child.queue_free()
+	for i in owned.size():
+		var id: String = owned[i]
+		var name := Loc.t("hands") if id.is_empty() \
+			else Loc.t(str(GameState.WEAPONS[id]["name"]))
+		var held := id == _player.equipped
+		var chip := UIKit.label(Loc.f("%d %s", [i + 1, name]), UIKit.FONT_S,
+			UIKit.GREEN if held else UIKit.GREEN_DIM)
+		var box := PanelContainer.new()
+		box.add_theme_stylebox_override("panel", UIKit.panel(
+			Color(0.05, 0.13, 0.07, 0.85) if held else Color(0.02, 0.05, 0.03, 0.6),
+			UIKit.GREEN if held else UIKit.GREEN_DIM))
+		box.add_child(chip)
+		_slots.add_child(box)
 
 
 func _refresh_stats() -> void:

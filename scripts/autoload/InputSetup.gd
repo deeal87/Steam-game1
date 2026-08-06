@@ -21,11 +21,24 @@ const BINDINGS := {
 	"cancel": [KEY_ESCAPE],
 	"restock": [KEY_Q],
 	"torch": [KEY_T],
+	# Direct slot selection. `holster` still cycles for anyone who prefers one
+	# key, but reaching for a specific thing should not mean pressing it four
+	# times and watching what turns up. The number row does not clash with the
+	# dialogue keys: those only do anything while a panel is open, and while a
+	# panel is open your hands are not in play.
+	"slot_1": [KEY_1],
+	"slot_2": [KEY_2],
+	"slot_3": [KEY_3],
+	"slot_4": [KEY_4],
+	"slot_5": [KEY_5],
 }
 
 const MOUSE_BINDINGS := {
 	"fire": MOUSE_BUTTON_LEFT,
 	"aim": MOUSE_BUTTON_RIGHT,
+	# The wheel, because that is where a first-person player's hand already is.
+	"slot_next": MOUSE_BUTTON_WHEEL_DOWN,
+	"slot_prev": MOUSE_BUTTON_WHEEL_UP,
 }
 
 ## Gamepad, laid out the way a first-person game on a pad is expected to be.

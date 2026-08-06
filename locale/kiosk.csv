@@ -8,6 +8,7 @@ Stand at the hatch with someone in front of you and try again."
   · %s,  · %s
 %d   +%d heat,%d   +%d heat
 %d   -%d,%d   -%d
+%d %s,%d %s
 "%d a unit · they go for %d–%d, depending who's asking","%d a unit · they go for %d–%d, depending who's asking"
 %d fps,%d fps
 %d item on the counter. Scan it.,%d item on the counter. Scan it.
@@ -782,6 +783,7 @@ firearm,firearm
 for the nights it goes badly,for the nights it goes badly
 green,green
 grey,grey
+hands,hands
 have: %d,have: %d
 melee,melee
 mother,mother

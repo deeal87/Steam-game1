@@ -690,6 +690,7 @@ about a man called Tomas Dressler on Cutter Lane.
 | `F` | sweep them with the scanner (pick it up off the counter first) |
 | `TAB` | notepad — what you have on the person at the window |
 | `X` | change what is in your hands |
+| `1`–`5` · wheel | reach straight for a slot, or roll through them |
 | `T` | torch |
 | | all rebindable in the pause menu |
 | `Mouse 1` | use it |

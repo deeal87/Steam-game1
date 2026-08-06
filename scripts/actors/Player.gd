@@ -263,6 +263,13 @@ func _handle_actions() -> void:
 		return
 	if Input.is_action_just_pressed("holster"):
 		_cycle_weapon()
+	if Input.is_action_just_pressed("slot_next"):
+		_cycle_weapon()
+	if Input.is_action_just_pressed("slot_prev"):
+		_cycle_weapon(-1)
+	for slot in 5:
+		if Input.is_action_just_pressed("slot_%d" % (slot + 1)):
+			_select_slot(slot)
 	if Input.is_action_just_pressed("reload"):
 		_reload()
 	if Input.is_action_pressed("fire") and not equipped.is_empty():
@@ -511,11 +518,35 @@ func _use_scanner() -> void:
 
 # --- Weapons -----------------------------------------------------------------
 
-func _cycle_weapon() -> void:
-	var owned := GameState.weapons.duplicate()
-	owned.push_front("")   # bare hands
+## What can be in your hands, in a fixed order: nothing, then everything you
+## own, in the order the shop lists it. Fixed so that slot three is the same
+## thing every time you reach for it.
+func hand_slots() -> Array[String]:
+	var out: Array[String] = [""]
+	for id: String in GameState.WEAPONS:
+		if GameState.has_weapon(id):
+			out.append(id)
+	return out
+
+
+## Reach straight for one. Out of range does nothing rather than wrapping —
+## pressing 4 with three slots should not quietly hand you the first.
+func _select_slot(index: int) -> void:
+	var owned := hand_slots()
+	if index < 0 or index >= owned.size() or owned[index] == equipped:
+		return
+	equipped = owned[index]
+	_after_hands_changed()
+
+
+func _cycle_weapon(step: int = 1) -> void:
+	var owned := hand_slots()
 	var idx := owned.find(equipped)
-	equipped = owned[(idx + 1) % owned.size()]
+	equipped = owned[wrapi(idx + step, 0, owned.size())]
+	_after_hands_changed()
+
+
+func _after_hands_changed() -> void:
 	_show_in_hand("weapon" if not equipped.is_empty() else "")
 	if equipped.is_empty():
 		Signals.notice.emit(Loc.t("Hands free."), "info")
