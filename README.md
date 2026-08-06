@@ -868,6 +868,10 @@ real title screen, plays a few seconds, writes a frame to disk and exits 0:
 # [selftest] language en · 798 in the table · offered: en
 ```
 
+It also writes the world buffer on its own, next to the composited frame, as
+`<name>.world.png`. When a picture looks wrong that is what says whether it was
+never drawn or only badly put together.
+
 The last two lines are there because a rendered frame cannot vouch for
 everything. The score reports which section the arrangement reached and what is
 audible; the translation table is a loose file rather than an imported resource,
@@ -877,6 +881,48 @@ export.
 This exists because "it didn't crash" proves very little, and a headless test
 cannot tell you the exported build renders at all. It is how the table above
 was confirmed.
+
+### An open question: large windows under software GL
+
+Worth writing down because it is unresolved rather than because it is solved.
+
+Rendering the shipped Linux binary under Xvfb with llvmpipe, the world buffer
+comes back essentially black — the counter, the customer and the floor present,
+the walls, ceiling and shelves missing — and how often depends on the size of
+the window:
+
+| window | runs | dark |
+|---|---|---|
+| 1280x720 | 7 | 0 |
+| 1280x800 | 3 | 0 |
+| 1280x720 on a 2560x1080 screen | 1 | 0 |
+| 1920x1080 | 8 | 3 |
+| 2560x1080 | 6 | 6 |
+
+It tracks the window's own framebuffer, not the shape of the screen and not the
+aspect ratio: a small window on a large screen is fine, and 16:10 is as fine as
+16:9. The 3D buffer itself is only 568x240 at its largest, so it is not the size
+of the thing being drawn.
+
+Things that were tried and did not explain it: the CRT pass (curvature is off,
+and the world buffer is captured before the pass anyway); the camera (identical
+position, facing and field of view in the lit and dark frames); waiting several
+complete frames before reading, in case the capture was racing the renderer;
+and raising the per-object light budget, which made every frame black because
+that shader will not compile at 32 lights on this driver.
+
+What it is most likely to be is llvmpipe, which is a software rasteriser and not
+representative of a real GPU at large render targets. What it might be is
+something in GL Compatibility that a player on an ultrawide would also see. This
+environment cannot tell the two apart — settling it needs one run on real
+hardware at 2560x1080 or wider, which is the first thing to do before a store
+page goes up.
+
+An early reading of this had it as an aspect-ratio bug, on two ultrawide
+captures and no controls. Three runs at 1920x1080 came back lit, which killed
+that, and the window-size table above is what replaced it. The lesson is
+cheaper than the bug: two samples of a flaky thing will tell you whatever you
+were already expecting.
 
 ## Assets
 

@@ -121,7 +121,13 @@ func _run_self_test(path: String) -> void:
 	for i in 20:
 		await get_tree().process_frame
 
-	await RenderingServer.frame_post_draw
+	# Several complete frames rather than one. `frame_post_draw` fires when the
+	# root viewport is finished and says nothing about the SubViewport the world
+	# is drawn into, so this is cheap insurance for a screenshot tool. It is not
+	# a fix for the large-window darkness described in the README — that was the
+	# theory, and four frames changed nothing about it.
+	for _settle in 4:
+		await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()
 	var err := img.save_png(path)
 	if err != OK:
@@ -129,6 +135,14 @@ func _run_self_test(path: String) -> void:
 		get_tree().quit(1)
 		return
 	print("[selftest] wrote %s (%dx%d)" % [path, img.get_width(), img.get_height()])
+	# The world buffer on its own, before the interface and the CRT pass go over
+	# it. When a frame looks wrong this is what says whether the picture was
+	# never drawn or only badly composited.
+	var world_img := viewport_3d.get_texture().get_image()
+	var world_path := path.get_basename() + ".world.png"
+	if world_img.save_png(world_path) == OK:
+		print("[selftest] wrote %s (%dx%d)" % [
+			world_path, world_img.get_width(), world_img.get_height()])
 	print("[selftest] night %d · money %d · in shop %d · in line %d · at the till: %s" % [
 		GameState.night, GameState.money,
 		night_director.present_count(), night_director.waiting_count(),
@@ -145,6 +159,22 @@ func _run_self_test(path: String) -> void:
 	# The translation table is a loose file rather than an imported resource, so
 	# whether it survived the export is a real question and not one a rendered
 	# frame answers. Reading it back out of the packed build is the only proof.
+	# What the picture is actually made of. A window, a logical design space the
+	# interface is laid out in, and a much smaller buffer the world is drawn
+	# into — three sizes that have to agree, and do not on every screen shape.
+	print("[selftest] window %dx%d · logical %dx%d · 3D view %dx%d · container %dx%d" % [
+		DisplayServer.window_get_size().x, DisplayServer.window_get_size().y,
+		int(get_viewport().get_visible_rect().size.x),
+		int(get_viewport().get_visible_rect().size.y),
+		viewport_3d.size.x, viewport_3d.size.y,
+		int(viewport_container.size.x), int(viewport_container.size.y)])
+	# Where the eye actually is. A frame that looks wrong is either the wrong
+	# picture or the wrong place to stand, and these two lines tell you which.
+	print("[selftest] eye %.2f,%.2f,%.2f · facing %.0f°/%.0f° · fov %.0f · aspect %.2f" % [
+		player.camera.global_position.x, player.camera.global_position.y,
+		player.camera.global_position.z,
+		rad_to_deg(player.rotation.y), rad_to_deg(player.camera.rotation.x),
+		player.camera.fov, float(viewport_3d.size.x) / maxf(1.0, float(viewport_3d.size.y))])
 	print("[selftest] build %s" % ProjectSettings.get_setting(
 		"application/config/version", "unversioned"))
 	print("[selftest] language %s · %d in the table · offered: %s" % [
