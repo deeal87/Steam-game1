@@ -23,9 +23,13 @@ var _next_world: int = 0
 var _ambience: AudioStreamPlayer
 var _bus_index: int = 0
 
+## Godot's output bus is always index 0.
+const MASTER_BUS := 0
+
 
 func _ready() -> void:
 	_make_bus()
+	_protect_master()
 	# A small pool so overlapping cues do not cut each other off.
 	for i in 12:
 		var p := AudioStreamPlayer.new()
@@ -78,6 +82,34 @@ func world_pool_viewport() -> Viewport:
 	if _world_players.is_empty():
 		return null
 	return _world_players[0].get_viewport()
+
+
+## Stops the mix clipping when everything happens at once.
+##
+## Every cue is synthesised to full scale and clamped there, so a single sound
+## is already at the ceiling before any bus gets hold of it. One of them is
+## fine. A raid is not: six units firing, their rounds landing, the score at
+## full tilt and the rain underneath it, all inside a few milliseconds. Nothing
+## sums those — Godot hands the total straight to the output — and anything over
+## full scale comes back as hard digital clipping, which is a crunch rather than
+## a bang. The loudest moment in the game is exactly the one that breaks.
+##
+## Turning everything down instead would cost the raid the impact it is supposed
+## to have, so the limiter goes on Master, below the ceiling it does nothing at
+## all, and the mix is left as it was written. The default master volume of 0.8
+## already leaves some headroom; a player who puts it to 1.0 has none, and this
+## is what covers them.
+func _protect_master() -> void:
+	for i in AudioServer.get_bus_effect_count(MASTER_BUS):
+		if AudioServer.get_bus_effect(MASTER_BUS, i) is AudioEffectHardLimiter:
+			return
+	var limiter := AudioEffectHardLimiter.new()
+	# Just under full scale. Leaves room for the tiny overshoot a resampler can
+	# introduce on the way out to the device.
+	limiter.ceiling_db = -0.5
+	limiter.pre_gain_db = 0.0
+	limiter.release = 0.1
+	AudioServer.add_bus_effect(MASTER_BUS, limiter)
 
 
 func _make_bus() -> void:

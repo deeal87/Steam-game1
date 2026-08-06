@@ -630,6 +630,45 @@ func test_audio() -> void:
 			built += 1
 	_check(built == cues.size(), "all %d cues synthesise (%d built)" % [cues.size(), built])
 
+	# Every cue is written to full scale and clamped there, so one sound is
+	# already at the ceiling before any bus touches it. Worth measuring rather
+	# than assuming, because it is what makes the sum a problem.
+	var loudest := 0.0
+	var loudest_name := ""
+	for cue: String in cues:
+		var stream: AudioStreamWAV = Audio._cue(cue)
+		if stream == null:
+			continue
+		var peak := _peak_of(stream)
+		if peak > loudest:
+			loudest = peak
+			loudest_name = cue
+	_check(loudest > 0.5, "the cues are written at a usable level (%s peaks at %.2f)"
+		% [loudest_name, loudest])
+	_check(loudest <= 1.0, "and none of them overflows the sample format")
+
+	# Which is why Master carries a limiter. A raid is six units firing, their
+	# rounds landing, the score and the rain, inside a few milliseconds — and
+	# nothing else sums that before it reaches the output.
+	var limiter: AudioEffectHardLimiter = null
+	for i in AudioServer.get_bus_effect_count(0):
+		var fx := AudioServer.get_bus_effect(0, i)
+		if fx is AudioEffectHardLimiter:
+			limiter = fx
+	_check(limiter != null, "Master has a limiter on it")
+	if limiter != null:
+		_check(limiter.ceiling_db < 0.0 and limiter.ceiling_db > -3.0,
+			"set just under full scale (%.1f dB), not squashing the mix" % limiter.ceiling_db)
+
+	# Adding it twice would stack two limiters and audibly flatten everything.
+	Audio._protect_master()
+	Audio._protect_master()
+	var count := 0
+	for i in AudioServer.get_bus_effect_count(0):
+		if AudioServer.get_bus_effect(0, i) is AudioEffectHardLimiter:
+			count += 1
+	_check(count == 1, "and only ever one of them (%d)" % count)
+
 	# Effects get their own bus, so they can be turned down without taking the
 	# music with them. Before this everything played straight onto Master.
 	_check(AudioServer.get_bus_index(Audio.BUS) > 0, "effects have their own bus")
@@ -2522,6 +2561,21 @@ func test_translation() -> void:
 		print("   run: godot --headless --path . tools/MakeTemplate.tscn")
 	_check(missing.is_empty(),
 		"every string the game showed is in the template (%d checked)" % recorded.size())
+
+
+## Loudest absolute sample in a cue, as a fraction of full scale. The cues are
+## 16-bit mono, written little-endian.
+func _peak_of(stream: AudioStreamWAV) -> float:
+	var data := stream.data
+	var peak := 0
+	var i := 0
+	while i + 1 < data.size():
+		var v := data[i] | (data[i + 1] << 8)
+		if v >= 32768:
+			v -= 65536
+		peak = maxi(peak, absi(v))
+		i += 2
+	return float(peak) / 32767.0
 
 
 func _report() -> void:

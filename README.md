@@ -427,6 +427,23 @@ no argument that could distinguish an officer from a civilian, and the smoke
 suite asserts that two identical situations score identically. The night number
 and the clock *are* fair game — both are on screen already.
 
+### Headroom
+
+Every cue is synthesised to full scale and clamped there — the gunshot measures
+exactly 1.00 — so a single sound is already at the ceiling before any bus gets
+hold of it. One of those is fine. A raid is not: six units firing, their rounds
+landing, the score at full tilt and the rain underneath it, all inside a few
+milliseconds. Nothing sums that before it reaches the output, and anything over
+full scale comes back as hard digital clipping, which is a crunch rather than a
+bang. The loudest moment in the game was the one that broke.
+
+Master carries a hard limiter set to -0.5 dB. Below that ceiling it does nothing
+at all, so the mix is exactly as it was written; it only ever catches the peaks
+that would otherwise have wrapped. Turning the whole game down instead would
+have cost the raid the impact it is supposed to have. The default master volume
+of 0.8 already leaves some headroom — a player who puts it to 1.0 has none, and
+this is what covers them.
+
 ## Carrying a run over
 
 The game writes your run after every shift, and on launch the title offers to
@@ -881,6 +898,25 @@ export.
 This exists because "it didn't crash" proves very little, and a headless test
 cannot tell you the exported build renders at all. It is how the table above
 was confirmed.
+
+### Building from a fresh clone
+
+Verified rather than assumed, because it is the thing that breaks quietly:
+cloning the repository and running one export command produces a working game.
+No editor pass first, no import step, nothing to set up.
+
+```sh
+git clone <repo> kiosk && cd kiosk
+godot --headless --export-release "Linux" out/Kiosk.x86_64
+```
+
+`*.import` is gitignored, so a fresh clone has no import metadata for `icon.png`
+— the exporter reimports it on the way past and packs the result. Two things
+that show up in that log and are both harmless: `reimport: step 1: icon.png` is
+that happening, and `SHADER ERROR: Global uniform 'ps1_snap' does not exist` is
+the export's own shader compile running before project settings register the
+globals. The shipped binary has them and renders correctly; the check for that
+is `--selftest` on the result, which is how this paragraph was written.
 
 ### An open question: large windows under software GL
 
