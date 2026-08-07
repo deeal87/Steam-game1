@@ -114,7 +114,7 @@ func start(evidence: int, night: int) -> void:
 		var hold: Vector3 = points[i % points.size()] + Vector3(
 			randf_range(-1.6, 1.6), 0.0, randf_range(-0.4, 1.2))
 		var u := RaidUnit.new()
-		u.setup(_player, spawn, hold, tier)
+		u.setup(_player, spawn, hold, tier, i)
 		u.died.connect(_on_unit_died)
 		_world.add_child(u)
 		_units.append(u)

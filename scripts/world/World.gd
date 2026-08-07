@@ -443,6 +443,8 @@ func _build_materials() -> void:
 	_mats["body_bag"] = _thing("gear_evidence_bag",
 		ProcMesh.mat(ProcTex.flat(Color(0.045, 0.05, 0.055))))
 	_mats["ammo_box"] = _thing("gear_ammo_box", _mats["cardboard"])
+	# The radio on the shelf behind the counter, which has been on all night.
+	_mats["radio_set"] = _thing("radio_set", _mats["dark_steel"])
 	# Standing water on the road, for the puddles.
 	_mats["wet_road"] = _surface("asphalt_wet", ProcTex.asphalt(7), 14.0, 2.0)
 	# The shelving units in the back. This is the one place a photograph of a
@@ -838,7 +840,7 @@ func _build_fittings() -> void:
 	fit.add_child(ProcMesh.box(Vector3(0.16, 0.22, 0.16), Vector3(-4.4, 0.85, 3.2),
 		mat("steel"), "Kettle"))
 	fit.add_child(ProcMesh.box(Vector3(0.34, 0.16, 0.16), Vector3(-4.3, 1.62, SHOP_HALF_Z - 0.25),
-		mat("dark_steel"), "Radio"))
+		mat("radio_set"), "Radio"))
 
 	_signs(fit)
 	_cold_cabinet(fit)

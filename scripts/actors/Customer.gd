@@ -617,6 +617,7 @@ func _die() -> void:
 		GameState.cops_identified += 1
 		GameState.add_heat(6.0)
 		Signals.notice.emit(Loc.t("A badge falls out of their coat. You were right."), "good")
+		_drop_badge()
 	else:
 		GameState.civilians_killed += 1
 		GameState.add_heat(22.0)
@@ -633,6 +634,28 @@ func _die() -> void:
 	Signals.body_dropped.emit(corpse)
 
 	get_tree().create_timer(1.2).timeout.connect(_report_killed)
+
+
+## The badge, on the floor beside them.
+##
+## The line "a badge falls out of their coat" has been in this game for a long
+## time and nothing fell out of anything — it was a sentence in the notice strip
+## at the bottom of the screen, which is also where the weather and the rent go.
+## It is the one moment that tells you that you were right about somebody, and it
+## deserves to be a thing lying on the floor next to what you did.
+##
+## Parented to the world rather than to the customer, or it would be freed with
+## them a second and a half later.
+func _drop_badge() -> void:
+	var art := ProcTex.painted("id_badge")
+	if art == null or world == null:
+		return
+	var badge := ProcMesh.box(Vector3(0.12, 0.012, 0.15), Vector3.ZERO,
+		ProcMesh.mat(art, 1.0, Color(0.5, 0.55, 0.6), 0.12), "Badge")
+	badge.rotation_degrees = Vector3(0, randf_range(0.0, 360.0), 0)
+	world.add_child(badge)
+	badge.global_position = global_position + Vector3(
+		randf_range(-0.4, 0.4), 0.03, randf_range(-0.4, 0.4))
 
 
 ## Told to the director a beat after the shot, so the body is on the floor

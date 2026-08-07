@@ -47,7 +47,6 @@ func _ready() -> void:
 	await test_sewer_is_traversable()
 	await test_two_halves_of_the_world()
 	await test_shoppers_go_round_the_shelves()
-	await test_the_pack_is_all_used()
 	await test_identity_and_egg()
 	await test_sewer_escape()
 	await test_transaction()
@@ -64,6 +63,9 @@ func _ready() -> void:
 	await test_world_is_sealed()
 	await test_panels()
 	await test_translation()
+	# Last, on purpose. It measures the whole run — a swatch only a raid or a
+	# shooting ever reaches for is not unused, it is just further down the file.
+	await test_the_pack_is_all_used()
 	_report()
 	get_tree().quit(1 if not failures.is_empty() else 0)
 

@@ -77,10 +77,17 @@ var entry_used: Vector3 = Vector3.ZERO
 
 ## Called before the unit is in the tree, so the spawn point is stored and
 ## applied in `_ready` rather than written to `global_position` here.
-func setup(player: Player, spawn: Vector3, target: Vector3, tier: int) -> void:
+## Where in the squad this one is. Decides which kit they were issued, and who
+## goes through the door behind the shield.
+var squad_index: int = 0
+
+
+func setup(player: Player, spawn: Vector3, target: Vector3, tier: int,
+		index: int = 0) -> void:
 	_player = player
 	_target = target
 	_spawn = spawn
+	squad_index = index
 	# Later nights send better-equipped teams.
 	health = 90.0 + float(tier) * 16.0
 	damage = 8.0 + float(tier) * 1.6
@@ -122,8 +129,16 @@ func _ready() -> void:
 	add_child(_muzzle)
 
 
-## Black kit, a helmet, and a torch on the weapon. It reads as a silhouette in
-## the dark until the torch swings onto you, which is the intended effect.
+## Black kit, a vest, a helmet, a mask and a torch on the weapon. It reads as a
+## silhouette in the dark until the torch swings onto you, which is the intended
+## effect.
+##
+## The kit is real now. It used to be a plain black box for a body and a green
+## strip for a visor — the silhouette was right and everything inside it was
+## nothing — and the pack's police gear sheet has the vest, the armour, the
+## helmet, the mask and the shield. Which of them a given officer is wearing
+## comes off their place in the squad rather than off a die, so a team looks like
+## a team that was issued kit rather than like five people who dressed at random.
 func _apply_kit() -> void:
 	var black := ProcMesh.mat(ProcTex.metal(Color(0.055, 0.058, 0.065), 909))
 	for child in _body.get_children():
@@ -133,13 +148,48 @@ func _apply_kit() -> void:
 			if grandchild is MeshInstance3D and grandchild.name in ["Leg", "Arm", "Shoe", "Hand"]:
 				(grandchild as MeshInstance3D).material_override = black
 
+	# The vest goes on as a panel over the chest rather than as the torso's own
+	# texture: the torso is a box and would wear the photograph on all six faces,
+	# including the back and the top of the shoulders.
+	var torso := _body.get_node_or_null("Torso") as MeshInstance3D
+	if torso != null:
+		var kit := _painted("police_vest" if squad_index % 2 == 0 else "body_armor")
+		if kit != null:
+			var vest := ProcMesh.box(Vector3(0.46, 0.56, 0.04),
+				torso.position + Vector3(0, 0.02, -0.14), kit, "Vest")
+			_body.add_child(vest)
+
 	var head := _body.get_node_or_null("Head")
 	if head != null:
 		for child in head.get_children():
 			if child is MeshInstance3D:
 				(child as MeshInstance3D).material_override = black
-		head.add_child(ProcMesh.box(Vector3(0.22, 0.06, 0.02), Vector3(0, 0.13, 0.11),
-			ProcMesh.mat(ProcTex.flat(Color(0.25, 0.55, 0.35)), 1.0, Color(0.2, 0.9, 0.4), 0.9), "Visor"))
+		var helmet := _painted("police_helmet")
+		if helmet != null:
+			head.add_child(ProcMesh.box(Vector3(0.24, 0.20, 0.24),
+				Vector3(0, 0.20, 0), helmet, "Helmet"))
+		# The mask replaces the green visor strip, and keeps a little of its
+		# glow. The strip existed so there is something to catch your eye in a
+		# dark room, and a photograph of a gas mask is very dark indeed.
+		var mask := ProcTex.painted("gas_mask")
+		head.add_child(ProcMesh.box(Vector3(0.20, 0.18, 0.03), Vector3(0, 0.11, 0.11),
+			ProcMesh.mat(mask, 1.0, Color(0.2, 0.9, 0.4), 0.22) if mask != null
+				else ProcMesh.mat(ProcTex.flat(Color(0.25, 0.55, 0.35)), 1.0,
+					Color(0.2, 0.9, 0.4), 0.9), "Visor"))
+
+	# A radio on the shoulder, which is what the crackle you can hear is coming
+	# out of.
+	var radio := _painted("police_radio")
+	if radio != null:
+		_body.add_child(ProcMesh.box(Vector3(0.07, 0.16, 0.05),
+			Vector3(0.20, 1.34, -0.06), radio, "ShoulderRadio"))
+
+	# Whoever goes through the door first carries the shield.
+	if squad_index == 0:
+		var shield := _painted("riot_shield")
+		if shield != null:
+			_body.add_child(ProcMesh.box(Vector3(0.52, 0.78, 0.05),
+				Vector3(-0.10, 1.05, -0.34), shield, "Shield"))
 
 	var torch := SpotLight3D.new()
 	torch.position = Vector3(0.16, 1.30, -0.28)
@@ -148,6 +198,14 @@ func _apply_kit() -> void:
 	torch.spot_range = 14.0
 	torch.spot_angle = 26.0
 	add_child(torch)
+
+
+## A material for a painted piece of kit, or null if the pack has not got one.
+## Kit is optional on purpose: without the pack this is the same black
+## silhouette it has always been, rather than a missing texture.
+static func _painted(name: String) -> Material:
+	var tex := ProcTex.painted(name)
+	return ProcMesh.mat(tex, 1.0) if tex != null else null
 
 
 func _physics_process(delta: float) -> void:

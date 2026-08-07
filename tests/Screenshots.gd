@@ -165,9 +165,14 @@ func _ready() -> void:
 	await _look_from(Vector3(World.STREET_END, 0.3, 3.4), 3.14, "22_easter_egg")
 	game.player.toggle_torch()
 
-	# And the raid.
-	game.player.global_position = Vector3(0, 0.1, -1.35)
+	# And the raid, watched from behind the counter looking at the front of the
+	# shop — which is where a player is standing when one starts, and is not
+	# where this used to stand. Thirty-five centimetres in front of the island
+	# rack, facing it, is a screenful of shelf and a prompt to take a pot of
+	# noodles; both raid shots have been that for as long as they have existed.
+	game.player.global_position = game.world.anchors["player_spawn"]
 	game.player.rotation.y = 0.0
+	game.player.camera.rotation.x = 0.0
 	await _settle(20)
 	GameState.night = 4
 	game.raid_director.start(2, 4)
@@ -175,6 +180,20 @@ func _ready() -> void:
 	await _shot("23_raid_forming")
 	await _settle(300)
 	await _shot("24_raid_breach")
+
+	# And one of them close enough to see what they are wearing. The breach shot
+	# is about what it feels like from behind the counter; this one is the only
+	# way to check the kit actually went on.
+	var officer := _nearest_unit(game)
+	if officer != null:
+		# Three-quarter and far enough back to see a whole person, with the torch
+		# on — a unit standing in an unlit part of the street is a black
+		# rectangle, which is the intended effect in play and useless here.
+		game.player.toggle_torch()
+		var target: Vector3 = officer.global_position
+		var at := target + Vector3(1.9, 0.1, 3.2)
+		await _look_from(at, atan2(at.x - target.x, at.z - target.z), "25_raid_close", -0.08)
+		game.player.toggle_torch()
 
 	print("Screenshots written to %s" % out_dir)
 	get_tree().quit()
@@ -195,6 +214,13 @@ func _tap(action: String) -> void:
 ## Puts the player somewhere, points them, waits for the world to catch up and
 ## takes the picture. Physics needs a couple of frames after a teleport before
 ## lights and triggers have settled.
+func _nearest_unit(g: Node) -> RaidUnit:
+	for child in g.world.get_children():
+		if child is RaidUnit:
+			return child
+	return null
+
+
 func _nearest_dweller(g: Node) -> SewerDweller:
 	for child in g.world.get_children():
 		if child is SewerDweller:

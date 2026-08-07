@@ -212,6 +212,29 @@ Three fittings from the supplier change the shape of the fight:
 | **Window bars** | Closes the hatch as an entrance, so the whole team has to funnel through the back door — much easier to point a shotgun at |
 | **Bear trap** | Takes the first one through, whichever door that is |
 
+### What the raid team is wearing
+
+They used to be plain black boxes with a green strip for a visor. The silhouette
+was right — the intent is that a unit reads as a shape in the dark until its
+torch swings onto you — and everything inside the silhouette was nothing.
+
+The pack's police gear sheet is the closest thing it has to character art, and
+none of it was being used: a vest, body armour, a helmet, a gas mask and a riot
+shield were sitting on the sheet while the team wore flat metal. They are on now.
+Which kit an officer is issued comes off their place in the squad rather than off
+a die, so a team looks like a team that was equipped rather than five people who
+dressed at random, and whoever goes through the door first carries the shield.
+
+The vest goes on as a panel over the chest rather than as the torso's own
+texture. The torso is a box, and a box wears its texture on all six faces —
+including the back and the tops of the shoulders, where a photograph of the front
+of a vest is nonsense. The mask keeps a little of the old visor's glow for the
+same reason the visor existed: there has to be something to catch your eye in a
+dark room, and a photograph of a gas mask is very dark indeed.
+
+All of it is optional. Without the pack this is the same black silhouette it has
+always been, rather than a missing texture.
+
 ## The queue
 
 Four marks on the floor: one at the till, three behind it. Someone is always
@@ -1155,7 +1178,7 @@ the locale CSV is. Left alone, Godot compiles each PNG to a `.ctex` and the raw
 file never reaches the build — and because the code falls back to the generator
 when a file is missing, the exported game came out looking exactly as it had
 before the pack existed, with nothing failing and nothing to see. The log says
-which it is: `textures: 102 painted surfaces found`.
+which it is: `textures: 110 painted surfaces found`.
 
 Two sheets look like reference and are not, quite. The lighting and post-process
 sheet is mostly renders of what the engine ought to produce, which the engine has

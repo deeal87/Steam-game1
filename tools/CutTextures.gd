@@ -76,12 +76,26 @@ const CUTS := {
 		["garbage_bin", 950, 596, 74, 108, true],
 		["newspaper", 22, 816, 60, 96, true],
 	],
+	# This sheet is called "weapons, police gear & equipment" and for a long time
+	# only the weapons came off it. The rest of it is the closest thing the pack
+	# has to character art: a raid team built out of plain black boxes with a
+	# green strip for a visor is now wearing an actual vest, an actual helmet and
+	# an actual gas mask.
 	"weapons.png": [
 		["weapon_revolver", 462, 158, 96, 96, true],
 		["weapon_shotgun", 118, 158, 100, 96, true],
 		["weapon_rifle", 345, 158, 106, 96, true],
 		["gear_evidence_bag", 1030, 356, 92, 104, true],
 		["gear_ammo_box", 1030, 552, 92, 100, true],
+		["police_vest", 21, 355, 82, 92, true],
+		["police_helmet", 135, 358, 68, 90, true],
+		["body_armor", 250, 357, 66, 90, true],
+		["gas_mask", 350, 358, 68, 88, true],
+		["riot_shield", 457, 355, 69, 92, true],
+		["police_radio", 562, 360, 50, 85, true],
+		["radio_set", 627, 365, 58, 77, true],
+		# What falls out of the coat of somebody you were right about.
+		["id_badge", 934, 567, 60, 63, true],
 	],
 	"signage.png": [
 		["sign_kiosk", 566, 145, 66, 92, true],
