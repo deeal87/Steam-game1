@@ -6,6 +6,10 @@ extends CanvasLayer
 
 signal continued
 signal restart_requested
+
+## Which action abandons a run and starts from night one. Named once, so the
+## handler and the line on screen cannot disagree about it again.
+const RESTART_ACTION := "reload"
 signal quit_requested
 
 enum Mode { TITLE, REPORT, RAID_WARNING, GAME_OVER }
@@ -64,8 +68,10 @@ func _present() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not open:
 		return
-	# Starting over from the title, when there is a run to abandon.
-	if _mode == Mode.TITLE and GameState.has_save() and event.is_action_pressed("restock"):
+	# Starting over from the title, when there is a run to abandon. On `reload`,
+	# which is R — the key the screen has always claimed and never used. It does
+	# nothing else here, and R is where a player reaches to start over.
+	if _mode == Mode.TITLE and GameState.has_save() and event.is_action_pressed(RESTART_ACTION):
 		GameState.clear_save()
 		GameState.reset_run()
 		Audio.play("deny", -14.0)
@@ -137,17 +143,26 @@ func _build_title() -> void:
 	# A run to go back to, if there is one. The game has always written the save
 	# file and never read it, so every run started at night one however far the
 	# last one got.
+	# The keys are read off the input map rather than written into the sentence.
+	#
+	# This line said "[R] start again from the first night" and start-again was
+	# on the restock action, which is Q — so the one instruction on the title
+	# screen named a key that does nothing, and the key that does it was never
+	# mentioned anywhere. Asking the map cannot drift, and it also follows
+	# anybody who has rebound either of them in the settings.
 	if GameState.has_save():
-		var back := UIKit.label(Loc.f("[E] carry on from night %d", [GameState.saved_night()]),
+		var back := UIKit.label(Loc.f("[%s] carry on from night %d",
+			[InputSetup.binding_label("interact"), GameState.saved_night()]),
 			UIKit.FONT_M, UIKit.GREEN)
 		back.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		col.add_child(back)
-		var fresh := UIKit.label("[R] start again from the first night",
-			UIKit.FONT_S, UIKit.GREEN_DIM)
+		var fresh := UIKit.label(Loc.f("[%s] start again from the first night",
+			[InputSetup.binding_label(RESTART_ACTION)]), UIKit.FONT_S, UIKit.GREEN_DIM)
 		fresh.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		col.add_child(fresh)
 	else:
-		var go := UIKit.label("[E] open up", UIKit.FONT_M, UIKit.GREEN)
+		var go := UIKit.label(Loc.f("[%s] open up",
+			[InputSetup.binding_label("interact")]), UIKit.FONT_M, UIKit.GREEN)
 		go.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		col.add_child(go)
 

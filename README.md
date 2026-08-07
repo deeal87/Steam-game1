@@ -978,6 +978,50 @@ when its object is freed, and a tween started with `node.create_tween()` dies
 with the node it is moving. Neither is a workaround; both are what the engine is
 built to do, and the lambda was the shortcut.
 
+### One line that made every surface transparent
+
+For months this game had a bug that read as: *everything disappears and comes
+back depending how far away I am and which way I am looking.* Objects through
+walls. Stock you cannot see on a shelf you are standing at. A table that vanishes
+at one particular angle. It was diagnosed twice — once as the eight-lights-per-
+object limit, once as the shader's near-plane arithmetic — and both times
+something real was found and fixed and the symptom stayed exactly where it was.
+
+The cause was line 63 of `shaders/ps1.gdshader`:
+
+```glsl
+ALPHA = c.a;
+```
+
+A spatial shader in Godot 4 becomes a **transparent** material simply by
+assigning to `ALPHA`. Nothing warns you and nothing looks obviously wrong.
+Transparent materials do not write to the depth buffer and are drawn after all
+opaque geometry, sorted by how far each object's *origin* is from the camera.
+
+That sort is the whole failure. This world is built out of long boxes — a hundred
+metres of road, a shop wall, a counter — whose centres are metres away while
+their faces are at arm's length, with small props scattered among them. Sorting
+by origin gets those pairs backwards, and which way it gets them wrong changes
+as the camera moves. Every surface in the game goes through this shader, so every
+surface in the game was transparent.
+
+It was writing a constant, too. Every generated texture is `FORMAT_RGB8`, every
+cut swatch comes off an RGB sheet, and nothing has ever set `alpha_scissor` — so
+`c.a` was 1.0 everywhere. The entire depth buffer had been given up for a value
+that never varied.
+
+Two things guard it now. `tools/DepthProof.tscn` stands a bright red box behind a
+long wall under a real renderer and counts red pixels: the geometry is arranged
+so that origin-sorting draws the box over the wall and depth-testing does not, so
+the answer is unambiguous. And because the headless suite draws nothing and
+cannot take that picture, the smoke test reads the shader source and fails if
+anything assigns `ALPHA` again.
+
+The first version of the depth proof was wrong in an instructive way. It put the
+wall between the camera and the box the obvious way round — and passed, because
+back-to-front sorting hides a nearer wall correctly. A test for a sorting bug has
+to be built so the sort gets it wrong, or it proves nothing.
+
 ## When something goes wrong
 
 The game writes `kiosk.log` next to the saves, and keeps the previous run's as

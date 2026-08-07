@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://bkiosk0depth01"]
+
+[ext_resource type="Script" path="res://tools/DepthProof.gd" id="1_dp"]
+
+[node name="DepthProof" type="Node"]
+script = ExtResource("1_dp")

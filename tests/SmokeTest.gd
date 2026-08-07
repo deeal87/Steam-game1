@@ -63,6 +63,7 @@ func _ready() -> void:
 	await test_world_is_sealed()
 	await test_panels()
 	await test_translation()
+	await test_the_world_shader_is_opaque()
 	# Last, on purpose. It measures the whole run — a swatch only a raid or a
 	# shooting ever reaches for is not unused, it is just further down the file.
 	await test_the_pack_is_all_used()
@@ -1356,6 +1357,49 @@ func test_shoppers_go_round_the_shelves() -> void:
 ## surface still to be wired up or a cut that should come out of
 ## `tools/CutTextures.gd`; both are decisions, and neither should be made by
 ## forgetting.
+## The world shader must stay opaque.
+##
+## Assigning to ALPHA in a Godot 4 spatial shader makes the material
+## transparent. Transparent materials write no depth and are drawn last, sorted
+## by how far each object's *origin* is from the camera — so a long wall whose
+## centre is ten metres away loses to a crate whose centre is three, whatever
+## their surfaces are actually doing. This game is built out of long boxes with
+## props among them, so that is every wall in it.
+##
+## It shipped like that for months and read as "everything disappears and comes
+## back depending how far away I am and which way I am looking". Twice it was
+## diagnosed as something else and twice it was fixed without going away.
+##
+## Checked by reading the file, because the thing that has to hold is a property
+## of the source: the headless renderer draws nothing, so nothing here can catch
+## it in a picture. `tools/DepthProof.tscn` does that under a real renderer, by
+## standing a bright box behind a wall and looking for red.
+func test_the_world_shader_is_opaque() -> void:
+	print("\nThe world shader:")
+	var path := "res://shaders/ps1.gdshader"
+	var src := FileAccess.get_file_as_string(path)
+	_check(not src.is_empty(), "the shader is where it is supposed to be")
+
+	var assigns_alpha := false
+	for raw: String in src.split("\n"):
+		var line := raw.strip_edges()
+		if line.begins_with("//"):
+			continue
+		# `ALPHA` on the left of an assignment, not the word in a comment.
+		var cut := line.find("//")
+		if cut >= 0:
+			line = line.substr(0, cut).strip_edges()
+		if line.begins_with("ALPHA") and line.contains("="):
+			assigns_alpha = true
+	_check(not assigns_alpha,
+		"it does not assign ALPHA, which would make every surface transparent")
+
+	# The cutout path has to survive, because it is the right way to do the thing
+	# ALPHA would have been reached for.
+	_check(src.contains("discard"), "and cutouts are still a discard")
+	_done("opaque world")
+
+
 func test_the_pack_is_all_used() -> void:
 	print("\nThe painted pack:")
 	_check(ProcTex.pack_size() > 0, "the pack is on disk (%d swatches)" % ProcTex.pack_size())
@@ -1712,6 +1756,27 @@ func test_rebinding() -> void:
 	var to_esc := InputEventKey.new()
 	to_esc.physical_keycode = KEY_ESCAPE
 	_check(not InputSetup.rebind("interact", to_esc), "escape cannot be taken")
+
+	# Every key the title screen names has to be a key that does something.
+	#
+	# It named R for starting over and start-over was on the restock action,
+	# which is Q. The one instruction on the first screen of the game pointed at
+	# a key that did nothing, and the key that did it was written down nowhere —
+	# so the only way to abandon a run was to find it by accident.
+	InputSetup.reset_bindings()
+	_check(InputMap.has_action(ReportUI.RESTART_ACTION),
+		"the title screen's start-over action exists (%s)" % ReportUI.RESTART_ACTION)
+	_check(InputSetup.binding_label(ReportUI.RESTART_ACTION) == "R",
+		"and it is on R, which is what the screen says (%s)"
+			% InputSetup.binding_label(ReportUI.RESTART_ACTION))
+	# And it says whatever it is bound to, rather than a letter typed into the
+	# sentence — so moving it in the settings moves what the screen claims.
+	var to_p := InputEventKey.new()
+	to_p.physical_keycode = KEY_P
+	_check(InputSetup.rebind(ReportUI.RESTART_ACTION, to_p), "it can be rebound")
+	_check(InputSetup.binding_label(ReportUI.RESTART_ACTION) == "P",
+		"and the title screen would now name P")
+	InputSetup.reset_bindings()
 
 	# Overrides have to survive a restart.
 	InputSetup.save_overrides()
@@ -3020,7 +3085,7 @@ func test_raid_keeps_looking() -> void:
 
 func _report() -> void:
 	for name: String in ["raid_keeps_looking", "two halves", "round the shelves",
-			"the pack is used"]:
+			"the pack is used", "opaque world"]:
 		if not _finished.has(name):
 			failures.append("%s never reached its end — it died part way through, "
 				% name + "and a suite that counts only failures calls that a pass")

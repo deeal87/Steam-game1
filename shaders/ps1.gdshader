@@ -55,12 +55,37 @@ void fragment() {
 
 	vec4 c = texture(albedo_tex, uv) * tint;
 
+	// Cutouts are a discard, never an alpha value. See below.
 	if (alpha_scissor > 0.0 && c.a < alpha_scissor) {
 		discard;
 	}
 
 	ALBEDO = c.rgb;
-	ALPHA = c.a;
+	// ALPHA is deliberately not written here, and this is the single most
+	// important line in the file.
+	//
+	// A spatial shader in Godot 4 becomes a *transparent* material simply by
+	// assigning to ALPHA. Nothing warns you. Transparent materials do not write
+	// to the depth buffer and are drawn after everything else, sorted by how far
+	// each object's origin is from the camera — so two of them draw in whatever
+	// order their centres happen to fall in, and that order changes as the
+	// camera moves.
+	//
+	// Every surface in this game goes through this shader, so every surface in
+	// this game was transparent. The world is built out of long boxes — a
+	// hundred metres of road, a shop wall, a counter — whose origins are metres
+	// away while their faces are at arm's length, which is the exact case where
+	// sorting by origin gets the answer wrong. That is "objects through the
+	// wall", "the stock in the shelf you cannot see", "the table with the
+	// scanner disappears at the right angle", and "everything is disappearing
+	// and coming back depending how far or from which angle I look". One line.
+	//
+	// It was writing a constant, too: every texture in the game is RGB8 and
+	// nothing has ever set alpha_scissor, so `c.a` was 1.0 everywhere. The whole
+	// depth buffer was being given up for a value that never varied.
+	//
+	// If a cutout texture is ever needed, the discard above is the way to do it
+	// and it works in an opaque shader. Reinstating this line is not.
 	EMISSION = emission_tint.rgb * emission_strength;
 	// The console had no specular pass at all; anything shiny was painted in.
 	ROUGHNESS = 1.0;

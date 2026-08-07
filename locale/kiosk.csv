@@ -747,6 +747,9 @@ Your firm doesn't seem to have an address.,Your firm doesn't seem to have an add
 Your hands are empty. The stock is in the back.,Your hands are empty. The stock is in the back.
 Your name,Your name
 Your name on the street,Your name on the street
+[%s] carry on from night %d,[%s] carry on from night %d
+[%s] open up,[%s] open up
+[%s] start again from the first night,[%s] start again from the first night
 [1-9] choose   ·   [ESC] step back,[1-9] choose   ·   [ESC] step back
 [D-pad] move   ·   [A] choose   ·   [B] step back,[D-pad] move   ·   [A] choose   ·   [B] step back
 [ESC] back to the counter,[ESC] back to the counter
@@ -767,12 +770,9 @@ Your name on the street,Your name on the street
 [E] Terminal,[E] Terminal
 [E] Till — %d,[E] Till — %d
 [E] Under the counter  (%d),[E] Under the counter  (%d)
-[E] carry on from night %d,[E] carry on from night %d
 [E] next night,[E] next night
-[E] open up,[E] open up
 [E] or [ESC] step away from the terminal,[E] or [ESC] step away from the terminal
 [E] wait for them,[E] wait for them
-[R] start again from the first night,[R] start again from the first night
 [TAB] or [ESC] put it down,[TAB] or [ESC] put it down
 [color=#41854f]No documentary anomalies.[/color],[color=#41854f]No documentary anomalies.[/color]
 [color=#f55c57]Note: a file with this many discrepancies is more often a constructed identity than a badly kept one.[/color],[color=#f55c57]Note: a file with this many discrepancies is more often a constructed identity than a badly kept one.[/color]
