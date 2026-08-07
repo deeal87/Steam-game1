@@ -1391,6 +1391,17 @@ func test_the_pack_is_all_used() -> void:
 	_done("the pack is used")
 
 
+## What a player actually perceives of a given trait.
+##
+## For everything but clothing that is the number on the profile. Clothing is
+## stored as a raw draw and worn as that draw folded into however many sets the
+## pack holds, and it is the fold that anybody looks at.
+static func _visible_trait(p: CustomerProfile, field: String) -> float:
+	if field == "outfit":
+		return float(p.outfit % maxi(1, ProcMesh.painted_outfit_count()))
+	return float(p.get(field))
+
+
 func _crosses_a_rack(from: Vector3, to: Vector3) -> bool:
 	# Walking up to a shelf ends inside its clearance on purpose. What must not
 	# happen is passing through the body of one.
@@ -2159,7 +2170,13 @@ func test_pushing_in() -> void:
 	# from the main stream would move around between runs and eventually trip
 	# this — which is exactly how `nerves` was caught.
 	var stats := {}
-	for field: String in ["height_scale", "bulk_scale", "pushiness", "nerves"]:
+	# `outfit` joined this list the day the pack turned clothing from six shades
+	# of dark into a tweed jacket, overalls or a shirt and tie. It is measured as
+	# the outfit actually worn rather than as the raw draw behind it: the number
+	# is reduced modulo however many sets of clothes the pack holds, and two
+	# distributions with identical means can disagree completely once they are
+	# folded into sixteen.
+	for field: String in ["height_scale", "bulk_scale", "pushiness", "nerves", "outfit"]:
 		stats[field] = {"cop": 0.0, "civ": 0.0, "cop_sq": 0.0, "civ_sq": 0.0}
 	var cop_n := 0
 	var civ_n := 0
@@ -2171,7 +2188,7 @@ func test_pushing_in() -> void:
 		else:
 			civ_n += 1
 		for field: String in stats:
-			var v: float = p.get(field)
+			var v: float = _visible_trait(p, field)
 			stats[field][side] += v
 			stats[field][side + "_sq"] += v * v
 

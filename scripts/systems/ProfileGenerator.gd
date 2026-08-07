@@ -276,6 +276,21 @@ static func generate(seed_value: int, night: int, undercover_chance: float) -> C
 		standing[j] = tmp
 	p.standing_questions = standing.slice(0, STANDING_QUESTIONS_OFFERED)
 
+	# Clothing, on this stream rather than off the raw seed. `ProcMesh.human`
+	# used to pick it itself from a generator seeded with `seed_value` — the same
+	# value whose first draw decides `kind` at the top of this function — and the
+	# two first draws come out of the same underlying state. Nothing measurable
+	# came of that while every outfit was a slightly different shade of dark; the
+	# pack has since turned it into a tweed jacket, overalls or a shirt and tie,
+	# which is the most visible thing about a person before they have said a word.
+	#
+	# Drawn last, after everything else that reads this stream. Putting it in
+	# beside the other appearance traits pushed every draw after it along by one
+	# and moved `nerves` from 0.9 standard errors off `kind` to 1.9 — still
+	# inside tolerance, and there is no reason to spend that margin. Nothing
+	# above this line moved.
+	p.outfit = visible.randi()
+
 	p.greeting = _pick(GREETINGS, rng)
 
 	# --- What they came in for ---

@@ -92,7 +92,8 @@ func _ready() -> void:
 	cs.position = Vector3(0, 0.90, 0)
 	add_child(cs)
 
-	_body = ProcMesh.human(profile.seed_value, profile.height_scale, profile.bulk_scale)
+	_body = ProcMesh.human(profile.seed_value, profile.height_scale, profile.bulk_scale,
+		profile.outfit)
 	add_child(_body)
 	for child in _body.get_children():
 		if child.name.begins_with("Hip"):
@@ -630,7 +631,7 @@ func _die() -> void:
 	Signals.notice.emit(Loc.t("They're on the floor. Anyone who walks in will see that."), "bad")
 	var corpse := Body.new()
 	corpse.setup(global_position, profile.kind == CustomerProfile.Kind.CIVILIAN,
-		profile.full_name.split(" ")[0], profile.seed_value)
+		profile.full_name.split(" ")[0], profile.seed_value, profile.outfit)
 	Signals.body_dropped.emit(corpse)
 
 	get_tree().create_timer(1.2).timeout.connect(_report_killed)

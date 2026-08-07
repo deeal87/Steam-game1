@@ -38,6 +38,12 @@ var employment_note: String = ""
 # --- Appearance ---
 var height_scale: float = 1.0
 var bulk_scale: float = 1.0
+## Which set of clothes they are wearing. On the same stream as height and
+## build, and for the same reason: it used to be derived from the raw seed —
+## the first draw of which also decided whether they are police — which was
+## survivable while clothing was six near-identical dark colours and is not now
+## that it is a tweed jacket or a shirt and tie.
+var outfit: int = 0
 
 # --- Temperament ---
 ## 0 waits their turn all night, 1 will not stand behind anybody. Drawn from the

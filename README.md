@@ -76,6 +76,42 @@ One night is one shift, 23:00 to 05:00.
    (see below).
 6. **Survive the raid**, pay the rent, and the next night is worse.
 
+### What people are wearing
+
+The character sheet is fifty-five whole figures standing in rows — presentation
+renders of models rather than a grid of material samples — so there is nothing on
+it that lifts straight onto a surface. What lifts is the clothes. A figure is
+about 55 by 180 pixels, which makes a jacket roughly 46 by 62 and a pair of
+trousers 40 by 70; that sounds tiny and is not, because the whole world renders
+into a 426x240 buffer and a jacket at 46 across is already finer than the screen
+it is drawn on. Sixteen sets come off the sheet, two from each row, so the crowd
+is a mix of the ages and trades the artist drew rather than sixteen versions of
+the same person.
+
+The faces cannot be taken and should not be. A head on that sheet is 21 by 26
+pixels with maybe four by five of actual face in it, against the 32 by 32 the
+generator paints with eyes and a mouth deliberately placed — and a fixed set of
+painted faces would have two people in one night wearing the same face. Clothing
+is shared on purpose and always has been; the face is the thing this game asks
+you to remember.
+
+Which is why **the outfit moved onto the hashed per-person stream**, beside height
+and build. `ProcMesh.human` used to pick it itself from a generator seeded with
+`seed_value` — the same value whose first draw decides whether somebody is police
+— so the two came out of the same underlying state. Nothing measurable came of
+that while every outfit was a slightly different shade of dark. A tweed jacket,
+a set of overalls and a shirt and tie is a different proposition: it is the most
+visible thing about a person before they have said a word, so it is now held to
+the same test as everything else a player perceives without investigating, and it
+is measured as the outfit *worn* rather than as the raw draw behind it — two
+distributions with identical means can disagree completely once folded into
+sixteen.
+
+The draw is taken last, after everything else that reads that stream. Putting it
+in beside the other appearance traits pushed every later draw along by one and
+moved `nerves` from 0.9 standard errors off `kind` to 1.9 — still inside
+tolerance, and no reason to spend the margin.
+
 ## Reading people
 
 **No single signal identifies an officer.** Every tell one can leak is
@@ -1178,7 +1214,7 @@ the locale CSV is. Left alone, Godot compiles each PNG to a `.ctex` and the raw
 file never reaches the build — and because the code falls back to the generator
 when a file is missing, the exported game came out looking exactly as it had
 before the pack existed, with nothing failing and nothing to see. The log says
-which it is: `textures: 110 painted surfaces found`.
+which it is: `textures: 142 painted surfaces found`.
 
 Two sheets look like reference and are not, quite. The lighting and post-process
 sheet is mostly renders of what the engine ought to produce, which the engine has

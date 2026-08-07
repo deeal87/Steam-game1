@@ -252,13 +252,41 @@ const OUTFITS := [
 	{"coat": Color(0.24, 0.24, 0.25), "trouser": Color(0.15, 0.14, 0.13)},
 ]
 
+## How many sets of painted clothes the pack has, counted once by asking for
+## them until one is missing. Zero means everybody wears the generated colours,
+## which is what the game did before there was a pack.
+static var _painted_outfits: int = -1
+
+
+static func painted_outfit_count() -> int:
+	if _painted_outfits < 0:
+		_painted_outfits = 0
+		while ProcTex.has_painted("outfit_%02d_coat" % _painted_outfits) \
+				and ProcTex.has_painted("outfit_%02d_legs" % _painted_outfits):
+			_painted_outfits += 1
+	return _painted_outfits
+
+
 ## A blocky standing figure, roughly 1.8 m tall, with named limb pivots so the
 ## walk cycle and the death ragdoll have something to grab.
-static func human(seed_val: int, tall: float = 1.0, bulk: float = 1.0) -> Node3D:
+##
+## `outfit` picks the clothes. Passed in rather than drawn here, because what
+## somebody is wearing is the most visible thing about them before they say a
+## word and it must not correlate with whether they are police — the caller
+## takes it off the stream that exists for exactly that guarantee. Left at -1 it
+## falls back to the seed, which is what the sewer's inhabitants and anything
+## else without a profile get.
+static func human(seed_val: int, tall: float = 1.0, bulk: float = 1.0,
+		outfit: int = -1) -> Node3D:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_val
-	var outfit_index := rng.randi() % OUTFITS.size()
-	var outfit: Dictionary = OUTFITS[outfit_index]
+	var wardrobe: int = outfit if outfit >= 0 else rng.randi()
+	# Consumed either way, so the hats and everything else after it fall the same
+	# whether or not an outfit was handed in.
+	if outfit >= 0:
+		rng.randi()
+	var outfit_index: int = wardrobe % OUTFITS.size()
+	var colours: Dictionary = OUTFITS[outfit_index]
 
 	var root := Node3D.new()
 	root.name = "Body"
@@ -272,8 +300,24 @@ static func human(seed_val: int, tall: float = 1.0, bulk: float = 1.0) -> Node3D
 	# customer, and it is the difference between a spawn costing three and a half
 	# milliseconds and costing a quarter of one. The face, which *is* how you tell
 	# people apart, stays unique per person.
-	var coat_mat := mat(ProcTex.grime(outfit["coat"], 0.35, 1100 + outfit_index, 32))
-	var trouser_mat := mat(ProcTex.grime(outfit["trouser"], 0.3, 2200 + outfit_index, 32))
+	#
+	# The same argument is what makes the painted clothes affordable. They are
+	# photographs of sixteen people off the pack's character sheet, shared
+	# between everybody who draws that number, so the whole game holds
+	# thirty-two small images rather than two per customer. Faces are not on the
+	# sheet at a usable size, which is just as well: a fixed set of painted faces
+	# would have two people in a night wearing the same one, and the face is the
+	# thing this game asks you to remember.
+	var coat_mat: Material
+	var trouser_mat: Material
+	var painted := painted_outfit_count()
+	if painted > 0:
+		var wear := wardrobe % painted
+		coat_mat = mat(ProcTex.painted("outfit_%02d_coat" % wear))
+		trouser_mat = mat(ProcTex.painted("outfit_%02d_legs" % wear))
+	else:
+		coat_mat = mat(ProcTex.grime(colours["coat"], 0.35, 1100 + outfit_index, 32))
+		trouser_mat = mat(ProcTex.grime(colours["trouser"], 0.3, 2200 + outfit_index, 32))
 	var skin_mat := mat(ProcTex.flat(ProcTex.skin_for(seed_val)))
 	var face_mat := mat(ProcTex.face(seed_val))
 	var hair_mat := mat(ProcTex.flat(ProcTex.hair_for(seed_val)))

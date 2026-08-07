@@ -210,6 +210,57 @@ const CUTS := {
 	],
 }
 
+## The people sheet, which is not a sheet of swatches at all.
+##
+## Every other sheet in the pack is a grid of material samples with an albedo
+## panel to crop. This one is fifty-five whole characters standing in rows —
+## presentation renders of models, not textures — so there is nothing on it that
+## can be lifted straight onto a surface.
+##
+## What can be lifted is the clothes. A figure is about 55 by 180 pixels, which
+## makes a jacket roughly 46 by 62 and a pair of trousers 40 by 70. That sounds
+## tiny and is not: the whole world renders into a 426x240 buffer, so a jacket at
+## 46 pixels across is already finer than the screen it is drawn on.
+##
+## The faces cannot be taken. A head on this sheet is 21 by 26 pixels with maybe
+## four by five of actual face in it, against the 32 by 32 the generator paints
+## with eyes and a mouth deliberately placed. Which settles a question that was
+## worth asking anyway: the game tells people apart by their faces, and a fixed
+## set of painted ones would have two customers in a night wearing the same
+## person's face. Clothing is shared on purpose; faces are not.
+##
+## Rows are found rather than measured. Each figure is a lit shape on a black
+## background, so a column-brightness profile locates all of them exactly, and
+## anything much wider than its neighbours — the man with the shopping trolley,
+## the one holding a HELP sign, the porter with a box at chest height — is
+## dropped rather than cropped through. Reading fifty-five rectangles off a
+## thumbnail by eye is how a chain ended up where a police baton should have
+## been.
+const PEOPLE_SHEET := "people.png"
+
+## [x from, x to, y top, y bottom, how many to take from this row]
+const PEOPLE_ROWS := [
+	[20, 600, 146, 327, 2],     # 1. general customers, male
+	[608, 1120, 146, 327, 2],   # 2. general customers, female
+	[1128, 1520, 146, 327, 2],  # 3. elderly
+	[20, 535, 400, 560, 2],     # 4. teenagers and young adults
+	[543, 1020, 400, 560, 2],   # 5. workers
+	[1028, 1520, 400, 560, 2],  # 6. office workers
+	[20, 450, 640, 790, 2],     # 7. homeless and street people
+	[458, 930, 640, 790, 2],    # 8. shop and service customers
+]
+
+## Where the clothes are on a figure, as a share of its height. The head is the
+## top seventh, the shoes the bottom twelfth, and the two garments fill what is
+## between them.
+const COAT_TOP := 0.16
+const COAT_BOTTOM := 0.50
+const LEGS_TOP := 0.52
+const LEGS_BOTTOM := 0.92
+## Taken in from the sides so a jacket crop is chest rather than chest and the
+## darkness on either side of a person.
+const FIGURE_INSET := 0.14
+
 
 func _ready() -> void:
 	Log.mute(true)
@@ -240,12 +291,140 @@ func _ready() -> void:
 					cut[0], piece.get_width(), piece.get_height(), out])
 				made += 1
 
+	made += _cut_people(written)
+
 	var swept := _sweep(written)
 	print("\n%d textures cut" % made)
 	if swept > 0:
 		print("%d left over from a previous run removed" % swept)
 	print("")
 	get_tree().quit(0 if made > 0 else 1)
+
+
+## Takes the clothes off the people sheet.
+##
+## Numbered rather than named after the row they came from, so the game can walk
+## `outfit_00`, `outfit_01` … until one is missing and discover for itself how
+## many the pack has. Adding a row here needs no change on the other side.
+func _cut_people(written: Dictionary) -> int:
+	var img := Image.new()
+	var path := SHEET_DIR.path_join(PEOPLE_SHEET)
+	if img.load(path) != OK:
+		print("  no people sheet — everybody keeps the generated clothes")
+		return 0
+
+	var made := 0
+	var index := 0
+	for row: Array in PEOPLE_ROWS:
+		var figures := _find_figures(img, int(row[0]), int(row[1]), int(row[2]), int(row[3]))
+		if figures.is_empty():
+			printerr("  people row at y%d: found nobody" % int(row[2]))
+			continue
+		var widths := PackedStringArray()
+		for f: Rect2i in figures:
+			widths.append(str(f.size.x))
+		print("  row x%d y%d: %d figures, widths %s"
+			% [int(row[0]), int(row[2]), figures.size(), ",".join(widths)])
+		for at: Rect2i in _spread(figures, int(row[4])):
+			var top := int(row[2])
+			var height := int(row[3]) - top
+			var inset := int(float(at.size.x) * FIGURE_INSET)
+			for part: Array in [
+					["coat", COAT_TOP, COAT_BOTTOM],
+					["legs", LEGS_TOP, LEGS_BOTTOM]]:
+				var piece := img.get_region(Rect2i(
+					at.position.x + inset,
+					top + int(float(height) * float(part[1])),
+					maxi(8, at.size.x - inset * 2),
+					maxi(8, int(float(height) * (float(part[2]) - float(part[1]))))))
+				var name := "outfit_%02d_%s" % [index, part[0]]
+				var out := OUT_DIR.path_join("%s.png" % name)
+				if piece.save_png(out) == OK:
+					_write_keep_import(out)
+					written[name] = true
+					print("  %-16s %3dx%-3d -> %s" % [
+						name, piece.get_width(), piece.get_height(), out])
+					made += 1
+			index += 1
+	return made
+
+
+## Every figure in a horizontal band, as the column range it occupies.
+##
+## A figure is a run of columns with something lit in them. Runs narrower than a
+## person are noise — the edge of a panel, a label — and runs much wider than
+## their neighbours are a person holding something, which is a crop through a
+## shopping trolley rather than a coat.
+func _find_figures(img: Image, x_lo: int, x_hi: int, y_top: int, y_bottom: int) -> Array[Rect2i]:
+	# How much of a column is a person, not how bright its brightest pixel is.
+	#
+	# The brightest-pixel test picked out anybody in a light coat and cut the
+	# elderly row — five people in muted grey — into fragments twenty pixels
+	# wide, because only the lit side of each of them cleared the bar. Counting
+	# how much of the column is above the page background reads a person in dark
+	# clothing the same as a person in a pale one.
+	var lit := PackedInt32Array()
+	var samples := 0
+	for y in range(y_top, mini(y_bottom, img.get_height()), 2):
+		samples += 1
+	for x in range(x_lo, mini(x_hi, img.get_width())):
+		var body := 0
+		for y in range(y_top, mini(y_bottom, img.get_height()), 2):
+			var c := img.get_pixel(x, y)
+			if c.r + c.g + c.b > 0.25:
+				body += 1
+		lit.append(1 if float(body) / float(maxi(1, samples)) > 0.10 else 0)
+
+	# Heal a person split down the middle by a dark seam — a coat opening, an
+	# unlit arm — without joining two people, who are twenty or more columns
+	# apart on every row of this sheet.
+	var healed := lit.duplicate()
+	var gap := 0
+	for i in lit.size():
+		if lit[i] == 1:
+			if gap > 0 and gap < 10 and i - gap - 1 >= 0:
+				for j in range(i - gap, i):
+					healed[j] = 1
+			gap = 0
+		else:
+			gap += 1
+	lit = healed
+
+	var runs: Array[Rect2i] = []
+	var start := -1
+	for i in lit.size():
+		if lit[i] == 1 and start < 0:
+			start = i
+		elif lit[i] == 0 and start >= 0:
+			if i - start >= 20:
+				runs.append(Rect2i(x_lo + start, y_top, i - start, y_bottom - y_top))
+			start = -1
+	if start >= 0 and lit.size() - start >= 20:
+		runs.append(Rect2i(x_lo + start, y_top, lit.size() - start, y_bottom - y_top))
+	if runs.size() < 3:
+		return runs
+
+	var widths := PackedInt32Array()
+	for r: Rect2i in runs:
+		widths.append(r.size.x)
+	var sorted := Array(widths)
+	sorted.sort()
+	var median: int = int(sorted[sorted.size() / 2])
+	var kept: Array[Rect2i] = []
+	for r: Rect2i in runs:
+		if r.size.x <= int(float(median) * 1.6):
+			kept.append(r)
+	return kept
+
+
+## Picks `count` of them, spread across the row rather than taken off the front,
+## so two outfits from the same row are two different people.
+static func _spread(figures: Array[Rect2i], count: int) -> Array[Rect2i]:
+	var out: Array[Rect2i] = []
+	var n := mini(count, figures.size())
+	for i in n:
+		out.append(figures[int(float(i) * float(figures.size()) / float(maxi(1, n)))])
+	return out
 
 
 ## Deletes anything in the output directory this run did not write.

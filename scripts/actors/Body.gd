@@ -36,21 +36,24 @@ var _visual: Node3D
 var _seen_by: Dictionary = {}   ## customer instance id -> true, so each only bolts once
 
 
-func setup(at: Vector3, civilian: bool, name_of: String, seed_value: int) -> void:
+func setup(at: Vector3, civilian: bool, name_of: String, seed_value: int,
+		outfit: int = -1) -> void:
 	position = at
 	was_civilian = civilian
 	who = name_of
-	_build(seed_value)
+	_build(seed_value, outfit)
 
 
-func _build(seed_value: int) -> void:
+func _build(seed_value: int, outfit: int = -1) -> void:
 	name = "Body"
 	_visual = Node3D.new()
 	add_child(_visual)
 
 	# The person, face down. Reusing the same generator the living use means a
-	# body looks like the customer it was rather than like a prop.
-	var figure := ProcMesh.human(seed_value, 1.0, 1.05)
+	# body looks like the customer it was rather than like a prop — which now
+	# means passing their clothes along with their seed, or they would change
+	# coat between being shot and hitting the floor.
+	var figure := ProcMesh.human(seed_value, 1.0, 1.05, outfit)
 	figure.rotation.x = deg_to_rad(-88.0)
 	figure.position.y = 0.12
 	_visual.add_child(figure)
